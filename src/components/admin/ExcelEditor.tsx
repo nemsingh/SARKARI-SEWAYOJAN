@@ -1,0 +1,709 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+
+interface CellData {
+  text: string;
+  fontFamily: string;
+  fontSize: string;
+  fontWeight: string;
+  fontStyle: string;
+  textDecoration: string;
+  textAlign: string;
+  verticalAlign: string;
+  color: string;
+  backgroundColor: string;
+  borderAll: boolean;
+  borderOutside: boolean;
+  colSpan: number;
+  rowSpan: number;
+  hidden: boolean;
+}
+
+const defaultCell = (): CellData => ({
+  text: '',
+  fontFamily: 'Arial',
+  fontSize: '14px',
+  fontWeight: 'normal',
+  fontStyle: 'normal',
+  textDecoration: 'none',
+  textAlign: 'left',
+  verticalAlign: 'middle',
+  color: '#0b3d91',
+  backgroundColor: '#ffffff',
+  borderAll: false,
+  borderOutside: false,
+  colSpan: 1,
+  rowSpan: 1,
+  hidden: false,
+});
+
+const TOTAL_ROWS = 50;
+const TOTAL_COLS = 26;
+
+interface ExcelEditorProps {
+  onAddTable: (html: string) => void;
+  lang?: string;
+  channelId?: string;
+}
+
+const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
+  const [grid, setGrid] = useState<CellData[][]>(() => {
+    const rows: CellData[][] = [];
+    for (let r = 0; r < TOTAL_ROWS; r++) {
+      const row: CellData[] = [];
+      for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
+      rows.push(row);
+    }
+    return rows;
+  });
+
+  const [selectedCells, setSelectedCells] = useState<{ row: number; col: number }[]>([]);
+  const [activeCell, setActiveCellState] = useState<{ row: number; col: number } | null>(null);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [startCell, setStartCell] = useState<{ row: number; col: number } | null>(null);
+  const [formulaValue, setFormulaValue] = useState('');
+  const [currentFont, setCurrentFont] = useState('Arial');
+  const [currentFontSize, setCurrentFontSize] = useState('14');
+  const [clipboardData, setClipboardData] = useState<{ text: string; style: Partial<CellData> }[]>([]);
+  const [clipboardRange, setClipboardRange] = useState<{ rows: number; cols: number; data: { text: string; style: Partial<CellData> }[][] } | null>(null);
+  const [colWidths, setColWidths] = useState<number[]>(Array(TOTAL_COLS).fill(80));
+  const [rowHeights, setRowHeights] = useState<number[]>(Array(TOTAL_ROWS).fill(24));
+  const gridRef = useRef<HTMLTableElement>(null);
+
+  const getColLetter = (c: number) => String.fromCharCode(65 + c);
+  const getCellId = (r: number, c: number) => `${getColLetter(c)}${r + 1}`;
+
+  const updateGrid = useCallback((updater: (grid: CellData[][]) => CellData[][]) => {
+    setGrid(prev => updater(prev));
+  }, []);
+
+  const updateCell = useCallback((row: number, col: number, updates: Partial<CellData>) => {
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      newGrid[row][col] = { ...newGrid[row][col], ...updates };
+      return newGrid;
+    });
+  }, [updateGrid]);
+
+  // Mouse handlers
+  const handleMouseDown = (row: number, col: number) => {
+    setIsMouseDown(true);
+    setStartCell({ row, col });
+    setSelectedCells([{ row, col }]);
+    setActiveCellState({ row, col });
+    setFormulaValue(grid[row][col].text);
+  };
+
+  const handleMouseOver = (row: number, col: number) => {
+    if (!isMouseDown || !startCell) return;
+    const rowStart = Math.min(startCell.row, row);
+    const rowEnd = Math.max(startCell.row, row);
+    const colStart = Math.min(startCell.col, col);
+    const colEnd = Math.max(startCell.col, col);
+    const cells: { row: number; col: number }[] = [];
+    for (let r = rowStart; r <= rowEnd; r++) {
+      for (let c = colStart; c <= colEnd; c++) {
+        if (!grid[r][c].hidden) cells.push({ row: r, col: c });
+      }
+    }
+    setSelectedCells(cells);
+  };
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent, row: number, col: number) => {
+    e.preventDefault();
+    setIsMouseDown(true);
+    setStartCell({ row, col });
+    setSelectedCells([{ row, col }]);
+    setActiveCellState({ row, col });
+    setFormulaValue(grid[row][col].text);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (!isMouseDown || !startCell) return;
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
+    if (element?.dataset?.row && element?.dataset?.col) {
+      const row = parseInt(element.dataset.row);
+      const col = parseInt(element.dataset.col);
+      const rowStart = Math.min(startCell.row, row);
+      const rowEnd = Math.max(startCell.row, row);
+      const colStart = Math.min(startCell.col, col);
+      const colEnd = Math.max(startCell.col, col);
+      const cells: { row: number; col: number }[] = [];
+      for (let r = rowStart; r <= rowEnd; r++) {
+        for (let c = colStart; c <= colEnd; c++) {
+          if (!grid[r][c].hidden) cells.push({ row: r, col: c });
+        }
+      }
+      setSelectedCells(cells);
+    }
+  };
+
+  useEffect(() => {
+    const handleUp = () => setIsMouseDown(false);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+    return () => {
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, []);
+
+  // Copy/Cut/Paste
+  const execCopy = () => {
+    if (selectedCells.length === 0) return;
+    const rows = selectedCells.map(c => c.row);
+    const cols = selectedCells.map(c => c.col);
+    const minRow = Math.min(...rows), maxRow = Math.max(...rows);
+    const minCol = Math.min(...cols), maxCol = Math.max(...cols);
+    const data: { text: string; style: Partial<CellData> }[][] = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      const rowData: { text: string; style: Partial<CellData> }[] = [];
+      for (let c = minCol; c <= maxCol; c++) {
+        const cell = grid[r][c];
+        rowData.push({ text: cell.text, style: { ...cell } });
+      }
+      data.push(rowData);
+    }
+    setClipboardRange({ rows: maxRow - minRow + 1, cols: maxCol - minCol + 1, data });
+  };
+
+  const execCut = () => {
+    execCopy();
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      selectedCells.forEach(({ row, col }) => {
+        newGrid[row][col] = { ...newGrid[row][col], text: '' };
+      });
+      return newGrid;
+    });
+  };
+
+  const pasteData = () => {
+    if (!activeCell || !clipboardRange) return;
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      for (let r = 0; r < clipboardRange.rows; r++) {
+        for (let c = 0; c < clipboardRange.cols; c++) {
+          const targetRow = activeCell.row + r;
+          const targetCol = activeCell.col + c;
+          if (targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
+            const src = clipboardRange.data[r][c];
+            newGrid[targetRow][targetCol] = { ...newGrid[targetRow][targetCol], text: src.text };
+          }
+        }
+      }
+      return newGrid;
+    });
+  };
+
+  const applyToSelection = (prop: keyof CellData, value: string) => {
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      selectedCells.forEach(({ row, col }) => {
+        const cell = newGrid[row][col];
+        if (['fontWeight', 'fontStyle', 'textDecoration'].includes(prop)) {
+          (cell as any)[prop] = (cell as any)[prop] === value ? 'normal' : value;
+        } else {
+          (cell as any)[prop] = value;
+        }
+      });
+      return newGrid;
+    });
+  };
+
+  const clearSelection = () => {
+    // Clear entire grid and force DOM re-render
+    setGrid(() => {
+      const rows: CellData[][] = [];
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const row: CellData[] = [];
+        for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
+        rows.push(row);
+      }
+      return rows;
+    });
+    setSelectedCells([]);
+    setActiveCellState(null);
+    setFormulaValue('');
+    setGridKey(prev => prev + 1);
+  };
+
+  const mergeCells = () => {
+    if (selectedCells.length < 2) return;
+    const rows = selectedCells.map(c => c.row);
+    const cols = selectedCells.map(c => c.col);
+    const minRow = Math.min(...rows), maxRow = Math.max(...rows);
+    const minCol = Math.min(...cols), maxCol = Math.max(...cols);
+
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          if (r === minRow && c === minCol) {
+            newGrid[r][c].rowSpan = maxRow - minRow + 1;
+            newGrid[r][c].colSpan = maxCol - minCol + 1;
+            newGrid[r][c].textAlign = 'center';
+          } else {
+            newGrid[r][c].hidden = true;
+          }
+        }
+      }
+      return newGrid;
+    });
+  };
+
+  const unmergeCells = () => {
+    if (!activeCell) return;
+    const cell = grid[activeCell.row][activeCell.col];
+    if (cell.rowSpan <= 1 && cell.colSpan <= 1) {
+      selectedCells.forEach(({ row, col }) => {
+        const c = grid[row][col];
+        if (c.rowSpan > 1 || c.colSpan > 1) {
+          updateGrid(g => {
+            const newGrid = g.map(r => [...r]);
+            for (let r = row; r < row + c.rowSpan; r++) {
+              for (let cc = col; cc < col + c.colSpan; cc++) {
+                newGrid[r][cc].hidden = false;
+                newGrid[r][cc].rowSpan = 1;
+                newGrid[r][cc].colSpan = 1;
+              }
+            }
+            return newGrid;
+          });
+        }
+      });
+      return;
+    }
+
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      for (let r = activeCell.row; r < activeCell.row + cell.rowSpan; r++) {
+        for (let c = activeCell.col; c < activeCell.col + cell.colSpan; c++) {
+          newGrid[r][c].hidden = false;
+          newGrid[r][c].rowSpan = 1;
+          newGrid[r][c].colSpan = 1;
+        }
+      }
+      return newGrid;
+    });
+  };
+
+  const applyBorder = (type: 'all' | 'outside' | 'none') => {
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      if (type === 'none') {
+        selectedCells.forEach(({ row, col }) => {
+          newGrid[row][col].borderAll = false;
+          newGrid[row][col].borderOutside = false;
+        });
+      } else if (type === 'all') {
+        selectedCells.forEach(({ row, col }) => {
+          newGrid[row][col].borderAll = true;
+          newGrid[row][col].borderOutside = false;
+        });
+      } else {
+        selectedCells.forEach(({ row, col }) => {
+          newGrid[row][col].borderAll = false;
+          newGrid[row][col].borderOutside = true;
+        });
+      }
+      return newGrid;
+    });
+  };
+
+  const autoSum = () => {
+    if (!activeCell) return;
+    let sum = 0;
+    for (let i = 0; i < activeCell.row; i++) {
+      const val = parseFloat(grid[i][activeCell.col].text);
+      if (!isNaN(val)) sum += val;
+    }
+    updateCell(activeCell.row, activeCell.col, { text: sum.toString() });
+    setFormulaValue(sum.toString());
+  };
+
+  const handleFormulaChange = (val: string) => {
+    setFormulaValue(val);
+    if (activeCell) {
+      updateCell(activeCell.row, activeCell.col, { text: val });
+    }
+  };
+
+  const handleCellInput = (row: number, col: number, text: string) => {
+    updateCell(row, col, { text });
+    if (activeCell && activeCell.row === row && activeCell.col === col) {
+      setFormulaValue(text);
+    }
+  };
+
+  const isSelected = (row: number, col: number) => selectedCells.some(c => c.row === row && c.col === col);
+  const isActive = (row: number, col: number) => activeCell?.row === row && activeCell?.col === col;
+
+  // Column resize
+  const handleColResize = (colIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = colWidths[colIndex];
+    const onMouseMove = (ev: MouseEvent) => {
+      const diff = ev.clientX - startX;
+      setColWidths(prev => { const next = [...prev]; next[colIndex] = Math.max(30, startWidth + diff); return next; });
+    };
+    const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Row resize
+  const handleRowResize = (rowIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const startHeight = rowHeights[rowIndex];
+    const onMouseMove = (ev: MouseEvent) => {
+      const diff = ev.clientY - startY;
+      setRowHeights(prev => { const next = [...prev]; next[rowIndex] = Math.max(15, startHeight + diff); return next; });
+    };
+    const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Sync all DOM cell contents to grid state before generating HTML
+  const syncDomToGrid = (): CellData[][] => {
+    const newGrid = grid.map(r => r.map(c => ({ ...c })));
+    if (gridRef.current) {
+      const cells = gridRef.current.querySelectorAll('td[data-row][data-col]');
+      cells.forEach(td => {
+        const r = parseInt(td.getAttribute('data-row') || '0');
+        const c = parseInt(td.getAttribute('data-col') || '0');
+        if (r < TOTAL_ROWS && c < TOTAL_COLS) {
+          // Get innerHTML to preserve links and list items
+          const html = (td as HTMLElement).innerHTML || '';
+          const text = (td as HTMLElement).innerText || '';
+          // If cell has HTML content (links, lists), use innerHTML
+          if (html.includes('<a ') || html.includes('<ul') || html.includes('<li')) {
+            newGrid[r][c].text = html;
+          } else {
+            newGrid[r][c].text = text;
+          }
+        }
+      });
+    }
+    return newGrid;
+  };
+
+  const generateTableHtml = (sourceGrid: CellData[][]): string => {
+    let maxRow = 0, maxCol = 0;
+    sourceGrid.forEach((row, ri) => {
+      row.forEach((cell, ci) => {
+        if (cell.text || cell.backgroundColor !== '#ffffff' || cell.hidden || cell.colSpan > 1 || cell.rowSpan > 1) {
+          maxRow = Math.max(maxRow, ri);
+          maxCol = Math.max(maxCol, ci);
+        }
+      });
+    });
+
+    if (maxRow === 0 && maxCol === 0 && !sourceGrid[0][0].text) return '';
+
+    let html = '<table class="data-table" style="width:100%;border:1px solid #0b3d91;border-collapse:collapse;margin-top:15px;">\n';
+    for (let r = 0; r <= maxRow; r++) {
+      html += '  <tr>\n';
+      for (let c = 0; c <= maxCol; c++) {
+        const cell = sourceGrid[r][c];
+        if (cell.hidden) continue;
+
+        let style = '';
+        style += `color:${cell.color};`;
+        if (cell.backgroundColor !== '#ffffff') style += `background-color:${cell.backgroundColor};`;
+        if (cell.fontWeight === 'bold') style += 'font-weight:bold;';
+        if (cell.fontStyle === 'italic') style += 'font-style:italic;';
+        if (cell.textDecoration === 'underline') style += 'text-decoration:underline;';
+        if (cell.textAlign !== 'left') style += `text-align:${cell.textAlign};`;
+        if (cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
+        if (cell.fontFamily !== 'Arial') style += `font-family:${cell.fontFamily};`;
+        if (cell.fontSize !== '14px') style += `font-size:${cell.fontSize};`;
+        style += 'border:1px solid #0b3d91;padding:12px;';
+
+        let attrs = `style="${style}"`;
+        if (cell.colSpan > 1) attrs += ` colspan="${cell.colSpan}"`;
+        if (cell.rowSpan > 1) attrs += ` rowspan="${cell.rowSpan}"`;
+
+        // Preserve HTML content (links, lists)
+        const cellContent = cell.text;
+        html += `    <td ${attrs}>${cellContent}</td>\n`;
+      }
+      html += '  </tr>\n';
+    }
+    html += '</table>';
+    return html;
+  };
+
+  const [gridKey, setGridKey] = useState(0);
+
+  const handleAddTable = () => {
+    const syncedGrid = syncDomToGrid();
+    const html = generateTableHtml(syncedGrid);
+    if (!html) return;
+    onAddTable(html);
+    // Reset grid and force DOM re-render
+    setGrid(() => {
+      const rows: CellData[][] = [];
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const row: CellData[] = [];
+        for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
+        rows.push(row);
+      }
+      return rows;
+    });
+    setSelectedCells([]);
+    setActiveCellState(null);
+    setFormulaValue('');
+    setGridKey(prev => prev + 1);
+  };
+
+  // Insert bullet (unordered list item) into active cell with custom style
+  const insertBullet = (bulletStyle: 'disc' | 'circle' | 'square' | 'arrow' = 'disc') => {
+    if (!activeCell) return;
+    const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+    if (!td) return;
+    const currentHtml = td.innerHTML;
+    
+    // Map bullet styles to list-style values
+    const bulletMap: Record<string, string> = {
+      disc: 'disc',      // • 
+      circle: 'circle',  // ◦
+      square: 'square',  // ▪
+      arrow: 'none'      // → (custom)
+    };
+    
+    const listStyle = bulletMap[bulletStyle];
+    const bulletPrefix = bulletStyle === 'arrow' ? '→ ' : '';
+    
+    // If already has a <ul>, add a new <li>
+    if (currentHtml.includes('<ul')) {
+      const newLi = `<li>${bulletPrefix}Item</li>`;
+      td.innerHTML = currentHtml.replace('</ul>', newLi + '</ul>');
+    } else {
+      // Wrap existing content and add bullet
+      const existing = td.innerText || '';
+      const liStyle = bulletStyle === 'arrow' ? '' : `list-style:${listStyle};`;
+      td.innerHTML = `<ul style="margin:0;padding-left:18px;${liStyle}"><li>${bulletPrefix}${existing || 'Item'}</li></ul>`;
+    }
+    handleCellInput(activeCell.row, activeCell.col, td.innerHTML);
+  };
+
+  const openFullscreen = () => {
+    const ch = channelId || `excel-${lang || 'en'}-${Date.now()}`;
+    window.open(`/admin/excel-fullscreen?lang=${lang || 'en'}&channel=${ch}`, '_blank');
+  };
+
+  return (
+    <div>
+      {/* Ribbon */}
+      <div className="bg-muted border-b border-border flex flex-wrap p-1.5 gap-2.5 mb-2">
+        {/* Fullscreen */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={openFullscreen} className="px-2 cursor-pointer border border-primary bg-primary/10 text-sm hover:bg-primary/20 rounded font-bold" title="Open in Full Screen (New Tab)">⛶ Full Screen</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">View</span>
+        </div>
+
+        {/* Clipboard */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={execCopy} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">📋 Copy</button>
+            <button onClick={execCut} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">✂️ Cut</button>
+            <button onClick={pasteData} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">📋 Paste</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Clipboard</span>
+        </div>
+
+        {/* Font */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10 flex-wrap">
+            <select value={currentFont} onChange={e => { setCurrentFont(e.target.value); applyToSelection('fontFamily', e.target.value); }} className="px-1 text-sm border border-border bg-background">
+              <option value="Arial">Arial</option>
+              <option value="Calibri">Calibri</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Georgia">Georgia</option>
+            </select>
+            <input type="number" value={currentFontSize} onChange={e => { setCurrentFontSize(e.target.value); applyToSelection('fontSize', e.target.value + 'px'); }} className="w-11 px-1 text-sm border border-border bg-background" />
+            <button onClick={() => applyToSelection('fontWeight', 'bold')} className="px-2 cursor-pointer border border-transparent bg-transparent font-bold hover:bg-border">B</button>
+            <button onClick={() => applyToSelection('fontStyle', 'italic')} className="px-2 cursor-pointer border border-transparent bg-transparent italic hover:bg-border">I</button>
+            <button onClick={() => applyToSelection('textDecoration', 'underline')} className="px-2 cursor-pointer border border-transparent bg-transparent underline hover:bg-border">U</button>
+            <div className="flex items-center gap-0.5">
+              <label className="text-[10px]">A</label>
+              <input type="color" onChange={e => applyToSelection('color', e.target.value)} className="w-6 h-6 cursor-pointer" title="Text Color" />
+            </div>
+            <div className="flex items-center gap-0.5">
+              <label className="text-[10px]">🎨</label>
+              <input type="color" defaultValue="#ffffff" onChange={e => applyToSelection('backgroundColor', e.target.value)} className="w-6 h-6 cursor-pointer" title="Fill Color" />
+            </div>
+            <div className="flex items-center gap-0.5">
+              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) applyToSelection('color', val.startsWith('#') ? val : `#${val}`); } }} title="Text Color Code" />
+              <label className="text-[10px]">Text</label>
+            </div>
+            <div className="flex items-center gap-0.5">
+              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) applyToSelection('backgroundColor', val.startsWith('#') ? val : `#${val}`); } }} title="Fill Color Code" />
+              <label className="text-[10px]">Fill</label>
+            </div>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Font</span>
+        </div>
+
+        {/* Alignment */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={() => applyToSelection('textAlign', 'left')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Left">⬅ L</button>
+            <button onClick={() => applyToSelection('textAlign', 'center')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Center">⬌ C</button>
+            <button onClick={() => applyToSelection('textAlign', 'right')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Right">➡ R</button>
+            <span className="border-l border-border mx-1 h-6"></span>
+            <button onClick={() => applyToSelection('verticalAlign', 'top')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Top">⬆ T</button>
+            <button onClick={() => applyToSelection('verticalAlign', 'middle')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Middle">⬍ M</button>
+            <button onClick={() => applyToSelection('verticalAlign', 'bottom')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Bottom">⬇ B</button>
+            <button onClick={mergeCells} className="px-2 cursor-pointer bg-primary/10 font-bold border border-primary text-sm hover:bg-primary/20 rounded">🔗 Merge</button>
+            <button onClick={unmergeCells} className="px-2 cursor-pointer bg-destructive/10 font-bold border border-destructive text-sm hover:bg-destructive/20 rounded">🔓 Unmerge</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Alignment</span>
+        </div>
+
+        {/* Borders */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={() => applyBorder('all')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">⬛ All</button>
+            <button onClick={() => applyBorder('outside')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">▢ Outside</button>
+            <button onClick={() => applyBorder('none')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">❌ No</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Borders</span>
+        </div>
+
+        {/* Insert (Link + Bullet) */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={() => {
+              if (!activeCell) return;
+              const url = prompt('Enter URL for selected text:');
+              if (url) {
+                const cell = grid[activeCell.row][activeCell.col];
+                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${cell.text}</a>`;
+                updateCell(activeCell.row, activeCell.col, { text: linkHtml });
+                // Also update DOM
+                const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+                if (td) td.innerHTML = linkHtml;
+              }
+            }} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">🔗 Link</button>
+            <div className="relative group">
+              <button className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border" title="Add bullet list item">• List ▼</button>
+              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+                <button onClick={() => insertBullet('disc')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">• Disc</button>
+                <button onClick={() => insertBullet('circle')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">◦ Circle</button>
+                <button onClick={() => insertBullet('square')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">▪ Square</button>
+                <button onClick={() => insertBullet('arrow')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">→ Arrow</button>
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Insert</span>
+        </div>
+
+        {/* Editing */}
+        <div className="flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <button onClick={autoSum} className="px-2 cursor-pointer border border-transparent bg-transparent text-primary font-bold hover:bg-border">Σ AutoSum</button>
+            <button onClick={clearSelection} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border">Clear</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Editing</span>
+        </div>
+      </div>
+
+      {/* Formula Bar */}
+      <div className="flex items-center p-2 border-b border-border bg-background">
+        <div className="w-16 text-center border-r border-border mr-2.5 font-bold text-primary text-base">
+          {activeCell ? getCellId(activeCell.row, activeCell.col) : 'A1'}
+        </div>
+        <input
+          type="text"
+          value={formulaValue}
+          onChange={e => handleFormulaChange(e.target.value)}
+          placeholder="Formula bar..."
+          className="flex-1 border-none outline-none text-base bg-transparent"
+        />
+      </div>
+
+      {/* Grid */}
+      <div className="h-[500px] overflow-auto bg-muted relative border border-border">
+        <table key={gridKey} ref={gridRef} className="border-collapse bg-background" style={{ tableLayout: 'fixed' }}>
+          <thead>
+            <tr>
+              <th className="excel-header sticky top-0 left-0 z-10 bg-muted" style={{ width: 40 }}></th>
+              {Array.from({ length: TOTAL_COLS }, (_, c) => (
+                <th key={c} className="excel-header sticky top-0 z-[2] relative" style={{ width: colWidths[c] }}>
+                  {getColLetter(c)}
+                  <div className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize z-10" onMouseDown={(e) => handleColResize(c, e)} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {grid.map((row, ri) => (
+              <tr key={ri}>
+                <td className="excel-header sticky left-0 z-[3] bg-muted text-center font-bold text-xs relative" style={{ width: 40, height: rowHeights[ri] }}>
+                  {ri + 1}
+                  <div className="absolute bottom-[-3px] left-0 w-full h-[6px] cursor-row-resize z-10" onMouseDown={(e) => handleRowResize(ri, e)} />
+                </td>
+                {row.map((cell, ci) => {
+                  if (cell.hidden) return null;
+                  return (
+                    <td
+                      key={ci}
+                      data-row={ri}
+                      data-col={ci}
+                      className={`excel-cell ${isSelected(ri, ci) ? 'selected' : ''} ${isActive(ri, ci) ? 'active-cell' : ''}`}
+                      style={{
+                        fontFamily: cell.fontFamily,
+                        fontSize: cell.fontSize,
+                        fontWeight: cell.fontWeight,
+                        fontStyle: cell.fontStyle,
+                        textDecoration: cell.textDecoration,
+                        textAlign: cell.textAlign as any,
+                        verticalAlign: cell.verticalAlign as any,
+                        color: cell.color,
+                        backgroundColor: cell.backgroundColor,
+                        border: cell.borderAll ? '1px solid #000' : cell.borderOutside ? '1px solid #000' : undefined,
+                        height: rowHeights[ri],
+                        width: colWidths[ci],
+                      }}
+                      colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
+                      rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onMouseDown={() => handleMouseDown(ri, ci)}
+                      onMouseOver={() => handleMouseOver(ri, ci)}
+                      onTouchStart={(e) => handleTouchStart(e, ri, ci)}
+                      onTouchMove={handleTouchMove}
+                      onInput={e => handleCellInput(ri, ci, (e.target as HTMLElement).innerText)}
+                    />
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add Table Button */}
+      <div className="mt-4 flex gap-3">
+        <Button onClick={handleAddTable} className="font-bold">
+          ➕ Add Table
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default ExcelEditor;

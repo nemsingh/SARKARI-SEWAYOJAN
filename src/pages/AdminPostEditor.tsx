@@ -1,0 +1,440 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks } from '@/lib/firebaseService';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import ExcelEditor from '@/components/admin/ExcelEditor';
+
+const generateSlug = (text: string) => {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+};
+
+const AdminPostEditor = () => {
+  const { id } = useParams();
+  const isNew = id === 'new';
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [nameOfPost, setNameOfPost] = useState('');
+  const [postDate, setPostDate] = useState('');
+  const [shortInfo, setShortInfo] = useState('');
+  const [tablesHtml, setTablesHtml] = useState('');
+  const [slug, setSlug] = useState('');
+  const [nameOfPostHi, setNameOfPostHi] = useState('');
+  const [postDateHi, setPostDateHi] = useState('');
+  const [shortInfoHi, setShortInfoHi] = useState('');
+  const [tablesHtmlHi, setTablesHtmlHi] = useState('');
+  const [tables, setTables] = useState<string[]>([]);
+  const [tablesHi, setTablesHi] = useState<string[]>([]);
+  const [loading, setLoading] = useState(!isNew);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [newMediaUrl, setNewMediaUrl] = useState('');
+
+  // Excel editor reset keys & channel IDs
+  const [editorKey, setEditorKey] = useState(0);
+  const [editorKeyHi, setEditorKeyHi] = useState(0);
+  const [channelEn] = useState(() => `excel-en-${Date.now()}`);
+  const [channelHi] = useState(() => `excel-hi-${Date.now()}`);
+
+  // Listen for tables from fullscreen Excel editor
+  useEffect(() => {
+    const bcEn = new BroadcastChannel(channelEn);
+    const bcHi = new BroadcastChannel(channelHi);
+    bcEn.onmessage = (e) => {
+      if (e.data?.type === 'add-table' && e.data.html) {
+        handleAddTable(e.data.html);
+      }
+    };
+    bcHi.onmessage = (e) => {
+      if (e.data?.type === 'add-table' && e.data.html) {
+        handleAddTableHi(e.data.html);
+      }
+    };
+    return () => { bcEn.close(); bcHi.close(); };
+  }, []);
+
+  // Optional category linking
+  const [categories, setCategories] = useState<any[]>([]);
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkCategoryId, setLinkCategoryId] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user || !user.emailVerified) {
+        navigate('/admin-vikaskumar', { replace: true });
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    getCategories().then(setCategories);
+  }, []);
+
+  useEffect(() => {
+    if (!isNew && id) {
+      const fetchPost = async () => {
+        const data = await getPostById(id);
+        if (data) {
+          setNameOfPost(data.name_of_post || '');
+          setPostDate(data.post_date || '');
+          setShortInfo(data.short_info || '');
+          setTablesHtml(data.tables_html || '');
+          setSlug(data.slug || '');
+          setNameOfPostHi(data.name_of_post_hi || '');
+          setPostDateHi(data.post_date_hi || '');
+          setShortInfoHi(data.short_info_hi || '');
+          setTablesHtmlHi(data.tables_html_hi || '');
+          setMediaUrls(data.media_urls || []);
+          if (data.tables_html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.tables_html, 'text/html');
+            setTables(Array.from(doc.querySelectorAll('table')).map(t => t.outerHTML));
+          }
+          if (data.tables_html_hi) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.tables_html_hi, 'text/html');
+            setTablesHi(Array.from(doc.querySelectorAll('table')).map(t => t.outerHTML));
+          }
+        }
+        setLoading(false);
+      };
+      fetchPost();
+    }
+  }, [id, isNew]);
+
+  useEffect(() => {
+    if (isNew && nameOfPost && !slug) {
+      setSlug(generateSlug(nameOfPost));
+    }
+  }, [nameOfPost, isNew]);
+
+  const handleAddTable = (tableHtml: string) => {
+    const newTables = [...tables, tableHtml];
+    setTables(newTables);
+    setTablesHtml(newTables.join('\n'));
+  };
+
+  const handleRemoveTable = (index: number) => {
+    const newTables = tables.filter((_, i) => i !== index);
+    setTables(newTables);
+    setTablesHtml(newTables.join('\n'));
+  };
+
+  const handleAddTableHi = (tableHtml: string) => {
+    const newTables = [...tablesHi, tableHtml];
+    setTablesHi(newTables);
+    setTablesHtmlHi(newTables.join('\n'));
+  };
+
+  const handleRemoveTableHi = (index: number) => {
+    const newTables = tablesHi.filter((_, i) => i !== index);
+    setTablesHi(newTables);
+    setTablesHtmlHi(newTables.join('\n'));
+  };
+
+  const handleAddMedia = () => {
+    if (newMediaUrl.trim()) {
+      setMediaUrls(prev => [...prev, newMediaUrl.trim()]);
+      setNewMediaUrl('');
+    }
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setMediaUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearForm = () => {
+    setNameOfPost('');
+    setPostDate('');
+    setShortInfo('');
+    setTablesHtml('');
+    setSlug('');
+    setNameOfPostHi('');
+    setPostDateHi('');
+    setShortInfoHi('');
+    setTablesHtmlHi('');
+    setTables([]);
+    setTablesHi([]);
+    setMediaUrls([]);
+    setNewMediaUrl('');
+    setLinkTitle('');
+    setLinkCategoryId('');
+    setEditorKey(prev => prev + 1);
+    setEditorKeyHi(prev => prev + 1);
+  };
+
+  const handleSave = async () => {
+    const finalSlug = slug || generateSlug(nameOfPost);
+    const postData: any = {
+      name_of_post: nameOfPost,
+      post_date: postDate,
+      short_info: shortInfo,
+      tables_html: tablesHtml,
+      slug: finalSlug,
+      name_of_post_hi: nameOfPostHi || null,
+      post_date_hi: postDateHi || null,
+      short_info_hi: shortInfoHi || null,
+      tables_html_hi: tablesHtmlHi || null,
+      media_urls: mediaUrls.length > 0 ? mediaUrls : null,
+    };
+
+    try {
+      if (isNew) {
+        const result = await createPost(postData);
+        if (linkTitle.trim() && linkCategoryId) {
+          const existingLinks = await getCategoryLinks();
+          const catLinks = existingLinks.filter((l: any) => l.category_id === linkCategoryId);
+          await addCategoryLink({
+            category_id: linkCategoryId,
+            title: linkTitle.trim(),
+            url: `/post/${finalSlug || result.id}`,
+            display_order: catLinks.length + 1,
+            is_new: true,
+            last_date_text: null,
+          });
+          toast({ title: 'Post created & added to category!' });
+        } else {
+          toast({ title: 'Post created!' });
+        }
+        // Clear form for new post creation
+        clearForm();
+      } else {
+        await updatePost(id!, postData);
+        toast({ title: 'Post updated!' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDownloadHtml = () => {
+    const html = generateFullHtml();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${nameOfPost.replace(/\s+/g, '-').toLowerCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateFullHtml = () => {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${nameOfPost}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #ffffff; overflow-x: hidden; }
+    .header { background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; padding: 35px 0; }
+    .header h1 { margin: 0; font-size: 48px; font-weight: 900; color: #0b3d91; }
+    .main-wrapper { max-width: 1000px; margin: 20px auto; padding: 15px; }
+    .job-detail-box { background: #ffffff; border-radius: 15px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); border-top: 5px solid #0b3d91; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 10px; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+<div class="header"><h1>SARKARI SEWAYOJAN</h1></div>
+<div class="main-wrapper">
+  <div class="job-detail-box">
+    <table>
+      <tr><td style="color:#FF0033;font-weight:bold;width:150px;">Name of Post:</td><td style="color:#0b3d91;font-weight:bold;">${nameOfPost}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;">Post Date / Update:</td><td style="color:#0b3d91;font-weight:bold;">${postDate}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;">Short Info:</td><td style="color:#0b3d91;">${shortInfo}</td></tr>
+    </table>
+    ${tablesHtml}
+  </div>
+</div>
+</body>
+</html>`;
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading...</div>;
+
+  return (
+    <div className="min-h-screen bg-secondary">
+      <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
+        <h1 className="text-2xl font-black text-primary">{isNew ? 'Create New Post' : 'Edit Post'}</h1>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
+          <Button onClick={handleSave}>Save Post</Button>
+          <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
+        </div>
+      </div>
+
+      <div className="max-w-[1200px] mx-auto p-6 space-y-6">
+        {/* Optional: Link to Category Box */}
+        {isNew && (
+          <div className="bg-background rounded-2xl p-6 border-2 border-primary/30" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+            <h2 className="text-xl font-bold text-primary mb-2">🔗 Add to Category Box (Optional)</h2>
+            <p className="text-sm text-muted-foreground mb-4">Agar aap dono fields fill karenge to ye post automatically selected category box me show hogi.</p>
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-base font-bold text-primary block mb-1">Link Title</label>
+                <Input value={linkTitle} onChange={e => setLinkTitle(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Apply Online" />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-base font-bold text-primary block mb-1">Category</label>
+                <select
+                  value={linkCategoryId}
+                  onChange={e => setLinkCategoryId(e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-base text-primary"
+                >
+                  <option value="">-- Select Category --</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Post Information (English)</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">Name of Post</label>
+              <Input value={nameOfPost} onChange={e => setNameOfPost(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Recruitment" />
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">URL Slug</label>
+              <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. upsc-capf-2026-recruitment" />
+              <p className="text-sm text-muted-foreground mt-1">Auto-generated from title. URL: /post/{slug || 'auto-generated'}</p>
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">Post Date / Update</label>
+              <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" />
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">Short Info (HTML allowed)</label>
+              <Textarea value={shortInfo} onChange={e => setShortInfo(e.target.value)} placeholder="Short info about the post..." rows={4} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Make Table - English (Excel Editor)</h2>
+          <ExcelEditor key={`en-${editorKey}`} onAddTable={handleAddTable} lang="en" channelId={channelEn} />
+        </div>
+
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Added Tables - English ({tables.length})</h2>
+          {tables.length === 0 && <p className="text-muted-foreground">No tables added yet.</p>}
+          {tables.map((tableHtml, index) => (
+            <div key={index} className="mb-4 border border-border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-primary">Table {index + 1}</span>
+                <Button variant="destructive" size="sm" onClick={() => handleRemoveTable(index)}>Remove</Button>
+              </div>
+              <div dangerouslySetInnerHTML={{ __html: tableHtml }} className="overflow-auto" />
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">📝 Hindi Translation (Optional)</h2>
+          <p className="text-sm text-muted-foreground mb-4">Agar aap Hindi me content dena chahte hain to yahan fill karein. Website par user English/Hindi switch kar payega.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">पद का नाम (Name of Post - Hindi)</label>
+              <Input value={nameOfPostHi} onChange={e => setNameOfPostHi(e.target.value)} placeholder="e.g. यूपीएससी सीएपीएफ 2026 भर्ती" />
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">पोस्ट तिथि (Post Date - Hindi)</label>
+              <Input value={postDateHi} onChange={e => setPostDateHi(e.target.value)} placeholder="e.g. 21 फरवरी 2026 | 12:12 AM" />
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">संक्षिप्त जानकारी (Short Info - Hindi, HTML allowed)</label>
+              <Textarea value={shortInfoHi} onChange={e => setShortInfoHi(e.target.value)} placeholder="पोस्ट के बारे में संक्षिप्त जानकारी..." rows={4} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Make Table - Hindi (Excel Editor)</h2>
+          <ExcelEditor key={`hi-${editorKeyHi}`} lang="hi" channelId={channelHi} onAddTable={handleAddTableHi} />
+        </div>
+
+        <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Added Tables - Hindi ({tablesHi.length})</h2>
+          {tablesHi.length === 0 && <p className="text-muted-foreground">No Hindi tables added yet.</p>}
+          {tablesHi.map((tableHtml, index) => (
+            <div key={index} className="mb-4 border border-border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-primary">Table {index + 1} (Hindi)</span>
+                <Button variant="destructive" size="sm" onClick={() => handleRemoveTableHi(index)}>Remove</Button>
+              </div>
+              <div dangerouslySetInnerHTML={{ __html: tableHtml }} className="overflow-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* Preview */}
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-4">Preview</h2>
+          <div className="border-t-4 border-primary rounded-lg p-4">
+            <table className="w-full border-collapse mb-5">
+              <tbody>
+                <tr><td className="p-2.5 text-destructive font-bold w-[150px] border-b border-border">Name of Post:</td><td className="p-2.5 text-primary font-bold border-b border-border">{nameOfPost}</td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Post Date / Update:</td><td className="p-2.5 text-primary font-bold border-b border-border">{postDate}</td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Short Info:</td><td className="p-2.5 text-primary border-b border-border" dangerouslySetInnerHTML={{ __html: shortInfo }} /></tr>
+              </tbody>
+            </table>
+            {tablesHtml && <div dangerouslySetInnerHTML={{ __html: tablesHtml }} />}
+          </div>
+        </div>
+
+        {/* Cloudinary Media URLs */}
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-2">🖼️ Media (Images / Videos)</h2>
+          <p className="text-sm text-muted-foreground mb-4">Cloudinary Public Delivery URL paste karein. Ye images/videos website par is post me dikhayi dengi.</p>
+          <div className="flex gap-2 mb-4">
+            <Input
+              value={newMediaUrl}
+              onChange={e => setNewMediaUrl(e.target.value)}
+              placeholder="https://res.cloudinary.com/... (image or video URL)"
+              className="flex-1"
+              onKeyDown={e => { if (e.key === 'Enter') handleAddMedia(); }}
+            />
+            <Button onClick={handleAddMedia}>Add Media</Button>
+          </div>
+          {mediaUrls.length > 0 && (
+            <div className="space-y-3">
+              {mediaUrls.map((url, index) => {
+                const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url);
+                return (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
+                    <div className="flex-1">
+                      {isVideo ? (
+                        <video src={url} controls className="max-w-[300px] max-h-[200px] rounded" />
+                      ) : (
+                        <img src={url} alt={`Media ${index + 1}`} className="max-w-[300px] max-h-[200px] rounded object-contain" />
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1 break-all">{url}</p>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={() => handleRemoveMedia(index)}>Remove</Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminPostEditor;
