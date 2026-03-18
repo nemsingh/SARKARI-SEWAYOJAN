@@ -98,6 +98,12 @@ async function generate() {
   // 4. Generate Privacy Policy
   generatePage('/privacy-policy', homeData, 'privacy-policy.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
 
+  // 5. Generate Admin Shell
+  const adminHtml = template.replace(`<!--ssr-outlet-->`, '')
+                            .replace(`<div id="root"></div>`, `<div id="root"></div>`);
+  fs.writeFileSync(path.resolve(publicDir, 'admin.html'), adminHtml);
+  console.log(`Generated admin.html shell`);
+
   console.log('Static site generation complete.');
   process.exit(0);
 }
