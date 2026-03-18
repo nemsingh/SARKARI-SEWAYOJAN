@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
+import { supabase } from '@/integrations/supabase/client';
 import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
@@ -87,7 +88,7 @@ const PostDetail = () => {
     ).map(({ en }) => en);
   }, [post]);
 
-  // Try Google Translate for fields needing translation
+  // Try AI translation first, then Google Translate as fallback
   const translateFields = useCallback(async () => {
     if (!post || translating) return;
     const fieldsToTranslate = getFieldsNeedingTranslation();
@@ -95,21 +96,45 @@ const PostDetail = () => {
 
     setTranslating(true);
     const results: Record<string, string> = {};
+    let aiSuccess = true;
 
+    // Step 1: Try Lovable AI translation
     try {
-      const googleResults = await Promise.all(
+      await Promise.all(
         fieldsToTranslate.map(async (key) => {
-          const translatedText = await googleTranslate(post[key], 'hi');
-          return { key, translatedText };
+          const { data, error } = await supabase.functions.invoke('translate', {
+            body: { text: post[key], targetLang: 'hi' },
+          });
+          if (error || !data?.translated) {
+            throw new Error(`AI translation failed for ${key}`);
+          }
+          results[key] = data.translated;
         })
       );
-      googleResults.forEach(({ key, translatedText }) => {
-        results[key] = translatedText;
-      });
-      setTranslationSource('google');
-      console.log('✅ Google Translate successful');
-    } catch (googleError) {
-      console.error('❌ Google Translate failed:', googleError);
+      setTranslationSource('ai');
+      console.log('✅ AI translation successful for fields:', fieldsToTranslate);
+    } catch (aiError) {
+      console.warn('⚠️ AI translation failed, falling back to Google Translate:', aiError);
+      aiSuccess = false;
+    }
+
+    // Step 2: If AI failed, use Google Translate for ALL remaining fields
+    if (!aiSuccess) {
+      try {
+        const googleResults = await Promise.all(
+          fieldsToTranslate.map(async (key) => {
+            const translatedText = await googleTranslate(post[key], 'hi');
+            return { key, translatedText };
+          })
+        );
+        googleResults.forEach(({ key, translatedText }) => {
+          results[key] = translatedText;
+        });
+        setTranslationSource('google');
+        console.log('✅ Google Translate fallback successful');
+      } catch (googleError) {
+        console.error('❌ Both AI and Google Translate failed:', googleError);
+      }
     }
 
     setTranslated(results);
