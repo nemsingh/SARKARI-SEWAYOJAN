@@ -54,7 +54,8 @@ const PostDetail = () => {
       if (cachedLinks) setCategoryLinks(cachedLinks);
       if (cachedSettings) setSettings(cachedSettings);
 
-      if (isStaticMode) {
+      // If we found the post in static data, we can skip fetching
+      if (isStaticMode && cachedPost) {
         return;
       }
 

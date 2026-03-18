@@ -32,17 +32,20 @@ const CategoryMore = () => {
       if (cachedLinks) setCategoryLinks(cachedLinks);
       if (cachedSettings) setSettings(cachedSettings);
       
+      let foundCategory = false;
       const decodedName = decodeURIComponent(name);
       if (cachedCats && cachedLinks) {
         const cat = cachedCats.find((c: any) => c.name === decodedName);
         if (cat) {
           setCategory(cat);
           setLinks(cachedLinks.filter((l: any) => l.category_id === cat.id));
+          foundCategory = true;
         }
       }
 
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
-      if (isStaticMode) {
+      // Only skip fetching if we are in static mode AND we found the category
+      if (isStaticMode && foundCategory) {
         return;
       }
 
