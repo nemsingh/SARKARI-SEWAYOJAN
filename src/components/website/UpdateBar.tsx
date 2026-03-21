@@ -27,11 +27,11 @@ const UpdateBar = ({ text, direction = 'left' }: UpdateBarProps) => {
 
   const handleClick = (url: string) => {
     if (!url) return;
-    if (url.startsWith('http')) {
-      window.open(url, '_blank');
-    } else {
-      window.open(url, '_blank');
+    let finalUrl = url;
+    if (!url.startsWith('http') && !url.startsWith('/') && !url.startsWith('#') && !url.startsWith('mailto:')) {
+      finalUrl = `/post/${url}`;
     }
+    window.open(finalUrl, '_blank');
   };
 
   if (items.length === 0) return null;

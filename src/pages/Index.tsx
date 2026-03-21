@@ -10,16 +10,28 @@ import SeoContentBox from '@/components/website/SeoContentBox';
 import SiteFooter from '@/components/website/SiteFooter';
 
 const Index = () => {
+  const getInitialData = () => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) {
+      return (window as any).__INITIAL_DATA__;
+    }
+    if (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__) {
+      return (global as any).__INITIAL_DATA__;
+    }
+    return null;
+  };
+
+  const initialData = getInitialData();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('Home');
   const [filterSource, setFilterSource] = useState<'menu' | 'more'>('menu');
-  const [categories, setCategories] = useState<any[]>(() => getCache('categories') || []);
-  const [categoryLinks, setCategoryLinks] = useState<any[]>(() => getCache('category_links') || []);
-  const [posts, setPosts] = useState<any[]>(() => getCache('posts') || []);
-  const [tabletItems, setTabletItems] = useState<any[]>(() => getCache('tablet_items') || []);
-  const [settings, setSettings] = useState<Record<string, string>>(() => getCache('settings_flat') || {});
+  const [categories, setCategories] = useState<any[]>(() => initialData?.categories || getCache('categories') || []);
+  const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
+  const [posts, setPosts] = useState<any[]>(() => initialData?.posts || getCache('posts') || []);
+  const [tabletItems, setTabletItems] = useState<any[]>(() => initialData?.tablet_items || getCache('tablet_items') || []);
+  const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
 
   // One-time fetch from Firebase (no real-time listeners)
   useEffect(() => {

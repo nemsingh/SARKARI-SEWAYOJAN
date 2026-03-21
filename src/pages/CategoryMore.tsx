@@ -7,17 +7,63 @@ import Sidebar from '@/components/website/Sidebar';
 import CategoryBox from '@/components/website/CategoryBox';
 import SiteFooter from '@/components/website/SiteFooter';
 
+const getValidUrl = (url: string | null) => {
+  if (!url) return '#';
+  if (url.startsWith('http') || url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:')) {
+    return url;
+  }
+  return `/post/${url}`;
+};
+
 const CategoryMore = () => {
+  const getInitialData = () => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) {
+      return (window as any).__INITIAL_DATA__;
+    }
+    if (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__) {
+      return (global as any).__INITIAL_DATA__;
+    }
+    return null;
+  };
+
+  const initialData = getInitialData();
+
   const { name } = useParams();
   const navigate = useNavigate();
-  const [links, setLinks] = useState<any[]>([]);
-  const [category, setCategory] = useState<any>(null);
+  const [links, setLinks] = useState<any[]>(() => {
+    if (initialData && initialData.category_links) {
+      const cats = initialData.categories || [];
+      const decodedName = decodeURIComponent(name || '');
+      const cat = cats.find((c: any) => c.name === decodedName);
+      if (cat) {
+        return initialData.category_links.filter((l: any) => l.category_id === cat.id);
+      }
+    }
+    return [];
+  });
+  const [category, setCategory] = useState<any>(() => {
+    if (initialData) {
+      const cats = initialData.categories || [];
+      const decodedName = decodeURIComponent(name || '');
+      return cats.find((c: any) => c.name === decodedName) || null;
+    }
+    return null;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
-  const [categories, setCategories] = useState<any[]>([]);
-  const [categoryLinks, setCategoryLinks] = useState<any[]>([]);
-  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<any[]>(() => initialData?.categories || getCache('categories') || []);
+  const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
+  const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
+  const [notFound, setNotFound] = useState(() => {
+    if (initialData) {
+      const cats = initialData.categories || [];
+      const decodedName = decodeURIComponent(name || '');
+      const cat = cats.find((c: any) => c.name === decodedName);
+      return !cat;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,10 +115,14 @@ const CategoryMore = () => {
         if (cat) {
           setCategory(cat);
           setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
+        } else {
+          setNotFound(true);
         }
         setCategories(allCats);
         setCategoryLinks(allLinks);
         setSettings(sett);
+      } else {
+        setNotFound(true);
       }
     };
     fetchData();
@@ -96,6 +146,8 @@ const CategoryMore = () => {
   const filteredCategories = activeFilter
     ? categories.filter(c => c.name.includes(activeFilter))
     : [];
+
+  if (notFound) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Category Not Found</div>;
 
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
@@ -130,7 +182,7 @@ const CategoryMore = () => {
                 <li key={link.id} className="flex items-center mb-3 text-primary font-medium text-base">
                   <span className="w-2 h-2 rounded-full bg-primary mr-3 flex-shrink-0" />
                   {link.url ? (
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline">
+                    <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline">
                       {link.title}
                     </a>
                   ) : (

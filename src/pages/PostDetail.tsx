@@ -20,17 +20,44 @@ const TRANSLATABLE_FIELDS = [
 const PostDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [post, setPost] = useState<any>(null);
+  const getInitialData = () => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) {
+      return (window as any).__INITIAL_DATA__;
+    }
+    if (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__) {
+      return (global as any).__INITIAL_DATA__;
+    }
+    return null;
+  };
+
+  const initialData = getInitialData();
+
+  const [post, setPost] = useState<any>(() => {
+    if (initialData) {
+      const allPosts = initialData.posts || [];
+      return allPosts.find((p: any) => p.slug === slug || p.id === slug) || null;
+    }
+    return getCache<any>(`post_${slug}`) || null;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
-  const [categories, setCategories] = useState<any[]>([]);
-  const [categoryLinks, setCategoryLinks] = useState<any[]>([]);
-  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<any[]>(() => initialData?.categories || getCache('categories') || []);
+  const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
+  const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [translating, setTranslating] = useState(false);
   const [translated, setTranslated] = useState<Record<string, string>>({});
   const [translationSource, setTranslationSource] = useState<'ai' | 'google' | null>(null);
+
+  const [notFound, setNotFound] = useState(() => {
+    if (initialData) {
+      const allPosts = initialData.posts || [];
+      const p = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+      return !p;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +95,8 @@ const PostDetail = () => {
         if (postData) {
           setPost(postData);
           setCache(`post_${slug}`, postData);
+        } else {
+          setNotFound(true);
         }
         setCategories(cats);
         setCategoryLinks(links);
@@ -75,6 +104,8 @@ const PostDetail = () => {
         setCache('categories', cats);
         setCache('category_links', links);
         setCache('settings_flat', sett);
+      } else {
+        setNotFound(true);
       }
     };
     fetchData();
@@ -188,6 +219,7 @@ const PostDetail = () => {
     ? categories.filter(c => c.name.includes(activeFilter))
     : [];
 
+  if (notFound) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Post Not Found</div>;
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
 
   return (

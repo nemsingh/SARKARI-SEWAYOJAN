@@ -331,8 +331,20 @@ const contentByLanguage: Record<LangCode, PolicyContent> = {
 };
 
 const PrivacyPolicy = () => {
+  const getInitialData = () => {
+    if (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) {
+      return (window as any).__INITIAL_DATA__;
+    }
+    if (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__) {
+      return (global as any).__INITIAL_DATA__;
+    }
+    return null;
+  };
+
+  const initialData = getInitialData();
+
   const [lang, setLang] = useState<LangCode>('en');
-  const [settings, setSettings] = useState<Record<string, string>>(() => getCache('settings_flat') || {});
+  const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
