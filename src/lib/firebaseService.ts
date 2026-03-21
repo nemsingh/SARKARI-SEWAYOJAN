@@ -7,6 +7,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -186,6 +187,20 @@ export const updateSiteSetting = async (key: string, value: string, existingId?:
   } else {
     await addDoc(collection(db, 'site_settings'), { key, value, updated_at: serverTimestamp() });
   }
+};
+
+export const getSiteLastUpdated = async (): Promise<number> => {
+  const docRef = doc(db, 'site_settings', 'last_updated');
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data().timestamp || 0;
+  }
+  return 0;
+};
+
+export const updateSiteLastUpdated = async () => {
+  const docRef = doc(db, 'site_settings', 'last_updated');
+  await setDoc(docRef, { timestamp: Date.now() }, { merge: true });
 };
 
 // ============ REALTIME LISTENERS ============

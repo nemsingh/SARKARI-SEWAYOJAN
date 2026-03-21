@@ -10,6 +10,14 @@ interface TabletGridProps {
   searchQuery?: string;
 }
 
+const getValidUrl = (url: string | null) => {
+  if (!url) return '#';
+  if (url.startsWith('http') || url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:')) {
+    return url;
+  }
+  return `/post/${url}`;
+};
+
 const TabletGrid = ({ items, searchQuery }: TabletGridProps) => {
   const filtered = searchQuery
     ? items.filter(i => i.title.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -20,7 +28,7 @@ const TabletGrid = ({ items, searchQuery }: TabletGridProps) => {
       {filtered.map(item => (
         <a
           key={item.id}
-          href={item.url || '#'}
+          href={getValidUrl(item.url)}
           className="py-4 px-2.5 text-center text-primary no-underline font-extrabold text-xl bg-background rounded-xl transition-all duration-300 flex flex-col justify-center min-h-[65px] border border-primary hover:bg-primary hover:text-primary-foreground hover:-translate-y-1 max-sm:text-base"
           style={{ boxShadow: '0 8px 15px rgba(0,0,0,0.25)' }}
         >

@@ -43,40 +43,39 @@ const PostDetail = () => {
       const cachedSettings = getCache<Record<string, string>>('settings_flat');
 
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+      let data: any;
 
-      // If in static mode and post not found by key, try finding it in the preloaded posts array
-      if (!cachedPost && isStaticMode && typeof window !== 'undefined' && (window as any).__INITIAL_DATA__?.posts) {
-        cachedPost = (window as any).__INITIAL_DATA__.posts.find((p: any) => p.slug === slug || p.id === slug);
+      if (isStaticMode) {
+        data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+      } else {
+        try {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (e) {
+          console.error('Fetch error:', e);
+        }
       }
 
-      if (cachedPost) setPost(cachedPost);
-      if (cachedCats) setCategories(cachedCats);
-      if (cachedLinks) setCategoryLinks(cachedLinks);
-      if (cachedSettings) setSettings(cachedSettings);
+      if (data) {
+        const allPosts = data.posts || [];
+        const cats = data.categories || [];
+        const links = data.category_links || [];
+        const sett = data.settings_flat || {};
 
-      // If we found the post in static data, we can skip fetching
-      if (isStaticMode && cachedPost) {
-        return;
+        const postData = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+        if (postData) {
+          setPost(postData);
+          setCache(`post_${slug}`, postData);
+        }
+        setCategories(cats);
+        setCategoryLinks(links);
+        setSettings(sett);
+        setCache('categories', cats);
+        setCache('category_links', links);
+        setCache('settings_flat', sett);
       }
-
-      const { getPostBySlug, getCategories, getCategoryLinks, getSiteSettingsFlat } = await import('@/lib/firebaseService');
-
-      const [postData, cats, links, sett] = await Promise.all([
-        getPostBySlug(slug),
-        getCategories(),
-        getCategoryLinks(),
-        getSiteSettingsFlat(),
-      ]);
-      if (postData) {
-        setPost(postData);
-        setCache(`post_${slug}`, postData);
-      }
-      setCategories(cats);
-      setCategoryLinks(links);
-      setSettings(sett);
-      setCache('categories', cats);
-      setCache('category_links', links);
-      setCache('settings_flat', sett);
     };
     fetchData();
   }, [slug]);

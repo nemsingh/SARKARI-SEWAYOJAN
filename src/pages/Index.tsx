@@ -25,45 +25,31 @@ const Index = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const {
-          getCategories,
-          getCategoryLinks,
-          getTabletItems,
-          getPosts,
-          getSiteSettingsFlat,
-        } = await import('@/lib/firebaseService');
-        const [cats, links, tablets, allPosts, sett] = await Promise.all([
-          getCategories(),
-          getCategoryLinks(),
-          getTabletItems(),
-          getPosts(),
-          getSiteSettingsFlat(),
-        ]);
-        setCategories(cats); setCache('categories', cats);
-        setCategoryLinks(links); setCache('category_links', links);
-        setTabletItems(tablets); setCache('tablet_items', tablets);
-        setPosts(allPosts); setCache('posts', allPosts);
-        setSettings(sett); setCache('settings_flat', sett);
+        const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+        let data: any;
+
+        if (isStaticMode) {
+          data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+        } else {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
+          }
+        }
+
+        if (data) {
+          setCategories(data.categories || []); setCache('categories', data.categories || []);
+          setCategoryLinks(data.category_links || []); setCache('category_links', data.category_links || []);
+          setTabletItems(data.tablet_items || []); setCache('tablet_items', data.tablet_items || []);
+          setPosts(data.posts || []); setCache('posts', data.posts || []);
+          setSettings(data.settings_flat || {}); setCache('settings_flat', data.settings_flat || {});
+        }
       } catch (e) {
         console.error('Fetch error:', e);
       }
     };
 
-    // Only fetch if cache is empty or stale (cache handles TTL)
-    const hasCachedData = getCache('categories');
-    const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
-    
-    if (isStaticMode) {
-      // In static mode, data is already in state from getCache
-      return;
-    }
-    
-    if (!hasCachedData) {
-      fetchAll();
-    } else {
-      // Fetch in background to refresh cache silently
-      fetchAll();
-    }
+    fetchAll();
   }, []);
 
   const handleFilter = (option: string) => {

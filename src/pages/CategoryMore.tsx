@@ -44,27 +44,36 @@ const CategoryMore = () => {
       }
 
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
-      // Only skip fetching if we are in static mode AND we found the category
-      if (isStaticMode && foundCategory) {
-        return;
+      let data: any;
+
+      if (isStaticMode) {
+        data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+      } else {
+        try {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (e) {
+          console.error('Fetch error:', e);
+        }
       }
 
-      const { getCategories, getCategoryLinks, getSiteSettingsFlat } = await import('@/lib/firebaseService');
-
-      const [allCats, allLinks, sett] = await Promise.all([
-        getCategories(),
-        getCategoryLinks(),
-        getSiteSettingsFlat(),
-      ]);
-      const decodedName2 = decodeURIComponent(name);
-      const cat = allCats.find((c: any) => c.name === decodedName2);
-      if (cat) {
-        setCategory(cat);
-        setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
+      if (data) {
+        const allCats = data.categories || [];
+        const allLinks = data.category_links || [];
+        const sett = data.settings_flat || {};
+        
+        const decodedName2 = decodeURIComponent(name);
+        const cat = allCats.find((c: any) => c.name === decodedName2);
+        if (cat) {
+          setCategory(cat);
+          setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
+        }
+        setCategories(allCats);
+        setCategoryLinks(allLinks);
+        setSettings(sett);
       }
-      setCategories(allCats);
-      setCategoryLinks(allLinks);
-      setSettings(sett);
     };
     fetchData();
   }, [name]);

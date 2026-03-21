@@ -41,7 +41,15 @@ async function generate() {
   }
   const { render } = await import(serverEntryPath);
 
-  const publicDir = path.resolve(root, 'dist');
+  const publicDir = path.resolve(root, 'public');
+  
+  // Copy assets from dist to public
+  const distAssets = path.resolve(root, 'dist/assets');
+  const publicAssets = path.resolve(publicDir, 'assets');
+  if (fs.existsSync(distAssets)) {
+    fs.cpSync(distAssets, publicAssets, { recursive: true });
+    console.log('Copied assets to public/assets');
+  }
 
   const generatePage = (url: string, data: any, outputPath: string, title: string, description: string) => {
     try {
@@ -83,8 +91,7 @@ async function generate() {
       ...homeData,
       [`post_${post.slug || post.id}`]: post,
     };
-    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}.html`, `${post.name_of_post} - Sarkari Sewayojan`, post.short_info || '');
-    // Also support index.html in folder for clean URLs if needed, but the prompt asked for .html files
+    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}/index.html`, `${post.name_of_post} - Sarkari Sewayojan`, post.short_info || '');
   }
 
   // 3. Generate Category Pages
@@ -92,17 +99,21 @@ async function generate() {
     const catData = {
       ...homeData,
     };
-    generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, `category/${encodeURIComponent(cat.name)}.html`, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
+    generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, `category/${encodeURIComponent(cat.name)}/index.html`, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
   }
 
   // 4. Generate Privacy Policy
-  generatePage('/privacy-policy', homeData, 'privacy-policy.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
+  generatePage('/privacy-policy', homeData, 'privacy-policy/index.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
 
   // 5. Generate Admin Shell
   const adminHtml = template.replace(`<!--ssr-outlet-->`, '')
                             .replace(`<div id="root"></div>`, `<div id="root"></div>`);
   fs.writeFileSync(path.resolve(publicDir, 'admin.html'), adminHtml);
   console.log(`Generated admin.html shell`);
+
+  // 6. Generate data.json
+  fs.writeFileSync(path.resolve(publicDir, 'data.json'), JSON.stringify(homeData));
+  console.log(`Generated data.json`);
 
   console.log('Static site generation complete.');
   process.exit(0);

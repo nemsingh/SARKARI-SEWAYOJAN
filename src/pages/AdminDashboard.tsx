@@ -100,9 +100,12 @@ const AdminDashboard = () => {
       return;
     }
     try {
+      const { updateSiteLastUpdated } = await import('@/lib/firebaseService');
+      await updateSiteLastUpdated();
+      
       const res = await fetch(webhookUrl, { method: 'POST' });
       if (res.ok) {
-        toast({ title: 'Success', description: 'Publish triggered successfully!' });
+        toast({ title: 'Success', description: 'Publish triggered successfully! Users will see updates immediately.' });
       } else {
         toast({ title: 'Error', description: 'Failed to trigger publish.', variant: 'destructive' });
       }
@@ -174,7 +177,8 @@ const AdminDashboard = () => {
         const linkedLinks = categoryLinks.filter(l => {
           if (!l.url) return false;
           const match = l.url.match(/\/post\/(.+)/);
-          return match && (match[1] === slug || match[1] === post.id);
+          const linkSlug = match ? match[1] : (!l.url.startsWith('http') && !l.url.startsWith('/') ? l.url : null);
+          return linkSlug === slug || linkSlug === post.id;
         });
         await Promise.all(linkedLinks.map(l => deleteCategoryLink(l.id)));
       }
@@ -701,7 +705,9 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
         .map(l => {
           if (!l.url) return null;
           const match = l.url.match(/\/post\/(.+)/);
-          return match ? match[1] : null;
+          if (match) return match[1];
+          if (!l.url.startsWith('http') && !l.url.startsWith('/')) return l.url;
+          return null;
         })
         .filter(Boolean)
     );

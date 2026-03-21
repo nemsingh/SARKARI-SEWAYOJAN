@@ -12,6 +12,14 @@ interface CategoryBoxProps {
   maxVisible?: number;
 }
 
+const getValidUrl = (url: string | null) => {
+  if (!url) return '#';
+  if (url.startsWith('http') || url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:')) {
+    return url;
+  }
+  return `/post/${url}`;
+};
+
 const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
   const visibleLinks = links.slice(0, maxVisible);
   const hasMore = links.length > maxVisible;
@@ -27,7 +35,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
             <div className="flex items-center text-primary font-medium text-base group">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
               {link.url ? (
-                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
+                <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
                   {link.title}
                 </a>
               ) : (

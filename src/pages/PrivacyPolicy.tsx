@@ -340,13 +340,26 @@ const PrivacyPolicy = () => {
     const fetchSettings = async () => {
       try {
         const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+        let data: any;
+
         if (isStaticMode) {
-          return;
+          data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+        } else {
+          try {
+            const res = await fetch('/data.json');
+            if (res.ok) {
+              data = await res.json();
+            }
+          } catch (e) {
+            console.error('Fetch error:', e);
+          }
         }
-        const { getSiteSettingsFlat } = await import('@/lib/firebaseService');
-        const sett = await getSiteSettingsFlat();
-        setSettings(sett);
-        setCache('settings_flat', sett);
+
+        if (data) {
+          const sett = data.settings_flat || {};
+          setSettings(sett);
+          setCache('settings_flat', sett);
+        }
       } catch (error) {
         console.error('Settings fetch error:', error);
       }
