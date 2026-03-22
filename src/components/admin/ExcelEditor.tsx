@@ -22,7 +22,7 @@ interface CellData {
 const defaultCell = (): CellData => ({
   text: '',
   fontFamily: 'Arial',
-  fontSize: '14px',
+  fontSize: '18px',
   fontWeight: 'normal',
   fontStyle: 'normal',
   textDecoration: 'none',
@@ -40,22 +40,104 @@ const defaultCell = (): CellData => ({
 const TOTAL_ROWS = 50;
 const TOTAL_COLS = 26;
 
+const createEmptyGrid = (): CellData[][] => {
+  const rows: CellData[][] = [];
+  for (let r = 0; r < TOTAL_ROWS; r++) {
+    const row: CellData[] = [];
+    for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
+    rows.push(row);
+  }
+  return rows;
+};
+
+const parseHtmlToGrid = (html: string): CellData[][] => {
+  const rows = createEmptyGrid();
+  if (!html) return rows;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const table = doc.querySelector('table');
+  if (!table) return rows;
+
+  const trs = table.querySelectorAll('tr');
+  let r = 0;
+  const occupied = Array(TOTAL_ROWS).fill(0).map(() => Array(TOTAL_COLS).fill(false));
+
+  trs.forEach((tr) => {
+    if (r >= TOTAL_ROWS) return;
+    const tds = tr.querySelectorAll('td');
+    let c = 0;
+
+    tds.forEach((td) => {
+      while (c < TOTAL_COLS && occupied[r][c]) {
+        c++;
+      }
+      if (c >= TOTAL_COLS) return;
+
+      const cell = rows[r][c];
+      cell.text = td.innerHTML;
+      
+      const colSpan = parseInt(td.getAttribute('colspan') || '1');
+      const rowSpan = parseInt(td.getAttribute('rowspan') || '1');
+      cell.colSpan = colSpan;
+      cell.rowSpan = rowSpan;
+
+      for (let rr = 0; rr < rowSpan; rr++) {
+        for (let cc = 0; cc < colSpan; cc++) {
+          if (r + rr < TOTAL_ROWS && c + cc < TOTAL_COLS) {
+            occupied[r + rr][c + cc] = true;
+            if (rr > 0 || cc > 0) {
+              rows[r + rr][c + cc].hidden = true;
+            }
+          }
+        }
+      }
+
+      const style = td.getAttribute('style') || '';
+      const styleObj: Record<string, string> = {};
+      style.split(';').forEach(s => {
+        const colonIdx = s.indexOf(':');
+        if (colonIdx > -1) {
+          const key = s.substring(0, colonIdx).trim();
+          const val = s.substring(colonIdx + 1).trim();
+          if (key && val) styleObj[key] = val;
+        }
+      });
+
+      if (styleObj['color']) cell.color = styleObj['color'];
+      if (styleObj['background-color']) cell.backgroundColor = styleObj['background-color'];
+      if (styleObj['font-weight']) cell.fontWeight = styleObj['font-weight'];
+      if (styleObj['font-style']) cell.fontStyle = styleObj['font-style'];
+      if (styleObj['text-decoration']) cell.textDecoration = styleObj['text-decoration'];
+      if (styleObj['text-align']) cell.textAlign = styleObj['text-align'];
+      if (styleObj['vertical-align']) cell.verticalAlign = styleObj['vertical-align'];
+      if (styleObj['font-family']) cell.fontFamily = styleObj['font-family'];
+      if (styleObj['font-size']) cell.fontSize = styleObj['font-size'];
+      
+      if (styleObj['border']) {
+        cell.borderAll = true;
+      }
+
+      c++;
+    });
+    r++;
+  });
+
+  return rows;
+};
+
 interface ExcelEditorProps {
   onAddTable: (html: string) => void;
+  onUpdateTable?: (html: string) => void;
+  onCancelEdit?: () => void;
+  initialHtml?: string;
+  isEditing?: boolean;
   lang?: string;
   channelId?: string;
 }
 
-const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
-  const [grid, setGrid] = useState<CellData[][]>(() => {
-    const rows: CellData[][] = [];
-    for (let r = 0; r < TOTAL_ROWS; r++) {
-      const row: CellData[] = [];
-      for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
-      rows.push(row);
-    }
-    return rows;
-  });
+const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isEditing, lang, channelId }: ExcelEditorProps) => {
+  const [grid, setGrid] = useState<CellData[][]>(() => createEmptyGrid());
 
   const [selectedCells, setSelectedCells] = useState<{ row: number; col: number }[]>([]);
   const [activeCell, setActiveCellState] = useState<{ row: number; col: number } | null>(null);
@@ -181,6 +263,37 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
     });
   };
 
+  const applyRichTextFormat = (command: string, value?: string) => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0 && activeCell) {
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+      
+      if (td && td.contains(container)) {
+        if (command === 'createLink') {
+           if (selection.isCollapsed) return false;
+           document.execCommand(command, false, value);
+           const links = td.querySelectorAll('a');
+           links.forEach(a => {
+             if (!a.getAttribute('target')) {
+               a.setAttribute('target', '_blank');
+               a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
+             }
+           });
+        } else {
+           if ((command === 'foreColor' || command === 'hiliteColor' || command === 'backColor') && selection.isCollapsed) {
+             return false;
+           }
+           document.execCommand(command, false, value);
+        }
+        handleCellInput(activeCell.row, activeCell.col, td.innerHTML);
+        return true;
+      }
+    }
+    return false;
+  };
+
   const pasteData = () => {
     if (!activeCell || !clipboardRange) return;
     updateGrid(g => {
@@ -214,21 +327,16 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
     });
   };
 
-  const clearSelection = () => {
-    // Clear entire grid and force DOM re-render
-    setGrid(() => {
-      const rows: CellData[][] = [];
-      for (let r = 0; r < TOTAL_ROWS; r++) {
-        const row: CellData[] = [];
-        for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
-        rows.push(row);
-      }
-      return rows;
-    });
+  const resetGrid = useCallback(() => {
+    setGrid(createEmptyGrid());
     setSelectedCells([]);
     setActiveCellState(null);
     setFormulaValue('');
     setGridKey(prev => prev + 1);
+  }, []);
+
+  const clearSelection = () => {
+    resetGrid();
   };
 
   const mergeCells = () => {
@@ -332,10 +440,11 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
     }
   };
 
-  const handleCellInput = (row: number, col: number, text: string) => {
-    updateCell(row, col, { text });
+  const handleCellInput = (row: number, col: number, html: string) => {
+    updateCell(row, col, { text: html });
     if (activeCell && activeCell.row === row && activeCell.col === col) {
-      setFormulaValue(text);
+      const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+      setFormulaValue(td ? td.innerText : '');
     }
   };
 
@@ -381,15 +490,9 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
         const r = parseInt(td.getAttribute('data-row') || '0');
         const c = parseInt(td.getAttribute('data-col') || '0');
         if (r < TOTAL_ROWS && c < TOTAL_COLS) {
-          // Get innerHTML to preserve links and list items
           const html = (td as HTMLElement).innerHTML || '';
-          const text = (td as HTMLElement).innerText || '';
-          // If cell has HTML content (links, lists), use innerHTML
-          if (html.includes('<a ') || html.includes('<ul') || html.includes('<li')) {
-            newGrid[r][c].text = html;
-          } else {
-            newGrid[r][c].text = text;
-          }
+          // Always use innerHTML to preserve all rich text formatting (colors, bold, links, lists, etc.)
+          newGrid[r][c].text = html;
         }
       });
     }
@@ -425,7 +528,7 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
         if (cell.textAlign !== 'left') style += `text-align:${cell.textAlign};`;
         if (cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
         if (cell.fontFamily !== 'Arial') style += `font-family:${cell.fontFamily};`;
-        if (cell.fontSize !== '14px') style += `font-size:${cell.fontSize};`;
+        if (cell.fontSize !== '18px') style += `font-size:${cell.fontSize};`;
         style += 'border:1px solid #0b3d91;padding:12px;';
 
         let attrs = `style="${style}"`;
@@ -444,25 +547,46 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
 
   const [gridKey, setGridKey] = useState(0);
 
+  useEffect(() => {
+    if (isEditing && initialHtml) {
+      setGrid(parseHtmlToGrid(initialHtml));
+      setGridKey(prev => prev + 1);
+    } else if (!isEditing) {
+      resetGrid();
+    }
+  }, [isEditing, initialHtml, resetGrid]);
+
+  // Inject HTML into contentEditable cells when gridKey changes (e.g., on load)
+  useEffect(() => {
+    if (gridRef.current) {
+      const cells = gridRef.current.querySelectorAll('td[data-row][data-col]');
+      cells.forEach(td => {
+        const r = parseInt(td.getAttribute('data-row') || '0');
+        const c = parseInt(td.getAttribute('data-col') || '0');
+        if (r < TOTAL_ROWS && c < TOTAL_COLS) {
+          const cell = grid[r][c];
+          if (td.innerHTML !== cell.text) {
+            td.innerHTML = cell.text;
+          }
+        }
+      });
+    }
+  }, [gridKey]);
+
   const handleAddTable = () => {
     const syncedGrid = syncDomToGrid();
     const html = generateTableHtml(syncedGrid);
     if (!html) return;
     onAddTable(html);
-    // Reset grid and force DOM re-render
-    setGrid(() => {
-      const rows: CellData[][] = [];
-      for (let r = 0; r < TOTAL_ROWS; r++) {
-        const row: CellData[] = [];
-        for (let c = 0; c < TOTAL_COLS; c++) row.push(defaultCell());
-        rows.push(row);
-      }
-      return rows;
-    });
-    setSelectedCells([]);
-    setActiveCellState(null);
-    setFormulaValue('');
-    setGridKey(prev => prev + 1);
+    resetGrid();
+  };
+
+  const handleUpdateTableClick = () => {
+    const syncedGrid = syncDomToGrid();
+    const html = generateTableHtml(syncedGrid);
+    if (!html) return;
+    if (onUpdateTable) onUpdateTable(html);
+    resetGrid();
   };
 
   // Insert bullet (unordered list item) into active cell with custom style
@@ -470,25 +594,58 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
     if (!activeCell) return;
     const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
     if (!td) return;
-    const currentHtml = td.innerHTML;
     
-    // Map bullet styles to list-style values
+    const selection = window.getSelection();
+    const hasSelectionInCell = selection && selection.rangeCount > 0 && td.contains(selection.getRangeAt(0).commonAncestorContainer);
+
     const bulletMap: Record<string, string> = {
-      disc: 'disc',      // • 
-      circle: 'circle',  // ◦
-      square: 'square',  // ▪
-      arrow: 'none'      // → (custom)
+      disc: 'disc',
+      circle: 'circle',
+      square: 'square',
+      arrow: 'none'
     };
-    
     const listStyle = bulletMap[bulletStyle];
     const bulletPrefix = bulletStyle === 'arrow' ? '→ ' : '';
-    
-    // If already has a <ul>, add a new <li>
+
+    if (hasSelectionInCell) {
+      document.execCommand('insertUnorderedList', false);
+      
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer as HTMLElement;
+      if (node.nodeType === Node.TEXT_NODE) {
+        node = node.parentElement as HTMLElement;
+      }
+      const closestUl = node.closest('ul');
+      if (closestUl) {
+        closestUl.style.listStyle = listStyle;
+        closestUl.style.margin = '0';
+        closestUl.style.paddingLeft = '18px';
+        
+        if (bulletStyle === 'arrow') {
+           const lis = closestUl.querySelectorAll('li');
+           lis.forEach(li => {
+             if (!li.innerText.startsWith('→')) {
+               li.innerHTML = '→ ' + li.innerHTML;
+             }
+           });
+        }
+      } else {
+        const uls = td.querySelectorAll('ul');
+        uls.forEach(ul => {
+          ul.style.listStyle = listStyle;
+          ul.style.margin = '0';
+          ul.style.paddingLeft = '18px';
+        });
+      }
+      handleCellInput(activeCell.row, activeCell.col, td.innerHTML);
+      return;
+    }
+
+    const currentHtml = td.innerHTML;
     if (currentHtml.includes('<ul')) {
-      const newLi = `<li>${bulletPrefix}Item</li>`;
+      const newLi = `<li style="${bulletStyle === 'arrow' ? 'list-style:none;' : ''}">${bulletPrefix}Item</li>`;
       td.innerHTML = currentHtml.replace('</ul>', newLi + '</ul>');
     } else {
-      // Wrap existing content and add bullet
       const existing = td.innerText || '';
       const liStyle = bulletStyle === 'arrow' ? '' : `list-style:${listStyle};`;
       td.innerHTML = `<ul style="margin:0;padding-left:18px;${liStyle}"><li>${bulletPrefix}${existing || 'Item'}</li></ul>`;
@@ -534,19 +691,19 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
               <option value="Georgia">Georgia</option>
             </select>
             <input type="number" value={currentFontSize} onChange={e => { setCurrentFontSize(e.target.value); applyToSelection('fontSize', e.target.value + 'px'); }} className="w-11 px-1 text-sm border border-border bg-background" />
-            <button onClick={() => applyToSelection('fontWeight', 'bold')} className="px-2 cursor-pointer border border-transparent bg-transparent font-bold hover:bg-border">B</button>
-            <button onClick={() => applyToSelection('fontStyle', 'italic')} className="px-2 cursor-pointer border border-transparent bg-transparent italic hover:bg-border">I</button>
-            <button onClick={() => applyToSelection('textDecoration', 'underline')} className="px-2 cursor-pointer border border-transparent bg-transparent underline hover:bg-border">U</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className="px-2 cursor-pointer border border-transparent bg-transparent font-bold hover:bg-border">B</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className="px-2 cursor-pointer border border-transparent bg-transparent italic hover:bg-border">I</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className="px-2 cursor-pointer border border-transparent bg-transparent underline hover:bg-border">U</button>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">A</label>
-              <input type="color" onChange={e => applyToSelection('color', e.target.value)} className="w-6 h-6 cursor-pointer" title="Text Color" />
+              <input type="color" onChange={e => { if (!applyRichTextFormat('foreColor', e.target.value)) applyToSelection('color', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Text Color" />
             </div>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">🎨</label>
               <input type="color" defaultValue="#ffffff" onChange={e => applyToSelection('backgroundColor', e.target.value)} className="w-6 h-6 cursor-pointer" title="Fill Color" />
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) applyToSelection('color', val.startsWith('#') ? val : `#${val}`); } }} title="Text Color Code" />
+              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
               <label className="text-[10px]">Text</label>
             </div>
             <div className="flex items-center gap-0.5">
@@ -586,12 +743,14 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
         {/* Insert (Link + Bullet) */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onClick={() => {
+            <button onMouseDown={e => e.preventDefault()} onClick={() => {
               if (!activeCell) return;
               const url = prompt('Enter URL for selected text:');
               if (url) {
+                if (applyRichTextFormat('createLink', url)) return;
+                
                 const cell = grid[activeCell.row][activeCell.col];
-                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${cell.text}</a>`;
+                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${cell.text || url}</a>`;
                 updateCell(activeCell.row, activeCell.col, { text: linkHtml });
                 // Also update DOM
                 const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
@@ -599,12 +758,12 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
               }
             }} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">🔗 Link</button>
             <div className="relative group">
-              <button className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border" title="Add bullet list item">• List ▼</button>
+              <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border" title="Add bullet list item">• List ▼</button>
               <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
-                <button onClick={() => insertBullet('disc')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">• Disc</button>
-                <button onClick={() => insertBullet('circle')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">◦ Circle</button>
-                <button onClick={() => insertBullet('square')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">▪ Square</button>
-                <button onClick={() => insertBullet('arrow')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">→ Arrow</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('disc')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">• Disc</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('circle')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">◦ Circle</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('square')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">▪ Square</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('arrow')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">→ Arrow</button>
               </div>
             </div>
           </div>
@@ -686,7 +845,14 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
                       onMouseOver={() => handleMouseOver(ri, ci)}
                       onTouchStart={(e) => handleTouchStart(e, ri, ci)}
                       onTouchMove={handleTouchMove}
-                      onInput={e => handleCellInput(ri, ci, (e.target as HTMLElement).innerText)}
+                      onInput={e => {
+                        if (activeCell && activeCell.row === ri && activeCell.col === ci) {
+                          setFormulaValue((e.target as HTMLElement).innerText);
+                        }
+                      }}
+                      onBlur={e => {
+                        updateCell(ri, ci, { text: (e.target as HTMLElement).innerHTML });
+                      }}
                     />
                   );
                 })}
@@ -698,9 +864,20 @@ const ExcelEditor = ({ onAddTable, lang, channelId }: ExcelEditorProps) => {
 
       {/* Add Table Button */}
       <div className="mt-4 flex gap-3">
-        <Button onClick={handleAddTable} className="font-bold">
-          ➕ Add Table
-        </Button>
+        {isEditing ? (
+          <>
+            <Button onClick={handleUpdateTableClick} className="font-bold bg-green-600 hover:bg-green-700 text-white">
+              💾 Update Table
+            </Button>
+            <Button variant="outline" onClick={onCancelEdit}>
+              Cancel Edit
+            </Button>
+          </>
+        ) : (
+          <Button onClick={handleAddTable} className="font-bold">
+            ➕ Add Table
+          </Button>
+        )}
       </div>
     </div>
   );

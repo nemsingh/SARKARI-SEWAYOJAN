@@ -13,6 +13,18 @@ export default {
       },
     },
     extend: {
+      fontSize: {
+        xs: ['0.9375rem', { lineHeight: '1.25rem' }], // 15px (was 12px)
+        sm: ['1.0625rem', { lineHeight: '1.5rem' }], // 17px (was 14px)
+        base: ['1.1875rem', { lineHeight: '1.75rem' }], // 19px (was 16px)
+        lg: ['1.3125rem', { lineHeight: '1.875rem' }], // 21px (was 18px)
+        xl: ['1.4375rem', { lineHeight: '2rem' }], // 23px (was 20px)
+        '2xl': ['1.6875rem', { lineHeight: '2.25rem' }], // 27px (was 24px)
+        '3xl': ['2.0625rem', { lineHeight: '2.5rem' }], // 33px (was 30px)
+        '4xl': ['2.4375rem', { lineHeight: '2.75rem' }], // 39px (was 36px)
+        '5xl': ['3.1875rem', { lineHeight: '1' }], // 51px (was 48px)
+        '6xl': ['3.9375rem', { lineHeight: '1' }], // 63px (was 60px)
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

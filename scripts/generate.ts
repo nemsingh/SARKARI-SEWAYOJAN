@@ -16,13 +16,29 @@ const root = path.resolve(__dirname, '..');
 
 async function generate() {
   console.log('Fetching data from Firebase...');
-  const [categories, categoryLinks, tabletItems, posts, settings] = await Promise.all([
+  let [categories, categoryLinks, tabletItems, posts, settings] = await Promise.all([
     getCategories(),
     getCategoryLinks(),
     getTabletItems(),
     getPosts(),
     getSiteSettingsFlat(),
   ]);
+
+  // Fix broken category links
+  const postSlugs = posts.map(p => p.slug);
+  const postIds = posts.map(p => p.id);
+  categoryLinks = categoryLinks.map(l => {
+    if (l.url && l.url.startsWith('/post/')) {
+      const slug = l.url.replace('/post/', '');
+      if (!postSlugs.includes(slug) && !postIds.includes(slug)) {
+        const match = posts.find(p => p.slug && p.slug.startsWith(slug));
+        if (match) {
+          return { ...l, url: `/post/${match.slug}` };
+        }
+      }
+    }
+    return l;
+  });
 
   console.log('Data fetched successfully.');
 
@@ -59,7 +75,7 @@ async function generate() {
                          .replace(`<div id="root"></div>`, `<div id="root">${appHtml}</div>`);
       
       // Inject data
-      const scriptTag = `<script>window.__INITIAL_DATA__ = ${JSON.stringify(data)};</script>`;
+      const scriptTag = `<script>window.__INITIAL_DATA__ = ${JSON.stringify(data).replace(/</g, '\\u003c')};</script>`;
       html = html.replace('</body>', `${scriptTag}</body>`);
 
       // Update SEO tags
@@ -75,12 +91,18 @@ async function generate() {
     }
   };
 
+  // Strip huge HTML from posts for homeData to prevent OOM and huge HTML files
+  const lightweightPosts = posts.map(p => {
+    const { tables_html, tables_html_hi, media_urls, ...rest } = p;
+    return rest;
+  });
+
   // 1. Generate Home Page
   const homeData = {
     categories,
     category_links: categoryLinks,
     tablet_items: tabletItems,
-    posts,
+    posts: lightweightPosts,
     settings_flat: settings,
   };
   generatePage('/', homeData, 'index.html', settings.tagline || 'Sarkari Sewayojan', 'Latest Government Jobs, Results & Notifications');

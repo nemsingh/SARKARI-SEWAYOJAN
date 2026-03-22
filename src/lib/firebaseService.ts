@@ -19,9 +19,10 @@ import {
 
 // ============ CATEGORIES ============
 export const getCategories = async () => {
-  const q = query(collection(db, 'categories'), orderBy('display_order'));
+  const q = query(collection(db, 'categories'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+  return cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 };
 
 export const addCategory = async (name: string, displayOrder: number) => {
@@ -42,9 +43,10 @@ export const deleteCategory = async (id: string) => {
 
 // ============ CATEGORY LINKS ============
 export const getCategoryLinks = async () => {
-  const q = query(collection(db, 'category_links'), orderBy('display_order'));
+  const q = query(collection(db, 'category_links'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const links = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+  return links.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 };
 
 export const addCategoryLink = async (data: {
@@ -78,9 +80,10 @@ export const deleteCategoryLinksByCategoryId = async (categoryId: string) => {
 
 // ============ TABLET ITEMS ============
 export const getTabletItems = async () => {
-  const q = query(collection(db, 'tablet_items'), orderBy('display_order'));
+  const q = query(collection(db, 'tablet_items'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+  return items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 };
 
 export const addTabletItem = async (title: string, subtitle: string, url: string, displayOrder: number) => {
@@ -103,9 +106,9 @@ export const deleteTabletItem = async (id: string) => {
 
 // ============ POSTS ============
 export const getPosts = async () => {
-  const q = query(collection(db, 'posts'), orderBy('updated_at', 'desc'));
+  const q = query(collection(db, 'posts'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => {
+  const posts = snap.docs.map(d => {
     const data = d.data();
     return {
       id: d.id,
@@ -113,6 +116,11 @@ export const getPosts = async () => {
       created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
       updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
     };
+  });
+  return posts.sort((a, b) => {
+    const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+    const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+    return dateB - dateA;
   });
 };
 
@@ -205,7 +213,7 @@ export const updateSiteLastUpdated = async () => {
 
 // ============ REALTIME LISTENERS ============
 export const onPostsSnapshot = (callback: (posts: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'posts'), orderBy('updated_at', 'desc'));
+  const q = query(collection(db, 'posts'));
   return onSnapshot(q, (snap) => {
     const posts = snap.docs.map(d => {
       const data = d.data();
@@ -216,28 +224,36 @@ export const onPostsSnapshot = (callback: (posts: any[]) => void): Unsubscribe =
         updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
       };
     });
-    callback(posts);
+    const sortedPosts = posts.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    callback(sortedPosts);
   });
 };
 
 export const onCategoriesSnapshot = (callback: (cats: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'categories'), orderBy('display_order'));
+  const q = query(collection(db, 'categories'));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    callback(cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
   });
 };
 
 export const onCategoryLinksSnapshot = (callback: (links: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'category_links'), orderBy('display_order'));
+  const q = query(collection(db, 'category_links'));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const links = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    callback(links.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
   });
 };
 
 export const onTabletItemsSnapshot = (callback: (items: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'tablet_items'), orderBy('display_order'));
+  const q = query(collection(db, 'tablet_items'));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    callback(items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
   });
 };
 

@@ -92,11 +92,32 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-base;
   }
 }
 
 /* Sarkari Sewayojan specific styles */
+.post-tables-content *[style*="font-size:10px"] { font-size: 13px !important; }
+.post-tables-content *[style*="font-size:11px"] { font-size: 14px !important; }
+.post-tables-content *[style*="font-size:12px"] { font-size: 15px !important; }
+.post-tables-content *[style*="font-size:13px"] { font-size: 16px !important; }
+.post-tables-content *[style*="font-size:14px"] { font-size: 17px !important; }
+.post-tables-content *[style*="font-size:15px"] { font-size: 18px !important; }
+.post-tables-content *[style*="font-size:16px"] { font-size: 19px !important; }
+.post-tables-content *[style*="font-size:17px"] { font-size: 20px !important; }
+.post-tables-content *[style*="font-size:18px"] { font-size: 21px !important; }
+.post-tables-content *[style*="font-size:19px"] { font-size: 22px !important; }
+.post-tables-content *[style*="font-size:20px"] { font-size: 23px !important; }
+.post-tables-content *[style*="font-size:22px"] { font-size: 25px !important; }
+.post-tables-content *[style*="font-size:24px"] { font-size: 27px !important; }
+.post-tables-content *[style*="font-size:26px"] { font-size: 29px !important; }
+.post-tables-content *[style*="font-size:28px"] { font-size: 31px !important; }
+.post-tables-content *[style*="font-size:30px"] { font-size: 33px !important; }
+.post-tables-content *[style*="font-size:32px"] { font-size: 35px !important; }
+.post-tables-content *[style*="font-size:36px"] { font-size: 39px !important; }
+.post-tables-content *[style*="font-size:40px"] { font-size: 43px !important; }
+.post-tables-content *[style*="font-size:48px"] { font-size: 51px !important; }
+
 @keyframes scroll-left {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }

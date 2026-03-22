@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
+import { getPostBySlug, getPostById } from '@/lib/firebaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
@@ -34,8 +35,12 @@ const PostDetail = () => {
 
   const [post, setPost] = useState<any>(() => {
     if (initialData) {
+      if (initialData[`post_${slug}`]) {
+        return initialData[`post_${slug}`];
+      }
       const allPosts = initialData.posts || [];
-      return allPosts.find((p: any) => p.slug === slug || p.id === slug) || null;
+      return allPosts.find((p: any) => p.slug === slug || p.id === slug) || 
+             allPosts.find((p: any) => p.slug && p.slug.startsWith(slug)) || null;
     }
     return getCache<any>(`post_${slug}`) || null;
   });
@@ -53,7 +58,8 @@ const PostDetail = () => {
   const [notFound, setNotFound] = useState(() => {
     if (initialData) {
       const allPosts = initialData.posts || [];
-      const p = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+      const p = allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
+                allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
       return !p;
     }
     return false;
@@ -91,10 +97,29 @@ const PostDetail = () => {
         const links = data.category_links || [];
         const sett = data.settings_flat || {};
 
-        const postData = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+        let postData = data[`post_${slug}`] || 
+                       allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
+                       allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
+        
+        // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version)
+        if (!postData || !postData.tables_html) {
+          try {
+            const fbPost = await getPostBySlug(slug);
+            if (fbPost) {
+              postData = fbPost;
+            } else {
+              const fbPostById = await getPostById(slug);
+              if (fbPostById) postData = fbPostById;
+            }
+          } catch (err) {
+            console.error("Error fetching from Firebase fallback:", err);
+          }
+        }
+
         if (postData) {
           setPost(postData);
           setCache(`post_${slug}`, postData);
+          setNotFound(false);
         } else {
           setNotFound(true);
         }
@@ -105,7 +130,21 @@ const PostDetail = () => {
         setCache('category_links', links);
         setCache('settings_flat', sett);
       } else {
-        setNotFound(true);
+        // If data.json fails, try Firebase directly
+        try {
+          let postData = await getPostBySlug(slug);
+          if (!postData) {
+            postData = await getPostById(slug);
+          }
+          if (postData) {
+            setPost(postData);
+            setNotFound(false);
+          } else {
+            setNotFound(true);
+          }
+        } catch (err) {
+          setNotFound(true);
+        }
       }
     };
     fetchData();

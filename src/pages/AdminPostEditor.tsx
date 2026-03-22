@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks } from '@/lib/firebaseService';
+import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, getPostBySlug, updateCategoryLink } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,10 +12,20 @@ import ExcelEditor from '@/components/admin/ExcelEditor';
 const generateSlug = (text: string) => {
   return text
     .toLowerCase()
+    .trim()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .trim();
+    .replace(/^-+|-+$/g, '');
+};
+
+const generateShortSlug = (text: string) => {
+  const fullSlug = generateSlug(text);
+  const words = fullSlug.split('-');
+  if (words.length > 6) {
+    return words.slice(0, 6).join('-');
+  }
+  return fullSlug.substring(0, 50).replace(/-+$/, '');
 };
 
 const AdminPostEditor = () => {
@@ -44,6 +54,9 @@ const AdminPostEditor = () => {
   const [editorKeyHi, setEditorKeyHi] = useState(0);
   const [channelEn] = useState(() => `excel-en-${Date.now()}`);
   const [channelHi] = useState(() => `excel-hi-${Date.now()}`);
+
+  const [editingTableIndex, setEditingTableIndex] = useState<number | null>(null);
+  const [editingTableIndexHi, setEditingTableIndexHi] = useState<number | null>(null);
 
   // Listen for tables from fullscreen Excel editor
   useEffect(() => {
@@ -114,7 +127,7 @@ const AdminPostEditor = () => {
 
   useEffect(() => {
     if (isNew && nameOfPost && !slug) {
-      setSlug(generateSlug(nameOfPost));
+      setSlug(generateShortSlug(nameOfPost));
     }
   }, [nameOfPost, isNew]);
 
@@ -140,6 +153,54 @@ const AdminPostEditor = () => {
     const newTables = tablesHi.filter((_, i) => i !== index);
     setTablesHi(newTables);
     setTablesHtmlHi(newTables.join('\n'));
+  };
+
+  const handleMoveTableUp = (index: number) => {
+    if (index === 0) return;
+    const newTables = [...tables];
+    [newTables[index - 1], newTables[index]] = [newTables[index], newTables[index - 1]];
+    setTables(newTables);
+    setTablesHtml(newTables.join('\n'));
+  };
+
+  const handleMoveTableDown = (index: number) => {
+    if (index === tables.length - 1) return;
+    const newTables = [...tables];
+    [newTables[index + 1], newTables[index]] = [newTables[index], newTables[index + 1]];
+    setTables(newTables);
+    setTablesHtml(newTables.join('\n'));
+  };
+
+  const handleUpdateTableHtml = (index: number, newHtml: string) => {
+    const newTables = [...tables];
+    newTables[index] = newHtml;
+    setTables(newTables);
+    setTablesHtml(newTables.join('\n'));
+    setEditingTableIndex(null);
+  };
+
+  const handleMoveTableUpHi = (index: number) => {
+    if (index === 0) return;
+    const newTables = [...tablesHi];
+    [newTables[index - 1], newTables[index]] = [newTables[index], newTables[index - 1]];
+    setTablesHi(newTables);
+    setTablesHtmlHi(newTables.join('\n'));
+  };
+
+  const handleMoveTableDownHi = (index: number) => {
+    if (index === tablesHi.length - 1) return;
+    const newTables = [...tablesHi];
+    [newTables[index + 1], newTables[index]] = [newTables[index], newTables[index + 1]];
+    setTablesHi(newTables);
+    setTablesHtmlHi(newTables.join('\n'));
+  };
+
+  const handleUpdateTableHtmlHi = (index: number, newHtml: string) => {
+    const newTables = [...tablesHi];
+    newTables[index] = newHtml;
+    setTablesHi(newTables);
+    setTablesHtmlHi(newTables.join('\n'));
+    setEditingTableIndexHi(null);
   };
 
   const handleAddMedia = () => {
@@ -174,7 +235,26 @@ const AdminPostEditor = () => {
   };
 
   const handleSave = async () => {
-    const finalSlug = slug || generateSlug(nameOfPost);
+    if (!nameOfPost.trim()) {
+      toast({ title: 'Error', description: 'Name of Post is required.', variant: 'destructive' });
+      return;
+    }
+
+    let finalSlug = slug ? generateSlug(slug) : generateShortSlug(nameOfPost);
+    if (!finalSlug) {
+      finalSlug = Math.random().toString(36).substring(2, 8);
+    }
+
+    try {
+      // Check for duplicate slug
+      const existing = await getPostBySlug(finalSlug);
+      if (existing && existing.id !== id) {
+        finalSlug = `${finalSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      }
+    } catch (e) {
+      console.error("Error checking slug:", e);
+    }
+
     const postData: any = {
       name_of_post: nameOfPost,
       post_date: postDate,
@@ -209,7 +289,21 @@ const AdminPostEditor = () => {
         // Clear form for new post creation
         clearForm();
       } else {
+        const oldPost = await getPostById(id!);
+        const oldSlug = oldPost?.slug || id;
+
         await updatePost(id!, postData);
+
+        // Update category links if slug changed
+        if (oldSlug !== finalSlug) {
+          const existingLinks = await getCategoryLinks();
+          for (const link of existingLinks) {
+            if (link.url === `/post/${oldSlug}`) {
+              await updateCategoryLink(link.id, { url: `/post/${finalSlug}` });
+            }
+          }
+        }
+
         toast({ title: 'Post updated!' });
       }
     } catch (error: any) {
@@ -311,7 +405,7 @@ const AdminPostEditor = () => {
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">URL Slug</label>
-              <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. upsc-capf-2026-recruitment" />
+              <Input value={slug} onChange={e => setSlug(generateSlug(e.target.value))} placeholder="e.g. upsc-capf-2026-recruitment" />
               <p className="text-sm text-muted-foreground mt-1">Auto-generated from title. URL: /post/{slug || 'auto-generated'}</p>
             </div>
             <div>
@@ -327,21 +421,45 @@ const AdminPostEditor = () => {
 
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Make Table - English (Excel Editor)</h2>
-          <ExcelEditor key={`en-${editorKey}`} onAddTable={handleAddTable} lang="en" channelId={channelEn} />
+          <ExcelEditor 
+            key={`en-${editorKey}`} 
+            onAddTable={handleAddTable} 
+            onUpdateTable={editingTableIndex !== null ? (html) => handleUpdateTableHtml(editingTableIndex, html) : undefined}
+            onCancelEdit={() => setEditingTableIndex(null)}
+            initialHtml={editingTableIndex !== null ? tables[editingTableIndex] : undefined}
+            isEditing={editingTableIndex !== null}
+            lang="en" 
+            channelId={channelEn} 
+          />
         </div>
 
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Added Tables - English ({tables.length})</h2>
           {tables.length === 0 && <p className="text-muted-foreground">No tables added yet.</p>}
-          {tables.map((tableHtml, index) => (
-            <div key={index} className="mb-4 border border-border rounded-lg p-4">
+          {tables.map((tableHtml, index) => {
+            if (editingTableIndex === index) return null;
+            return (
+            <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndex === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
               <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-primary">Table {index + 1}</span>
-                <Button variant="destructive" size="sm" onClick={() => handleRemoveTable(index)}>Remove</Button>
+                <span className="font-bold text-primary">Table {index + 1} {editingTableIndex === index && '(Editing...)'}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUp(index)} disabled={index === 0 || editingTableIndex !== null}>↑ Up</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDown(index)} disabled={index === tables.length - 1 || editingTableIndex !== null}>↓ Down</Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setEditingTableIndex(index);
+                    // Scroll to editor
+                    window.scrollTo({ top: 300, behavior: 'smooth' });
+                  }} disabled={editingTableIndex !== null}>✏️ Edit</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleRemoveTable(index)} disabled={editingTableIndex !== null}>Remove</Button>
+                </div>
               </div>
-              <div dangerouslySetInnerHTML={{ __html: tableHtml }} className="overflow-auto" />
+              <div 
+                dangerouslySetInnerHTML={{ __html: tableHtml }} 
+                className="overflow-auto bg-white text-black p-2 border border-gray-200" 
+              />
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
@@ -365,21 +483,45 @@ const AdminPostEditor = () => {
 
         <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Make Table - Hindi (Excel Editor)</h2>
-          <ExcelEditor key={`hi-${editorKeyHi}`} lang="hi" channelId={channelHi} onAddTable={handleAddTableHi} />
+          <ExcelEditor 
+            key={`hi-${editorKeyHi}`} 
+            lang="hi" 
+            channelId={channelHi} 
+            onAddTable={handleAddTableHi} 
+            onUpdateTable={editingTableIndexHi !== null ? (html) => handleUpdateTableHtmlHi(editingTableIndexHi, html) : undefined}
+            onCancelEdit={() => setEditingTableIndexHi(null)}
+            initialHtml={editingTableIndexHi !== null ? tablesHi[editingTableIndexHi] : undefined}
+            isEditing={editingTableIndexHi !== null}
+          />
         </div>
 
         <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Added Tables - Hindi ({tablesHi.length})</h2>
           {tablesHi.length === 0 && <p className="text-muted-foreground">No Hindi tables added yet.</p>}
-          {tablesHi.map((tableHtml, index) => (
-            <div key={index} className="mb-4 border border-border rounded-lg p-4">
+          {tablesHi.map((tableHtml, index) => {
+            if (editingTableIndexHi === index) return null;
+            return (
+            <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndexHi === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
               <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-primary">Table {index + 1} (Hindi)</span>
-                <Button variant="destructive" size="sm" onClick={() => handleRemoveTableHi(index)}>Remove</Button>
+                <span className="font-bold text-primary">Table {index + 1} (Hindi) {editingTableIndexHi === index && '(Editing...)'}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUpHi(index)} disabled={index === 0 || editingTableIndexHi !== null}>↑ Up</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDownHi(index)} disabled={index === tablesHi.length - 1 || editingTableIndexHi !== null}>↓ Down</Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setEditingTableIndexHi(index);
+                    // Scroll to editor
+                    window.scrollTo({ top: 800, behavior: 'smooth' });
+                  }} disabled={editingTableIndexHi !== null}>✏️ Edit</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleRemoveTableHi(index)} disabled={editingTableIndexHi !== null}>Remove</Button>
+                </div>
               </div>
-              <div dangerouslySetInnerHTML={{ __html: tableHtml }} className="overflow-auto" />
+              <div 
+                dangerouslySetInnerHTML={{ __html: tableHtml }} 
+                className="overflow-auto bg-white text-black p-2 border border-gray-200" 
+              />
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Preview */}
