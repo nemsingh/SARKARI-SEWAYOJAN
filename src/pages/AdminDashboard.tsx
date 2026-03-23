@@ -83,28 +83,8 @@ const AdminDashboard = () => {
       getPosts(),
       getSiteSettings(),
     ]);
-    
-    // Cleanup broken category links
-    const postSlugs = p.map(post => post.slug);
-    const postIds = p.map(post => post.id);
-    const brokenLinks = cl.filter(link => {
-      if (link.url && link.url.startsWith('/post/')) {
-        const slug = link.url.replace('/post/', '');
-        return !postSlugs.includes(slug) && !postIds.includes(slug);
-      }
-      return false;
-    });
-
-    if (brokenLinks.length > 0) {
-      await Promise.all(brokenLinks.map(link => deleteCategoryLink(link.id)));
-      // Refetch links after cleanup
-      const updatedLinks = await getCategoryLinks();
-      setCategoryLinks(updatedLinks);
-    } else {
-      setCategoryLinks(cl);
-    }
-
     setCategories(c);
+    setCategoryLinks(cl);
     setTabletItems(t);
     setPosts(p);
     setSettings(s);

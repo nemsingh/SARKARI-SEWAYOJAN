@@ -69,52 +69,82 @@ const PostDetail = () => {
     const fetchData = async () => {
       if (!slug) return;
 
-      try {
-        const { getCategories, getCategoryLinks, getPosts, getSiteSettingsFlat, getPostBySlug, getPostById } = await import('@/lib/firebaseService');
-        
-        const [cats, links, psts, sett] = await Promise.all([
-          getCategories(),
-          getCategoryLinks(),
-          getPosts(),
-          getSiteSettingsFlat()
-        ]);
+      // Try cache first
+      let cachedPost = getCache<any>(`post_${slug}`);
+      const cachedCats = getCache<any[]>('categories');
+      const cachedLinks = getCache<any[]>('category_links');
+      const cachedSettings = getCache<Record<string, string>>('settings_flat');
 
-        // Filter out broken category links
-        const postSlugs = psts.map(p => p.slug);
-        const postIds = psts.map(p => p.id);
-        const validLinks = links.filter(link => {
-          if (link.url && link.url.startsWith('/post/')) {
-            const linkSlug = link.url.replace('/post/', '');
-            return postSlugs.includes(linkSlug) || postIds.includes(linkSlug);
+      const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+      let data: any;
+
+      if (isStaticMode) {
+        data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+      } else {
+        try {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
           }
-          return true; // Keep external links
-        });
+        } catch (e) {
+          console.error('Fetch error:', e);
+        }
+      }
 
-        setCategories(cats);
-        setCategoryLinks(validLinks);
-        setSettings(sett);
+      if (data) {
+        const allPosts = data.posts || [];
+        const cats = data.categories || [];
+        const links = data.category_links || [];
+        const sett = data.settings_flat || {};
 
-        // Fetch the specific post
-        let fetchedPost = await getPostBySlug(slug);
-        if (!fetchedPost) {
-          fetchedPost = await getPostById(slug);
+        let postData = data[`post_${slug}`] || 
+                       allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
+                       allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
+        
+        // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
+        if (!postData || !postData.tables_html || import.meta.env.DEV) {
+          try {
+            const fbPost = await getPostBySlug(slug);
+            if (fbPost) {
+              postData = fbPost;
+            } else {
+              const fbPostById = await getPostById(slug);
+              if (fbPostById) postData = fbPostById;
+            }
+          } catch (err) {
+            console.error("Error fetching from Firebase fallback:", err);
+          }
         }
 
-        if (fetchedPost) {
-          setPost(fetchedPost);
+        if (postData) {
+          setPost(postData);
+          setCache(`post_${slug}`, postData);
           setNotFound(false);
-          setCache(`post_${slug}`, fetchedPost);
         } else {
           setNotFound(true);
         }
-
-        // Update cache
+        setCategories(cats);
+        setCategoryLinks(links);
+        setSettings(sett);
         setCache('categories', cats);
-        setCache('category_links', validLinks);
+        setCache('category_links', links);
         setCache('settings_flat', sett);
-      } catch (e) {
-        console.error('Fetch error:', e);
-        setNotFound(true);
+      } else {
+        // If data.json fails, try Firebase directly
+        try {
+          let postData = await getPostBySlug(slug);
+          if (!postData) {
+            postData = await getPostById(slug);
+          }
+          if (postData) {
+            setPost(postData);
+            setNotFound(false);
+          } else {
+            setNotFound(true);
+          }
+        } catch (err) {
+          setNotFound(true);
+        }
       }
     };
     fetchData();
