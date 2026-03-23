@@ -130,7 +130,7 @@ const AdminLogin = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary px-4">
+    <div className="admin-panel min-h-screen flex items-center justify-center bg-secondary px-4">
       <div className="w-full max-w-md bg-background rounded-2xl p-8" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
         <h1 className="text-3xl font-black text-primary text-center mb-2">SARKARI SEWAYOJAN</h1>
         <p className="text-center text-muted-foreground mb-6">Admin Panel Login</p>

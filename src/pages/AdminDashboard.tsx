@@ -201,7 +201,7 @@ const AdminDashboard = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="admin-panel min-h-screen bg-secondary">
       {/* Confirm Dialog */}
       <AlertDialog open={confirm.open} onOpenChange={(open) => !open && setConfirm(prev => ({ ...prev, open: false }))}>
         <AlertDialogContent>
@@ -239,12 +239,12 @@ const AdminDashboard = () => {
           {/* SITE SETTINGS */}
           <TabsContent value="settings">
             <div className="bg-background rounded-2xl p-6 space-y-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-              <h2 className="text-22xl font-bold text-primary">Site Settings</h2>
+              <h2 className="text-2xl font-bold text-primary">Site Settings</h2>
               <UpdateBarManager settings={settings} onSave={handleUpdateSetting} />
               {['tagline', 'contact_text', 'build_webhook_url'].map(key => (
                 <SettingEditor key={key} label={key.replace(/_/g, ' ').toUpperCase()} value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
               ))}
-              <h3 className="textxlg font-bold text-primary pt-4 border-t border-border">Footer Sections</h3>
+              <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Footer Sections</h3>
               {['footer_quick_links', 'footer_apps', 'footer_more'].map(key => (
                 <div key={key}>
                   <label className="text-base font-bold text-primary block mb-1">{key.replace('footer_', '').replace(/_/g, ' ').toUpperCase()}</label>
@@ -697,13 +697,7 @@ const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMo
 // ============ POSTS TAB (with search + category filter + date) ============
 const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts: any[]; onDelete: (id: string) => void; navigate: (path: string) => void; categories: any[]; formatDate: (d: string) => string }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
-
-  const handleSearch = () => {
-    setAppliedSearch(searchQuery);
-    setSearchQuery('');
-  };
 
   const [categoryLinks, setCategoryLinks] = useState<any[]>([]);
   useEffect(() => {
@@ -712,8 +706,8 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
 
   let filteredPosts = posts;
 
-  if (appliedSearch) {
-    filteredPosts = filteredPosts.filter(p => p.name_of_post?.toLowerCase().includes(appliedSearch.toLowerCase()) || p.post_date?.toLowerCase().includes(appliedSearch.toLowerCase()));
+  if (searchQuery) {
+    filteredPosts = filteredPosts.filter(p => p.name_of_post?.toLowerCase().includes(searchQuery.toLowerCase()) || p.post_date?.toLowerCase().includes(searchQuery.toLowerCase()));
   }
 
   if (filterCat !== 'all') {
@@ -729,7 +723,12 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
         })
         .filter(Boolean)
     );
-    filteredPosts = filteredPosts.filter(p => linkedSlugs.has(p.slug) || linkedSlugs.has(p.id));
+    filteredPosts = filteredPosts.filter(p => {
+      for (const slug of linkedSlugs) {
+        if (p.slug === slug || p.id === slug || (p.slug && p.slug.startsWith(slug))) return true;
+      }
+      return false;
+    });
   }
 
   return (
@@ -745,11 +744,10 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
               placeholder="Search posts..."
               className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-sm bg-transparent"
             />
-            <button onClick={handleSearch} className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
+            <button className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
               <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-primary stroke-[2.5] fill-none">
                 <circle cx="11" cy="11" r="7" />
                 <line x1="16.5" y1="16.5" x2="21" y2="21" />
@@ -771,11 +769,11 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
           </select>
         </div>
       </div>
-      {(appliedSearch || filterCat !== 'all') && (
+      {(searchQuery || filterCat !== 'all') && (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
-          {appliedSearch && <span className="text-sm text-muted-foreground">Search: <strong className="text-primary">"{appliedSearch}"</strong></span>}
+          {searchQuery && <span className="text-sm text-muted-foreground">Search: <strong className="text-primary">"{searchQuery}"</strong></span>}
           {filterCat !== 'all' && <span className="text-sm text-muted-foreground">Category: <strong className="text-primary">{categories.find(c => c.id === filterCat)?.name}</strong></span>}
-          <Button variant="outline" size="sm" onClick={() => { setAppliedSearch(''); setFilterCat('all'); }}>Clear Filters</Button>
+          <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setFilterCat('all'); }}>Clear Filters</Button>
         </div>
       )}
       <div className="space-y-3">
@@ -795,7 +793,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
             </div>
           </div>
         ))}
-        {filteredPosts.length === 0 && <p className="text-muted-foreground text-center py-8">{(appliedSearch || filterCat !== 'all') ? 'No posts found.' : 'No posts yet. Create one!'}</p>}
+        {filteredPosts.length === 0 && <p className="text-muted-foreground text-center py-8">{(searchQuery || filterCat !== 'all') ? 'No posts found.' : 'No posts yet. Create one!'}</p>}
       </div>
     </div>
   );

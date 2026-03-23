@@ -79,6 +79,7 @@ const AdminPostEditor = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [linkTitle, setLinkTitle] = useState('');
   const [linkCategoryId, setLinkCategoryId] = useState('');
+  const [linkId, setLinkId] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -117,6 +118,15 @@ const AdminPostEditor = () => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(data.tables_html_hi, 'text/html');
             setTablesHi(Array.from(doc.querySelectorAll('table')).map(t => t.outerHTML));
+          }
+          
+          // Fetch existing category link
+          const existingLinks = await getCategoryLinks();
+          const existingLink = existingLinks.find((l: any) => l.url === `/post/${data.slug || id}`);
+          if (existingLink) {
+            setLinkTitle(existingLink.title || '');
+            setLinkCategoryId(existingLink.category_id || '');
+            setLinkId(existingLink.id || '');
           }
         }
         setLoading(false);
@@ -294,8 +304,27 @@ const AdminPostEditor = () => {
 
         await updatePost(id!, postData);
 
-        // Update category links if slug changed
-        if (oldSlug !== finalSlug) {
+        // Update category links if slug changed or link details changed
+        if (linkTitle.trim() && linkCategoryId) {
+          if (linkId) {
+            await updateCategoryLink(linkId, {
+              title: linkTitle.trim(),
+              category_id: linkCategoryId,
+              url: `/post/${finalSlug}`
+            });
+          } else {
+            const existingLinks = await getCategoryLinks();
+            const catLinks = existingLinks.filter((l: any) => l.category_id === linkCategoryId);
+            await addCategoryLink({
+              category_id: linkCategoryId,
+              title: linkTitle.trim(),
+              url: `/post/${finalSlug}`,
+              display_order: catLinks.length + 1,
+              is_new: true,
+              last_date_text: null,
+            });
+          }
+        } else if (oldSlug !== finalSlug) {
           const existingLinks = await getCategoryLinks();
           for (const link of existingLinks) {
             if (link.url === `/post/${oldSlug}`) {
@@ -358,7 +387,7 @@ const AdminPostEditor = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="admin-panel min-h-screen bg-secondary">
       <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
         <h1 className="text-2xl font-black text-primary">{isNew ? 'Create New Post' : 'Edit Post'}</h1>
         <div className="flex gap-3">
@@ -370,31 +399,29 @@ const AdminPostEditor = () => {
 
       <div className="max-w-[1200px] mx-auto p-6 space-y-6">
         {/* Optional: Link to Category Box */}
-        {isNew && (
-          <div className="bg-background rounded-2xl p-6 border-2 border-primary/30" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <h2 className="text-xl font-bold text-primary mb-2">🔗 Add to Category Box (Optional)</h2>
-            <p className="text-sm text-muted-foreground mb-4">Agar aap dono fields fill karenge to ye post automatically selected category box me show hogi.</p>
-            <div className="flex gap-3 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-base font-bold text-primary block mb-1">Link Title</label>
-                <Input value={linkTitle} onChange={e => setLinkTitle(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Apply Online" />
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-base font-bold text-primary block mb-1">Category</label>
-                <select
-                  value={linkCategoryId}
-                  onChange={e => setLinkCategoryId(e.target.value)}
-                  className="w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-base text-primary"
-                >
-                  <option value="">-- Select Category --</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+        <div className="bg-background rounded-2xl p-6 border-2 border-primary/30" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-2">🔗 {isNew ? 'Add to Category Box (Optional)' : 'Category Box Link'}</h2>
+          <p className="text-sm text-muted-foreground mb-4">Agar aap dono fields fill karenge to ye post automatically selected category box me show hogi.</p>
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-base font-bold text-primary block mb-1">Link Title</label>
+              <Input value={linkTitle} onChange={e => setLinkTitle(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Apply Online" />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-base font-bold text-primary block mb-1">Category</label>
+              <select
+                value={linkCategoryId}
+                onChange={e => setLinkCategoryId(e.target.value)}
+                className="w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-base text-primary"
+              >
+                <option value="">-- Select Category --</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
+        </div>
 
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Post Information (English)</h2>

@@ -101,8 +101,8 @@ const PostDetail = () => {
                        allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
                        allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
         
-        // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version)
-        if (!postData || !postData.tables_html) {
+        // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
+        if (!postData || !postData.tables_html || import.meta.env.DEV) {
           try {
             const fbPost = await getPostBySlug(slug);
             if (fbPost) {
