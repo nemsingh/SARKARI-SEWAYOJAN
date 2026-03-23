@@ -20,9 +20,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore
-// Use long polling in Node.js environment to prevent WebSocket timeout errors
+// Use long polling to prevent WebSocket timeout errors
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: typeof window === 'undefined'
+  experimentalAutoDetectLongPolling: true
 });
 
 export default app;
