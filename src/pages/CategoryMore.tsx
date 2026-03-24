@@ -68,47 +68,86 @@ const CategoryMore = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!name) return;
+      
+      // Try cache first
+      const cachedCats = getCache<any[]>('categories');
+      const cachedLinks = getCache<any[]>('category_links');
+      const cachedSettings = getCache<Record<string, string>>('settings_flat');
+      
+      if (cachedCats) setCategories(cachedCats);
+      if (cachedLinks) setCategoryLinks(cachedLinks);
+      if (cachedSettings) setSettings(cachedSettings);
+      
+      let foundCategory = false;
       const decodedName = decodeURIComponent(name);
-
-      try {
-        const { getCategories, getCategoryLinks, getPosts, getSiteSettingsFlat } = await import('@/lib/firebaseService');
-        const [cats, links, psts, sett] = await Promise.all([
-          getCategories(),
-          getCategoryLinks(),
-          getPosts(),
-          getSiteSettingsFlat()
-        ]);
-
-        // Filter out broken category links
-        const postSlugs = psts.map(post => post.slug);
-        const postIds = psts.map(post => post.id);
-        const validLinks = links.filter(link => {
-          if (link.url && link.url.startsWith('/post/')) {
-            const slug = link.url.replace('/post/', '');
-            return postSlugs.includes(slug) || postIds.includes(slug);
-          }
-          return true; // Keep external links
-        });
-
-        setCategories(cats);
-        setCategoryLinks(validLinks);
-        setSettings(sett);
-
-        const cat = cats.find((c: any) => c.name === decodedName);
+      if (cachedCats && cachedLinks) {
+        const cat = cachedCats.find((c: any) => c.name === decodedName);
         if (cat) {
           setCategory(cat);
-          setLinks(validLinks.filter((l: any) => l.category_id === cat.id));
-          setNotFound(false);
+          setLinks(cachedLinks.filter((l: any) => l.category_id === cat.id));
+          foundCategory = true;
+        }
+      }
+
+      if (import.meta.env.DEV) {
+        try {
+          const { getCategories, getCategoryLinks, getSiteSettingsFlat } = await import('@/lib/firebaseService');
+          const [allCats, allLinks, sett] = await Promise.all([
+            getCategories(),
+            getCategoryLinks(),
+            getSiteSettingsFlat()
+          ]);
+          
+          const decodedName2 = decodeURIComponent(name);
+          const cat = allCats.find((c: any) => c.name === decodedName2);
+          if (cat) {
+            setCategory(cat);
+            setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
+          } else {
+            setNotFound(true);
+          }
+          setCategories(allCats);
+          setCategoryLinks(allLinks);
+          setSettings(sett);
+          return;
+        } catch (e) {
+          console.error("Firebase fetch error in DEV mode:", e);
+        }
+      }
+
+      const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+      let data: any;
+
+      if (isStaticMode) {
+        data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+      } else {
+        try {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (e) {
+          console.error('Fetch error:', e);
+        }
+      }
+
+      if (data) {
+        const allCats = data.categories || [];
+        const allLinks = data.category_links || [];
+        const sett = data.settings_flat || {};
+        
+        const decodedName2 = decodeURIComponent(name);
+        const cat = allCats.find((c: any) => c.name === decodedName2);
+        if (cat) {
+          setCategory(cat);
+          setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
         } else {
           setNotFound(true);
         }
-
-        // Update cache
-        setCache('categories', cats);
-        setCache('category_links', validLinks);
-        setCache('settings_flat', sett);
-      } catch (e) {
-        console.error('Fetch error:', e);
+        setCategories(allCats);
+        setCategoryLinks(allLinks);
+        setSettings(sett);
+      } else {
         setNotFound(true);
       }
     };
@@ -121,7 +160,7 @@ const CategoryMore = () => {
       window.open('/', '_blank');
       return;
     }
-    window.open(`/?filter=${encodeURIComponent(option)}`, '_blank');
+    window.open(`/?filter=${encodeURIComponent(option)}&source=menu`, '_blank');
   };
 
   const handleSearch = () => {

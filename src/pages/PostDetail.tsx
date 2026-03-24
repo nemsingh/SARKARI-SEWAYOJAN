@@ -271,7 +271,7 @@ const PostDetail = () => {
       window.open('/', '_blank');
       return;
     }
-    window.open(`/?filter=${encodeURIComponent(option)}`, '_blank');
+    window.open(`/?filter=${encodeURIComponent(option)}&source=menu`, '_blank');
   };
 
   const handleSearch = () => {

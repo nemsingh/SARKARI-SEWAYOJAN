@@ -34,41 +34,45 @@ const Index = () => {
   const [tabletItems, setTabletItems] = useState<any[]>(() => initialData?.tablet_items || getCache('tablet_items') || []);
   const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
 
-  // Fetch from Firebase on the client side to ensure live updates
+  // One-time fetch from Firebase (no real-time listeners)
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [cats, links, psts, tabs, sett] = await Promise.all([
-          getCategories(),
-          getCategoryLinks(),
-          getPosts(),
-          getTabletItems(),
-          getSiteSettingsFlat()
-        ]);
-        
-        // Filter out broken category links
-        const postSlugs = psts.map(post => post.slug);
-        const postIds = psts.map(post => post.id);
-        const validLinks = links.filter(link => {
-          if (link.url && link.url.startsWith('/post/')) {
-            const slug = link.url.replace('/post/', '');
-            return postSlugs.includes(slug) || postIds.includes(slug);
-          }
-          return true; // Keep external links
-        });
+        if (import.meta.env.DEV) {
+          const [cats, links, psts, tabs, sett] = await Promise.all([
+            getCategories(),
+            getCategoryLinks(),
+            getPosts(),
+            getTabletItems(),
+            getSiteSettingsFlat()
+          ]);
+          setCategories(cats);
+          setCategoryLinks(links);
+          setPosts(psts);
+          setTabletItems(tabs);
+          setSettings(sett);
+          return;
+        }
 
-        setCategories(cats);
-        setCategoryLinks(validLinks);
-        setPosts(psts);
-        setTabletItems(tabs);
-        setSettings(sett);
-        
-        // Update cache
-        setCache('categories', cats);
-        setCache('category_links', validLinks);
-        setCache('posts', psts);
-        setCache('tablet_items', tabs);
-        setCache('settings_flat', sett);
+        const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
+        let data: any;
+
+        if (isStaticMode) {
+          data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
+        } else {
+          const res = await fetch('/data.json');
+          if (res.ok) {
+            data = await res.json();
+          }
+        }
+
+        if (data) {
+          setCategories(data.categories || []); setCache('categories', data.categories || []);
+          setCategoryLinks(data.category_links || []); setCache('category_links', data.category_links || []);
+          setTabletItems(data.tablet_items || []); setCache('tablet_items', data.tablet_items || []);
+          setPosts(data.posts || []); setCache('posts', data.posts || []);
+          setSettings(data.settings_flat || {}); setCache('settings_flat', data.settings_flat || {});
+        }
       } catch (e) {
         console.error('Fetch error:', e);
       }
@@ -78,10 +82,9 @@ const Index = () => {
   }, []);
 
   const handleFilter = (option: string) => {
+    setSidebarOpen(false);
     if (option === 'Home') {
-      setActiveFilter('Home');
-      setAppliedSearch('');
-      setSidebarOpen(false);
+      window.open('/', '_blank');
       return;
     }
     const url = `/?filter=${encodeURIComponent(option)}&source=menu`;
@@ -92,15 +95,22 @@ const Index = () => {
     const params = new URLSearchParams(window.location.search);
     const filter = params.get('filter');
     const source = params.get('source');
+    const search = params.get('search');
+    
     if (filter) {
       setActiveFilter(filter);
       setFilterSource(source === 'more' ? 'more' : 'menu');
     }
+    if (search) {
+      setAppliedSearch(search);
+    }
   }, []);
 
   const handleSearch = () => {
-    setAppliedSearch(searchQuery);
-    setSearchQuery('');
+    if (searchQuery.trim()) {
+      window.open('/?search=' + encodeURIComponent(searchQuery), '_blank');
+      setSearchQuery('');
+    }
   };
 
   const filteredCategories = activeFilter === 'Home'

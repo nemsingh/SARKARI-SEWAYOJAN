@@ -11,10 +11,8 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   serverTimestamp,
   Timestamp,
-  Unsubscribe,
 } from 'firebase/firestore';
 
 // ============ CATEGORIES ============
@@ -211,59 +209,4 @@ export const updateSiteLastUpdated = async () => {
   await setDoc(docRef, { timestamp: Date.now() }, { merge: true });
 };
 
-// ============ REALTIME LISTENERS ============
-export const onPostsSnapshot = (callback: (posts: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'posts'));
-  return onSnapshot(q, (snap) => {
-    const posts = snap.docs.map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        ...data,
-        created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
-        updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
-      };
-    });
-    const sortedPosts = posts.sort((a, b) => {
-      const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
-      const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
-      return dateB - dateA;
-    });
-    callback(sortedPosts);
-  });
-};
-
-export const onCategoriesSnapshot = (callback: (cats: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'categories'));
-  return onSnapshot(q, (snap) => {
-    const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-    callback(cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
-  });
-};
-
-export const onCategoryLinksSnapshot = (callback: (links: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'category_links'));
-  return onSnapshot(q, (snap) => {
-    const links = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-    callback(links.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
-  });
-};
-
-export const onTabletItemsSnapshot = (callback: (items: any[]) => void): Unsubscribe => {
-  const q = query(collection(db, 'tablet_items'));
-  return onSnapshot(q, (snap) => {
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-    callback(items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
-  });
-};
-
-export const onSettingsSnapshot = (callback: (settings: Record<string, string>) => void): Unsubscribe => {
-  return onSnapshot(collection(db, 'site_settings'), (snap) => {
-    const settings: Record<string, string> = {};
-    snap.docs.forEach(d => {
-      const data = d.data();
-      settings[data.key] = data.value;
-    });
-    callback(settings);
-  });
-};
+// Removed realtime listeners
