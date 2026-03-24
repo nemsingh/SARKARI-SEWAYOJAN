@@ -102,17 +102,29 @@ const PostDetail = () => {
                        allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
         
         // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
-        if (!postData || !postData.tables_html || import.meta.env.DEV) {
-          try {
-            const fbPost = await getPostBySlug(slug);
-            if (fbPost) {
-              postData = fbPost;
-            } else {
-              const fbPostById = await getPostById(slug);
-              if (fbPostById) postData = fbPostById;
+        if (!postData || !postData.tables_html) {
+          if (import.meta.env.DEV) {
+            try {
+              const fbPost = await getPostBySlug(slug);
+              if (fbPost) {
+                postData = fbPost;
+              } else {
+                const fbPostById = await getPostById(slug);
+                if (fbPostById) postData = fbPostById;
+              }
+            } catch (err) {
+              console.error("Error fetching from Firebase fallback:", err);
             }
-          } catch (err) {
-            console.error("Error fetching from Firebase fallback:", err);
+          } else {
+            // Fetch the individual post JSON generated at build time
+            try {
+              const res = await fetch(`/data/post_${slug}.json`);
+              if (res.ok) {
+                postData = await res.json();
+              }
+            } catch (err) {
+              console.error("Error fetching static post JSON:", err);
+            }
           }
         }
 
@@ -130,20 +142,35 @@ const PostDetail = () => {
         setCache('category_links', links);
         setCache('settings_flat', sett);
       } else {
-        // If data.json fails, try Firebase directly
-        try {
-          let postData = await getPostBySlug(slug);
-          if (!postData) {
-            postData = await getPostById(slug);
-          }
-          if (postData) {
-            setPost(postData);
-            setNotFound(false);
-          } else {
+        // If data.json fails, try fetching individual post JSON or Firebase in DEV
+        if (import.meta.env.DEV) {
+          try {
+            let postData = await getPostBySlug(slug);
+            if (!postData) {
+              postData = await getPostById(slug);
+            }
+            if (postData) {
+              setPost(postData);
+              setNotFound(false);
+            } else {
+              setNotFound(true);
+            }
+          } catch (err) {
             setNotFound(true);
           }
-        } catch (err) {
-          setNotFound(true);
+        } else {
+          try {
+            const res = await fetch(`/data/post_${slug}.json`);
+            if (res.ok) {
+              const postData = await res.json();
+              setPost(postData);
+              setNotFound(false);
+            } else {
+              setNotFound(true);
+            }
+          } catch (err) {
+            setNotFound(true);
+          }
         }
       }
     };

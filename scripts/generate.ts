@@ -57,15 +57,15 @@ async function generate() {
   }
   const { render } = await import(serverEntryPath);
 
-  const publicDir = path.resolve(root, 'public');
+  const publicDir = path.resolve(root, 'dist');
   
   // Copy assets from dist to public
-  const distAssets = path.resolve(root, 'dist/assets');
-  const publicAssets = path.resolve(publicDir, 'assets');
-  if (fs.existsSync(distAssets)) {
-    fs.cpSync(distAssets, publicAssets, { recursive: true });
-    console.log('Copied assets to public/assets');
-  }
+  // const distAssets = path.resolve(root, 'dist/assets');
+  // const publicAssets = path.resolve(publicDir, 'assets');
+  // if (fs.existsSync(distAssets)) {
+  //   fs.cpSync(distAssets, publicAssets, { recursive: true });
+  //   console.log('Copied assets to public/assets');
+  // }
 
   const generatePage = (url: string, data: any, outputPath: string, title: string, description: string) => {
     try {
@@ -108,12 +108,18 @@ async function generate() {
   generatePage('/', homeData, 'index.html', settings.tagline || 'Sarkari Sewayojan', 'Latest Government Jobs, Results & Notifications');
 
   // 2. Generate Post Detail Pages
+  const dataDir = path.resolve(publicDir, 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+
   for (const post of posts) {
     const postData = {
       ...homeData,
       [`post_${post.slug || post.id}`]: post,
     };
     generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}/index.html`, `${post.name_of_post} - Sarkari Sewayojan`, post.short_info || '');
+    
+    // Generate individual JSON file for client-side navigation
+    fs.writeFileSync(path.resolve(dataDir, `post_${post.slug || post.id}.json`), JSON.stringify(post));
   }
 
   // 3. Generate Category Pages

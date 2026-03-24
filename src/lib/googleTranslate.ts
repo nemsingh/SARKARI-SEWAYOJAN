@@ -50,14 +50,15 @@ export const googleTranslate = async (text: string, targetLang: string = 'hi'): 
     batches.push(currentBatch);
   }
 
-  const delimiter = ' \u200B__GT_SEP__\u200B '; // zero-width space + separator + zero-width space
+  const delimiter = '\n\n__GT_SEP__\n\n';
 
   for (const batch of batches) {
     const combinedText = batch.map(n => n.nodeValue).join(delimiter);
     const translatedCombined = await translateText(combinedText, targetLang);
     
     // Split the translated text back into parts
-    const translatedParts = translatedCombined.split(delimiter);
+    // Google Translate might add spaces around the delimiter
+    const translatedParts = translatedCombined.split(/\s*__GT_SEP__\s*/);
     
     // If the split count matches the batch size, update the nodes
     if (translatedParts.length === batch.length) {
@@ -78,19 +79,13 @@ export const googleTranslate = async (text: string, targetLang: string = 'hi'): 
 
 const translateText = async (text: string, targetLang: string): Promise<string> => {
   try {
-    const params = new URLSearchParams();
-    params.append('client', 'gtx');
-    params.append('sl', 'en');
-    params.append('tl', targetLang);
-    params.append('dt', 't');
-    params.append('q', text);
-
-    const response = await fetch('https://translate.googleapis.com/translate_a/single', {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t`;
+    const response = await fetch(url, {
       method: 'POST',
-      body: params,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
+      body: new URLSearchParams({ q: text }).toString(),
     });
     
     if (!response.ok) throw new Error('Google Translate API failed');
