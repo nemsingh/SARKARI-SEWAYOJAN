@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import ExcelEditor from '@/components/admin/ExcelEditor';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 const generateSlug = (text: string) => {
   return text
@@ -26,6 +27,70 @@ const generateShortSlug = (text: string) => {
     return words.slice(0, 6).join('-');
   }
   return fullSlug.substring(0, 50).replace(/-+$/, '');
+};
+
+const formatDateTime = (dateString: string, lang: 'en' | 'hi' = 'en') => {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return dateString;
+  
+  const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+  
+  const day = d.getDate();
+  const month = lang === 'hi' ? monthsHi[d.getMonth()] : monthsEn[d.getMonth()];
+  const year = d.getFullYear();
+  
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  
+  return `${day} ${month} ${year} | ${hours}:${minutes} ${ampm}`;
+};
+
+const parseDateTime = (dateString: string, lang: 'en' | 'hi' = 'en'): Date | undefined => {
+  if (!dateString) return undefined;
+  
+  const d = new Date(dateString);
+  if (!isNaN(d.getTime())) return d;
+  
+  try {
+    const parts = dateString.split('|').map(p => p.trim());
+    if (parts.length !== 2) return undefined;
+    
+    const dateTokens = parts[0].split(' ');
+    if (dateTokens.length !== 3) return undefined;
+    
+    const day = parseInt(dateTokens[0], 10);
+    const monthStr = dateTokens[1];
+    const year = parseInt(dateTokens[2], 10);
+    
+    const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+    
+    const monthIndex = lang === 'hi' ? monthsHi.indexOf(monthStr) : monthsEn.indexOf(monthStr);
+    if (monthIndex === -1) return undefined;
+    
+    const timeTokens = parts[1].split(' ');
+    if (timeTokens.length !== 2) return undefined;
+    
+    const timeParts = timeTokens[0].split(':');
+    if (timeParts.length !== 2) return undefined;
+    
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    const ampm = timeTokens[1].toUpperCase();
+    
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    
+    return new Date(year, monthIndex, day, hours, minutes);
+  } catch (e) {
+    return undefined;
+  }
 };
 
 const AdminPostEditor = () => {
@@ -437,7 +502,22 @@ const AdminPostEditor = () => {
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">Post Date / Update</label>
-              <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" />
+              <div className="flex gap-2 relative">
+                <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1" />
+                <div className="relative w-12 h-10 flex-shrink-0">
+                  <DateTimePicker
+                    date={parseDateTime(postDate, 'en')}
+                    setDate={(d) => {
+                      if (d) setPostDate(formatDateTime(d.toISOString(), 'en'));
+                    }}
+                    customTrigger={
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                        📅
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">Short Info (HTML allowed)</label>
@@ -499,7 +579,22 @@ const AdminPostEditor = () => {
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">पोस्ट तिथि (Post Date - Hindi)</label>
-              <Input value={postDateHi} onChange={e => setPostDateHi(e.target.value)} placeholder="e.g. 21 फरवरी 2026 | 12:12 AM" />
+              <div className="flex gap-2 relative">
+                <Input value={postDateHi} onChange={e => setPostDateHi(e.target.value)} placeholder="e.g. 21 फरवरी 2026 | 12:12 AM" className="flex-1" />
+                <div className="relative w-12 h-10 flex-shrink-0">
+                  <DateTimePicker
+                    date={parseDateTime(postDateHi, 'hi')}
+                    setDate={(d) => {
+                      if (d) setPostDateHi(formatDateTime(d.toISOString(), 'hi'));
+                    }}
+                    customTrigger={
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                        📅
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">संक्षिप्त जानकारी (Short Info - Hindi, HTML allowed)</label>
