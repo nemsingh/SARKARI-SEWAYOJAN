@@ -19,8 +19,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore
-// Use long polling to prevent WebSocket timeout errors
+// Initialize Firestore with auto-detect long polling for restricted network environments
 export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true
 });

@@ -291,7 +291,7 @@ const PostDetail = () => {
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
-      <SiteHeader />
+      <SiteHeader logoUrl={settings.logo_url} />
       <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />
 
       {activeFilter ? (

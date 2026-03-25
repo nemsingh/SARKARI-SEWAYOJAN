@@ -168,7 +168,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden font-sans">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
-      <SiteHeader />
+      <SiteHeader logoUrl={settings.logo_url} />
       <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />
       
       {updateBars.map((bar, i) => (

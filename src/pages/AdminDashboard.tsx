@@ -261,7 +261,7 @@ const AdminDashboard = () => {
             <div className="bg-background rounded-2xl p-6 space-y-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
               <h2 className="text-2xl font-bold text-primary">Site Settings</h2>
               <UpdateBarManager settings={settings} onSave={handleUpdateSetting} />
-              {['tagline', 'contact_text', 'build_webhook_url'].map(key => (
+              {['logo_url', 'tagline', 'contact_text', 'build_webhook_url'].map(key => (
                 <SettingEditor key={key} label={key.replace(/_/g, ' ').toUpperCase()} value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
               ))}
               <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Footer Sections</h3>
