@@ -25,7 +25,9 @@ export const getCache = <T>(key: string): T | null => {
 export const setCache = (key: string, data: any) => {
   try {
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch {}
+  } catch {
+    // Ignore localStorage errors
+  }
 };
 
 export const clearCache = (key?: string) => {
@@ -37,5 +39,7 @@ export const clearCache = (key?: string) => {
         .filter(k => k.startsWith(CACHE_PREFIX))
         .forEach(k => localStorage.removeItem(k));
     }
-  } catch {}
+  } catch {
+    // Ignore localStorage errors
+  }
 };

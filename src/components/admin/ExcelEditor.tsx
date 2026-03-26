@@ -174,6 +174,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     setSelectedCells([{ row, col }]);
     setActiveCellState({ row, col });
     setFormulaValue(grid[row][col].text);
+    
+    const cell = grid[row][col];
+    setCurrentFont(cell.fontFamily || 'Arial');
+    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '14');
   };
 
   const handleMouseOver = (row: number, col: number) => {
@@ -199,6 +203,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     setSelectedCells([{ row, col }]);
     setActiveCellState({ row, col });
     setFormulaValue(grid[row][col].text);
+    
+    const cell = grid[row][col];
+    setCurrentFont(cell.fontFamily || 'Arial');
+    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '14');
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -271,8 +279,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
       
       if (td && td.contains(container)) {
+        if (selection.isCollapsed) return false;
+
         if (command === 'createLink') {
-           if (selection.isCollapsed) return false;
            document.execCommand(command, false, value);
            const links = td.querySelectorAll('a');
            links.forEach(a => {
@@ -281,10 +290,18 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
              }
            });
+        } else if (command === 'fontSizePx') {
+           document.execCommand('fontSize', false, '7');
+           const fonts = td.querySelectorAll('font[size="7"]');
+           fonts.forEach(f => {
+             f.removeAttribute('size');
+             f.style.fontSize = value || '14px';
+           });
+        } else if (command === 'fontNameCustom') {
+           document.execCommand('fontName', false, value);
+        } else if (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight' || command === 'justifyFull') {
+           document.execCommand(command, false, value);
         } else {
-           if ((command === 'foreColor' || command === 'hiliteColor' || command === 'backColor') && selection.isCollapsed) {
-             return false;
-           }
            document.execCommand(command, false, value);
         }
         handleCellInput(activeCell.row, activeCell.col, td.innerHTML);
@@ -318,9 +335,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       selectedCells.forEach(({ row, col }) => {
         const cell = newGrid[row][col];
         if (['fontWeight', 'fontStyle', 'textDecoration'].includes(prop)) {
-          (cell as any)[prop] = (cell as any)[prop] === value ? 'normal' : value;
+          (cell as Record<string, unknown>)[prop] = (cell as Record<string, unknown>)[prop] === value ? 'normal' : value;
         } else {
-          (cell as any)[prop] = value;
+          (cell as Record<string, unknown>)[prop] = value;
         }
       });
       return newGrid;
@@ -571,7 +588,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         }
       });
     }
-  }, [gridKey]);
+  }, [gridKey, grid]);
 
   const handleAddTable = () => {
     const syncedGrid = syncDomToGrid();
@@ -683,14 +700,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Font */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10 flex-wrap">
-            <select value={currentFont} onChange={e => { setCurrentFont(e.target.value); applyToSelection('fontFamily', e.target.value); }} className="px-1 text-sm border border-border bg-background">
+            <select value={currentFont} onChange={e => { setCurrentFont(e.target.value); if (!applyRichTextFormat('fontNameCustom', e.target.value)) applyToSelection('fontFamily', e.target.value); }} className="px-1 text-sm border border-border bg-background">
               <option value="Arial">Arial</option>
               <option value="Calibri">Calibri</option>
               <option value="Verdana">Verdana</option>
               <option value="Times New Roman">Times New Roman</option>
               <option value="Georgia">Georgia</option>
             </select>
-            <input type="number" value={currentFontSize} onChange={e => { setCurrentFontSize(e.target.value); applyToSelection('fontSize', e.target.value + 'px'); }} className="w-11 px-1 text-sm border border-border bg-background" />
+            <input type="number" value={currentFontSize} onChange={e => { setCurrentFontSize(e.target.value); if (!applyRichTextFormat('fontSizePx', e.target.value + 'px')) applyToSelection('fontSize', e.target.value + 'px'); }} className="w-11 px-1 text-sm border border-border bg-background" />
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className="px-2 cursor-pointer border border-transparent bg-transparent font-bold hover:bg-border">B</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className="px-2 cursor-pointer border border-transparent bg-transparent italic hover:bg-border">I</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className="px-2 cursor-pointer border border-transparent bg-transparent underline hover:bg-border">U</button>
@@ -700,14 +717,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             </div>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">🎨</label>
-              <input type="color" defaultValue="#ffffff" onChange={e => applyToSelection('backgroundColor', e.target.value)} className="w-6 h-6 cursor-pointer" title="Fill Color" />
+              <input type="color" defaultValue="#ffffff" onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
             </div>
             <div className="flex items-center gap-0.5">
               <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
               <label className="text-[10px]">Text</label>
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) applyToSelection('backgroundColor', val.startsWith('#') ? val : `#${val}`); } }} title="Fill Color Code" />
+              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('hiliteColor', color)) applyToSelection('backgroundColor', color); } } }} title="Fill Color Code" />
               <label className="text-[10px]">Fill</label>
             </div>
           </div>
@@ -717,9 +734,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Alignment */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onClick={() => applyToSelection('textAlign', 'left')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Left">⬅ L</button>
-            <button onClick={() => applyToSelection('textAlign', 'center')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Center">⬌ C</button>
-            <button onClick={() => applyToSelection('textAlign', 'right')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Right">➡ R</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyLeft')) applyToSelection('textAlign', 'left'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Left">⬅ L</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyCenter')) applyToSelection('textAlign', 'center'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Center">⬌ C</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyRight')) applyToSelection('textAlign', 'right'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Right">➡ R</button>
             <span className="border-l border-border mx-1 h-6"></span>
             <button onClick={() => applyToSelection('verticalAlign', 'top')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Top">⬆ T</button>
             <button onClick={() => applyToSelection('verticalAlign', 'middle')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Middle">⬍ M</button>
@@ -829,8 +846,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         fontWeight: cell.fontWeight,
                         fontStyle: cell.fontStyle,
                         textDecoration: cell.textDecoration,
-                        textAlign: cell.textAlign as any,
-                        verticalAlign: cell.verticalAlign as any,
+                        textAlign: cell.textAlign as React.CSSProperties['textAlign'],
+                        verticalAlign: cell.verticalAlign as React.CSSProperties['verticalAlign'],
                         color: cell.color,
                         backgroundColor: cell.backgroundColor,
                         border: cell.borderAll ? '1px solid #000' : cell.borderOutside ? '1px solid #000' : undefined,

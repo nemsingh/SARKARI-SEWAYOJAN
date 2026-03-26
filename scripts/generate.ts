@@ -16,7 +16,7 @@ const root = path.resolve(__dirname, '..');
 
 async function generate() {
   console.log('Fetching data from Firebase...');
-  let [categories, categoryLinks, tabletItems, posts, settings] = await Promise.all([
+  const [categories, initialCategoryLinks, tabletItems, posts, settings] = await Promise.all([
     getCategories(),
     getCategoryLinks(),
     getTabletItems(),
@@ -27,7 +27,7 @@ async function generate() {
   // Fix broken category links
   const postSlugs = posts.map(p => p.slug);
   const postIds = posts.map(p => p.id);
-  categoryLinks = categoryLinks.map(l => {
+  const categoryLinks = initialCategoryLinks.map(l => {
     if (l.url && l.url.startsWith('/post/')) {
       const slug = l.url.replace('/post/', '');
       if (!postSlugs.includes(slug) && !postIds.includes(slug)) {
@@ -127,7 +127,9 @@ async function generate() {
     const catData = {
       ...homeData,
     };
-    generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, `category/${encodeURIComponent(cat.name)}/index.html`, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
+    // Use the raw category name for the file path, but encode it for the URL
+    const catPath = `category/${cat.name}/index.html`;
+    generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, catPath, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
   }
 
   // 4. Generate Privacy Policy

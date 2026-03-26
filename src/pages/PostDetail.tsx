@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
-import { getPostBySlug, getPostById } from '@/lib/firebaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
@@ -70,7 +69,7 @@ const PostDetail = () => {
       if (!slug) return;
 
       // Try cache first
-      let cachedPost = getCache<any>(`post_${slug}`);
+      const cachedPost = getCache<any>(`post_${slug}`);
       const cachedCats = getCache<any[]>('categories');
       const cachedLinks = getCache<any[]>('category_links');
       const cachedSettings = getCache<Record<string, string>>('settings_flat');
@@ -105,6 +104,7 @@ const PostDetail = () => {
         if (!postData || !postData.tables_html) {
           if (import.meta.env.DEV) {
             try {
+              const { getPostBySlug, getPostById } = await import('@/lib/firebaseService');
               const fbPost = await getPostBySlug(slug);
               if (fbPost) {
                 postData = fbPost;
@@ -145,6 +145,7 @@ const PostDetail = () => {
         // If data.json fails, try fetching individual post JSON or Firebase in DEV
         if (import.meta.env.DEV) {
           try {
+            const { getPostBySlug, getPostById } = await import('@/lib/firebaseService');
             let postData = await getPostBySlug(slug);
             if (!postData) {
               postData = await getPostById(slug);

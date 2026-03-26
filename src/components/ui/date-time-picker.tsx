@@ -59,7 +59,7 @@ export function DateTimePicker({ date, setDate, placeholder = "Pick a date", cus
     if (!selectedDate) return
 
     const newDate = new Date(selectedDate)
-    let currentHours = newDate.getHours()
+    const currentHours = newDate.getHours()
     
     if (type === "hours") {
       setHours(value)

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getCategories, getCategoryLinks, getPosts, getTabletItems, getSiteSettingsFlat } from '@/lib/firebaseService';
 import { getCache, setCache } from '@/lib/cache';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
@@ -39,6 +38,7 @@ const Index = () => {
     const fetchAll = async () => {
       try {
         if (import.meta.env.DEV) {
+          const { getCategories, getCategoryLinks, getPosts, getTabletItems, getSiteSettingsFlat } = await import('@/lib/firebaseService');
           const [cats, links, psts, tabs, sett] = await Promise.all([
             getCategories(),
             getCategoryLinks(),

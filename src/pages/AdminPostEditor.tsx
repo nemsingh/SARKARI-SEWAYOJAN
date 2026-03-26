@@ -138,6 +138,7 @@ const AdminPostEditor = () => {
       }
     };
     return () => { bcEn.close(); bcHi.close(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Optional category linking
@@ -204,7 +205,7 @@ const AdminPostEditor = () => {
     if (isNew && nameOfPost && !slug) {
       setSlug(generateShortSlug(nameOfPost));
     }
-  }, [nameOfPost, isNew]);
+  }, [nameOfPost, isNew, slug]);
 
   const handleAddTable = (tableHtml: string) => {
     const newTables = [...tables, tableHtml];
