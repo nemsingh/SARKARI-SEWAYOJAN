@@ -117,11 +117,11 @@ const SeoContentBox = () => {
         <div>
           {content.map((item, idx) =>
             item.type === 'h1' ? (
-              <h2 key={idx} className="bg-primary text-primary-foreground text-lg font-bold py-3 px-5">
+              <h2 key={idx} className="bg-primary text-primary-foreground text-[20px] font-bold py-3 px-5">
                 {item.text}
               </h2>
             ) : (
-              <div key={idx} className="bg-background text-primary py-3 px-5 text-sm leading-relaxed whitespace-pre-line">
+              <div key={idx} className="bg-background text-primary py-3 px-5 text-[16px] leading-relaxed whitespace-pre-line">
                 {item.text}
               </div>
             )

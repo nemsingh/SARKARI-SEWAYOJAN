@@ -19,13 +19,13 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
       
       {/* Text Container - Shifted right to prevent overlap with logo */}
       <div className="w-full pl-[160px] md:pl-[240px] pr-3 flex flex-col justify-center text-right md:text-center">
-        <h1 className="m-0 text-5xl font-black text-primary tracking-wide uppercase max-sm:text-[20px] sm:max-md:text-3xl">
+        <h1 className="m-0 text-5xl font-black text-primary tracking-wide uppercase max-sm:text-[24px] sm:max-md:text-3xl">
           SARKARI SEWAYOJAN
         </h1>
-        <div className="text-3xl text-primary mt-1 font-medium max-sm:text-[14px] sm:max-md:text-xl">
+        <div className="text-3xl text-primary mt-1 font-medium max-sm:text-[16px] sm:max-md:text-xl">
           www.sarkarisewayojan.com
         </div>
-        <div className="text-[10px] text-accent mt-1.5 tracking-[3px] max-sm:tracking-[1px] font-medium max-sm:text-[7px]">
+        <div className="text-[10px] text-accent mt-1.5 tracking-[3px] max-sm:tracking-[1px] font-medium max-sm:text-[9px]">
           LATEST GOVERNMENT JOBS, RESULTS & NOTIFICATIONS
         </div>
       </div>

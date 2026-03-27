@@ -205,7 +205,7 @@ const CategoryMore = () => {
           <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
             <ul className="list-none p-0">
               {links.map(link => (
-                <li key={link.id} className="flex items-center mb-3 text-primary font-medium text-[18px]">
+                <li key={link.id} className="flex items-center mb-3 text-primary font-medium text-[19px]">
                   <span className="w-2 h-2 rounded-full bg-primary mr-3 flex-shrink-0" />
                   {link.url ? (
                     <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline">

@@ -145,7 +145,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const [startCell, setStartCell] = useState<{ row: number; col: number } | null>(null);
   const [formulaValue, setFormulaValue] = useState('');
   const [currentFont, setCurrentFont] = useState('Arial');
-  const [currentFontSize, setCurrentFontSize] = useState('14');
+  const [currentFontSize, setCurrentFontSize] = useState('18');
   const [clipboardData, setClipboardData] = useState<{ text: string; style: Partial<CellData> }[]>([]);
   const [clipboardRange, setClipboardRange] = useState<{ rows: number; cols: number; data: { text: string; style: Partial<CellData> }[][] } | null>(null);
   const [colWidths, setColWidths] = useState<number[]>(Array(TOTAL_COLS).fill(80));
@@ -266,7 +266,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     
     const cell = grid[row][col];
     setCurrentFont(cell.fontFamily || 'Arial');
-    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '14');
+    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '18');
   };
 
   const handleMouseOver = (row: number, col: number) => {
@@ -295,7 +295,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     
     const cell = grid[row][col];
     setCurrentFont(cell.fontFamily || 'Arial');
-    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '14');
+    setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '18');
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -400,7 +400,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
          const fonts = td.querySelectorAll('font[size="7"]');
          fonts.forEach(f => {
            f.removeAttribute('size');
-           f.style.fontSize = value || '14px';
+           f.style.fontSize = value || '18px';
          });
       } else if (command === 'fontNameCustom') {
          document.execCommand('fontName', false, value);
@@ -844,7 +844,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                 applyToSelection('textDecoration', 'none'); 
                 applyToSelection('color', '#000000'); 
                 applyToSelection('backgroundColor', 'transparent'); 
-                applyToSelection('fontSize', '14px'); 
+                applyToSelection('fontSize', '18px'); 
                 applyToSelection('fontFamily', 'Arial'); 
                 
                 // Clear inline formatting for all selected cells

@@ -330,16 +330,16 @@ const PostDetail = () => {
             <table key={language} className="w-full border-collapse mb-5">
               <tbody>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold w-[180px] text-[18px]">{labels.name}</td>
-                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[18px]">{getField('name_of_post', 'name_of_post_hi')}</td>
+                  <td className="p-3 align-top border-b border-border text-destructive font-bold w-[180px] text-[19px]">{labels.name}</td>
+                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[19px]">{getField('name_of_post', 'name_of_post_hi')}</td>
                 </tr>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[18px]">{labels.date}</td>
-                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[18px]">{getField('post_date', 'post_date_hi')}</td>
+                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[19px]">{labels.date}</td>
+                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[19px]">{getField('post_date', 'post_date_hi')}</td>
                 </tr>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[18px]">{labels.info}</td>
-                  <td className="p-3 align-top border-b border-border text-primary text-[18px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
+                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[19px]">{labels.info}</td>
+                  <td className="p-3 align-top border-b border-border text-primary text-[19px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
                 </tr>
               </tbody>
             </table>
@@ -383,7 +383,7 @@ const PostDetail = () => {
       <SiteFooter settings={settings} />
       <style>{`
         .post-tables-content table { width: 100%; border: 1px solid hsl(var(--primary)); border-collapse: collapse; margin-top: 15px; }
-        .post-tables-content td, .post-tables-content th { border: 1px solid hsl(var(--primary)); padding: 12px; font-size: 16px; color: hsl(var(--primary)); }
+        .post-tables-content td, .post-tables-content th { border: 1px solid hsl(var(--primary)); padding: 12px; font-size: 19px; color: hsl(var(--primary)); }
         .post-tables-content a { color: hsl(var(--primary)); text-decoration: underline; }
         .post-tables-content a:hover { opacity: 0.8; }
       `}</style>

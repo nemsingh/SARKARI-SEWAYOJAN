@@ -40,7 +40,7 @@ const UpdateBar = ({ text, direction = 'left' }: UpdateBarProps) => {
 
   return (
     <div className="bg-[hsl(var(--update-bar-bg))] py-3 overflow-hidden relative">
-      <div className={`inline-block whitespace-nowrap text-accent text-xl font-semibold ${animClass}`}>
+      <div className={`inline-block whitespace-nowrap text-accent text-[22px] font-semibold ${animClass}`}>
         {items.map((item, i) => (
           <span key={i}>
             {item.url ? (

@@ -186,14 +186,14 @@ const Index = () => {
       {filterSource === 'more' && activeFilter !== 'Home' ? (
         <div className="py-8 px-3 mx-auto">
           <div className="bg-background rounded-2xl relative pt-[70px] px-5 pb-5" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <div className="absolute top-0 left-0 w-full text-center text-xl font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <div className="absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
               {activeFilter} Update's
             </div>
             {filteredPosts.length > 0 ? (
               <ul className="list-none p-0 mt-2.5">
                 {filteredPosts.map((post) => (
                   <li key={post.id} className="mb-2.5">
-                    <div className="flex items-center text-primary font-medium text-sm">
+                    <div className="flex items-center text-primary font-medium text-[19px]">
                       <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0" />
                       <a
                         href={`/post/${encodeURIComponent(post.slug || post.id)}`}
@@ -208,7 +208,7 @@ const Index = () => {
                 ))}
               </ul>
             ) : (
-              <p className="text-primary font-medium mt-2.5">No updates found for {activeFilter}.</p>
+              <p className="text-primary font-medium mt-2.5 text-[19px]">No updates found for {activeFilter}.</p>
             )}
           </div>
         </div>

@@ -18,7 +18,7 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
         <a
           key={item}
           onClick={() => onFilter(item)}
-          className="no-underline text-primary py-4 px-1 font-bold transition-all flex-1 text-center cursor-pointer whitespace-nowrap text-base hover:bg-primary hover:text-primary-foreground"
+          className="no-underline text-primary py-4 px-1 font-bold transition-all flex-1 text-center cursor-pointer whitespace-nowrap text-[18px] hover:bg-primary hover:text-primary-foreground"
         >
           {item}
         </a>
@@ -31,7 +31,7 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
             onChange={e => onSearchChange(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Search..."
-            className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-base bg-transparent"
+            className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-[18px] bg-transparent"
           />
           <button onClick={onSearch} className="w-9 h-9 rounded-full border-none cursor-pointer flex items-center justify-center bg-background hover:bg-primary/10 transition-colors" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
             <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-primary stroke-[2.5] fill-none">

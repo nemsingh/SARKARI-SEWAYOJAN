@@ -431,7 +431,7 @@ const AdminPostEditor = () => {
     .main-wrapper { max-width: 1000px; margin: 20px auto; padding: 15px; }
     .job-detail-box { background: #ffffff; border-radius: 15px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); border-top: 5px solid #0b3d91; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 10px; border-bottom: 1px solid #eee; }
+    td { padding: 10px; border-bottom: 1px solid #eee; font-size: 19px; }
   </style>
 </head>
 <body>

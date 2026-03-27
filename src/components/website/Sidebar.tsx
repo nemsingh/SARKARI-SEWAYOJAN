@@ -36,7 +36,7 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
           <a
             key={item}
             onClick={() => handleClick(item)}
-            className="block py-4 px-8 no-underline text-primary font-semibold text-lg cursor-pointer hover:bg-primary hover:text-primary-foreground hover:pl-10 transition-all duration-200"
+            className="block py-4 px-8 no-underline text-primary font-semibold text-[20px] cursor-pointer hover:bg-primary hover:text-primary-foreground hover:pl-10 transition-all duration-200"
           >
             {item}
           </a>
