@@ -2,8 +2,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/admin-vikaskumar", "destination": "/admin" },
-    { "source": "/admin(.*)", "destination": "/admin" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/admin-vikaskumar", "destination": "/admin.html" },
+    { "source": "/admin(.*)", "destination": "/admin.html" }
   ]
 }

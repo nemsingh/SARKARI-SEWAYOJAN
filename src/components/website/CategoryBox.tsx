@@ -32,7 +32,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
       <ul className="list-none p-0 mt-2.5">
         {visibleLinks.map(link => (
           <li key={link.id} className="mb-2.5">
-            <div className="flex items-center text-primary font-medium text-base group">
+            <div className="flex items-center text-primary font-medium text-[18px] group">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
               {link.url ? (
                 <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
@@ -42,11 +42,11 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
                 link.title
               )}
               {link.is_new && (
-                <span className="ml-2 text-sm font-bold animate-blink-new">New</span>
+                <span className="ml-2 text-[15px] font-bold animate-blink-new">New</span>
               )}
             </div>
             {link.last_date_text && (
-              <div className="ml-4 text-sm text-destructive font-semibold mt-0.5">
+              <div className="ml-4 text-[15px] text-destructive font-semibold mt-0.5">
                 {link.last_date_text}
               </div>
             )}
@@ -58,7 +58,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
            href={`/category/${encodeURIComponent(name)}`}
            target="_blank"
            rel="noopener noreferrer"
-           className="block text-center text-primary font-bold mt-2 hover:underline text-base hover:text-accent transition-colors"
+           className="block text-center text-primary font-bold mt-2 hover:underline text-[18px] hover:text-accent transition-colors"
          >
            More →
          </a>

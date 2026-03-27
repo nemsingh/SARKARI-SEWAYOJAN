@@ -141,6 +141,9 @@ async function generate() {
   fs.writeFileSync(path.resolve(publicDir, 'admin.html'), adminHtml);
   console.log(`Generated admin.html shell`);
 
+  // 5.5 Generate 404 Page
+  generatePage('/404', homeData, '404.html', '404 - Page Not Found', 'The page you are looking for does not exist.');
+
   // 6. Generate data.json
   fs.writeFileSync(path.resolve(publicDir, 'data.json'), JSON.stringify(homeData));
   console.log(`Generated data.json`);
