@@ -136,6 +136,14 @@ interface ExcelEditorProps {
   channelId?: string;
 }
 
+const rgbToHex = (color: string) => {
+  if (!color) return '#000000';
+  if (color.startsWith('#')) return color;
+  const rgb = color.match(/\d+/g);
+  if (!rgb || rgb.length < 3) return '#000000';
+  return '#' + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+};
+
 const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isEditing, lang, channelId }: ExcelEditorProps) => {
   const [grid, setGrid] = useState<CellData[][]>(() => createEmptyGrid());
 
@@ -146,6 +154,17 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const [formulaValue, setFormulaValue] = useState('');
   const [currentFont, setCurrentFont] = useState('Arial');
   const [currentFontSize, setCurrentFontSize] = useState('18');
+  const [textColorHex, setTextColorHex] = useState('');
+  const [bgColorHex, setBgColorHex] = useState('');
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    justifyLeft: false,
+    justifyCenter: false,
+    justifyRight: false,
+    justifyFull: false,
+  });
   const [clipboardData, setClipboardData] = useState<{ text: string; style: Partial<CellData> }[]>([]);
   const [clipboardRange, setClipboardRange] = useState<{ rows: number; cols: number; data: { text: string; style: Partial<CellData> }[][] } | null>(null);
   const [colWidths, setColWidths] = useState<number[]>(Array(TOTAL_COLS).fill(80));
@@ -218,6 +237,15 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
       if (td && td.contains(range.commonAncestorContainer)) {
         savedSelectionRange.current = range.cloneRange();
+        setActiveFormats({
+          bold: document.queryCommandState('bold'),
+          italic: document.queryCommandState('italic'),
+          underline: document.queryCommandState('underline'),
+          justifyLeft: document.queryCommandState('justifyLeft'),
+          justifyCenter: document.queryCommandState('justifyCenter'),
+          justifyRight: document.queryCommandState('justifyRight'),
+          justifyFull: document.queryCommandState('justifyFull'),
+        });
       }
     }
   }, [activeCell]);
@@ -267,6 +295,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     const cell = grid[row][col];
     setCurrentFont(cell.fontFamily || 'Arial');
     setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '18');
+    setTextColorHex('');
+    setBgColorHex('');
   };
 
   const handleMouseOver = (row: number, col: number) => {
@@ -296,6 +326,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     const cell = grid[row][col];
     setCurrentFont(cell.fontFamily || 'Arial');
     setCurrentFontSize(cell.fontSize ? cell.fontSize.replace('px', '') : '18');
+    setTextColorHex('');
+    setBgColorHex('');
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -383,9 +415,13 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         selection.removeAllRanges();
         selection.addRange(range);
       }
+      td.focus();
     }
 
     if (range && !range.collapsed) {
+      if (activeElem !== td) {
+        td.focus();
+      }
       if (command === 'createLink') {
          document.execCommand(command, false, value);
          const links = td.querySelectorAll('a');
@@ -410,11 +446,6 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
          document.execCommand(command, false, value);
       } else {
          document.execCommand(command, false, value);
-      }
-      
-      // Restore focus to the input if it was active
-      if (activeElem && activeElem !== document.body && activeElem !== td) {
-        setTimeout(() => activeElem.focus(), 0);
       }
       
       // Update cell content
@@ -791,6 +822,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     window.open(`/admin/excel-fullscreen?lang=${lang || 'en'}&channel=${ch}`, '_blank');
   };
 
+  const activeCellData = activeCell ? grid[activeCell.row][activeCell.col] : null;
+
   return (
     <div>
       {/* Ribbon */}
@@ -832,10 +865,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               <option value="Times New Roman">Times New Roman</option>
               <option value="Georgia">Georgia</option>
             </select>
-            <input type="number" value={currentFontSize} onChange={e => { setCurrentFontSize(e.target.value); if (!applyRichTextFormat('fontSizePx', e.target.value + 'px')) applyToSelection('fontSize', e.target.value + 'px'); }} className="w-11 px-1 text-sm border border-border bg-background" />
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className="px-2 cursor-pointer border border-transparent bg-transparent font-bold hover:bg-border">B</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className="px-2 cursor-pointer border border-transparent bg-transparent italic hover:bg-border">I</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className="px-2 cursor-pointer border border-transparent bg-transparent underline hover:bg-border">U</button>
+            <input type="number" value={currentFontSize} onChange={e => setCurrentFontSize(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); } }} className="w-11 px-1 text-sm border border-border bg-background" />
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = (parseInt(currentFontSize) || 18) + 1; setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-sm font-bold" title="Increase Font Size">A&#8593;</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = Math.max(1, (parseInt(currentFontSize) || 18) - 1); setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-xs font-bold" title="Decrease Font Size">A&#8595;</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className={`px-2 cursor-pointer border border-transparent font-bold hover:bg-border ${activeFormats.bold || activeCellData?.fontWeight === 'bold' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>B</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className={`px-2 cursor-pointer border border-transparent italic hover:bg-border ${activeFormats.italic || activeCellData?.fontStyle === 'italic' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>I</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className={`px-2 cursor-pointer border border-transparent underline hover:bg-border ${activeFormats.underline || activeCellData?.textDecoration === 'underline' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>U</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { 
               if (!applyRichTextFormat('removeFormat')) { 
                 // Clear cell-level formatting
@@ -865,18 +900,18 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Clear Formatting">🆑</button>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">A</label>
-              <input type="color" onChange={e => { if (!applyRichTextFormat('foreColor', e.target.value)) applyToSelection('color', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Text Color" />
+              <input type="color" value={rgbToHex(activeCellData?.color || '#000000')} onChange={e => { if (!applyRichTextFormat('foreColor', e.target.value)) applyToSelection('color', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Text Color" />
             </div>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">🎨</label>
-              <input type="color" defaultValue="#ffffff" onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
+              <input type="color" value={rgbToHex(activeCellData?.backgroundColor === 'transparent' || !activeCellData?.backgroundColor ? '#ffffff' : activeCellData.backgroundColor)} onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
+              <input type="text" value={textColorHex} onChange={e => setTextColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = textColorHex.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
               <label className="text-[10px]">Text</label>
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('hiliteColor', color)) applyToSelection('backgroundColor', color); } } }} title="Fill Color Code" />
+              <input type="text" value={bgColorHex} onChange={e => setBgColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = bgColorHex.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('hiliteColor', color)) applyToSelection('backgroundColor', color); } } }} title="Fill Color Code" />
               <label className="text-[10px]">Fill</label>
             </div>
           </div>
@@ -886,13 +921,13 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Alignment */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyLeft')) applyToSelection('textAlign', 'left'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Left">⬅ L</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyCenter')) applyToSelection('textAlign', 'center'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Center">⬌ C</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyRight')) applyToSelection('textAlign', 'right'); }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Right">➡ R</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyLeft')) applyToSelection('textAlign', 'left'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyLeft || activeCellData?.textAlign === 'left' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Left">⬅ L</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyCenter')) applyToSelection('textAlign', 'center'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyCenter || activeCellData?.textAlign === 'center' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Center">⬌ C</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyRight')) applyToSelection('textAlign', 'right'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyRight || activeCellData?.textAlign === 'right' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Right">➡ R</button>
             <span className="border-l border-border mx-1 h-6"></span>
-            <button onClick={() => applyToSelection('verticalAlign', 'top')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Top">⬆ T</button>
-            <button onClick={() => applyToSelection('verticalAlign', 'middle')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Middle">⬍ M</button>
-            <button onClick={() => applyToSelection('verticalAlign', 'bottom')} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Align Bottom">⬇ B</button>
+            <button onClick={() => applyToSelection('verticalAlign', 'top')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'top' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Top">⬆ T</button>
+            <button onClick={() => applyToSelection('verticalAlign', 'middle')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'middle' || !activeCellData?.verticalAlign ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Middle">⬍ M</button>
+            <button onClick={() => applyToSelection('verticalAlign', 'bottom')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'bottom' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Bottom">⬇ B</button>
             <button onClick={mergeCells} className="px-2 cursor-pointer bg-primary/10 font-bold border border-primary text-sm hover:bg-primary/20 rounded">🔗 Merge</button>
             <button onClick={unmergeCells} className="px-2 cursor-pointer bg-destructive/10 font-bold border border-destructive text-sm hover:bg-destructive/20 rounded">🔓 Unmerge</button>
           </div>
