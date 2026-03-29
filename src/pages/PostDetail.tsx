@@ -74,6 +74,15 @@ const PostDetail = () => {
       const cachedLinks = getCache<any[]>('category_links');
       const cachedSettings = getCache<Record<string, string>>('settings_flat');
 
+      if (cachedPost && cachedPost.tables_html !== undefined && cachedCats && cachedLinks && cachedSettings) {
+        setPost(cachedPost);
+        setCategories(cachedCats);
+        setCategoryLinks(cachedLinks);
+        setSettings(cachedSettings);
+        setNotFound(false);
+        return;
+      }
+
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
       let data: any;
 
@@ -101,7 +110,7 @@ const PostDetail = () => {
                        allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
         
         // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
-        if (!postData || !postData.tables_html) {
+        if (!postData || postData.tables_html === undefined) {
           if (import.meta.env.DEV) {
             try {
               const { getPostBySlug, getPostById } = await import('@/lib/firebaseService');

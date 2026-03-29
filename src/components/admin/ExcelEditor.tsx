@@ -150,6 +150,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const [selectedCells, setSelectedCells] = useState<{ row: number; col: number }[]>([]);
   const [activeCell, setActiveCellState] = useState<{ row: number; col: number } | null>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
+  const [selectionDragMode, setSelectionDragMode] = useState<'none' | 'top-left' | 'bottom-right'>('none');
   const [startCell, setStartCell] = useState<{ row: number; col: number } | null>(null);
   const [formulaValue, setFormulaValue] = useState('');
   const [currentFont, setCurrentFont] = useState('Arial');
@@ -171,6 +172,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const [rowHeights, setRowHeights] = useState<number[]>(Array(TOTAL_ROWS).fill(24));
   const gridRef = useRef<HTMLTableElement>(null);
   const savedSelectionRange = useRef<Range | null>(null);
+  const skipHtmlUpdateForCell = useRef<{row: number, col: number} | null>(null);
 
   const [historyState, setHistoryState] = useState<{ history: CellData[][][], index: number }>({
     history: [],
@@ -199,7 +201,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       }
       const newHistory = history.slice(0, index + 1);
       newHistory.push(grid);
-      if (newHistory.length > 50) {
+      if (newHistory.length > 4) {
         newHistory.shift();
       }
       return { history: newHistory, index: newHistory.length - 1 };
@@ -231,21 +233,44 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const saveSelection = useCallback(() => {
+    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'SELECT') return;
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0 && activeCell) {
       const range = selection.getRangeAt(0);
       const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
       if (td && td.contains(range.commonAncestorContainer)) {
         savedSelectionRange.current = range.cloneRange();
-        setActiveFormats({
-          bold: document.queryCommandState('bold'),
-          italic: document.queryCommandState('italic'),
-          underline: document.queryCommandState('underline'),
-          justifyLeft: document.queryCommandState('justifyLeft'),
-          justifyCenter: document.queryCommandState('justifyCenter'),
-          justifyRight: document.queryCommandState('justifyRight'),
-          justifyFull: document.queryCommandState('justifyFull'),
-        });
+        
+        let node = range.commonAncestorContainer as HTMLElement;
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentElement as HTMLElement;
+        }
+        if (node) {
+          const computedStyle = window.getComputedStyle(node);
+          setCurrentFont(computedStyle.fontFamily.replace(/['"]/g, ''));
+          setCurrentFontSize(computedStyle.fontSize.replace('px', ''));
+          
+          const newFormats = {
+            bold: document.queryCommandState('bold') || computedStyle.fontWeight === 'bold' || parseInt(computedStyle.fontWeight) >= 700,
+            italic: document.queryCommandState('italic') || computedStyle.fontStyle === 'italic',
+            underline: document.queryCommandState('underline') || computedStyle.textDecorationLine === 'underline',
+            justifyLeft: document.queryCommandState('justifyLeft') || computedStyle.textAlign === 'left',
+            justifyCenter: document.queryCommandState('justifyCenter') || computedStyle.textAlign === 'center',
+            justifyRight: document.queryCommandState('justifyRight') || computedStyle.textAlign === 'right',
+            justifyFull: document.queryCommandState('justifyFull') || computedStyle.textAlign === 'justify',
+          };
+          
+          setActiveFormats(prev => {
+            let changed = false;
+            for (const key in newFormats) {
+              if (prev[key as keyof typeof prev] !== newFormats[key as keyof typeof newFormats]) {
+                changed = true;
+                break;
+              }
+            }
+            return changed ? newFormats : prev;
+          });
+        }
       }
     }
   }, [activeCell]);
@@ -299,7 +324,32 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     setBgColorHex('');
   };
 
-  const handleMouseOver = (row: number, col: number) => {
+  const updateSelection = (row: number, col: number) => {
+    if (selectionDragMode !== 'none' && activeCell) {
+      let anchorRow = activeCell.row;
+      let anchorCol = activeCell.col;
+      
+      if (selectionDragMode === 'top-left') {
+        const cell = grid[activeCell.row][activeCell.col];
+        anchorRow = activeCell.row + cell.rowSpan - 1;
+        anchorCol = activeCell.col + cell.colSpan - 1;
+      }
+      
+      const newMinRow = Math.min(anchorRow, row);
+      const newMaxRow = Math.max(anchorRow, row);
+      const newMinCol = Math.min(anchorCol, col);
+      const newMaxCol = Math.max(anchorCol, col);
+
+      const cells: { row: number; col: number }[] = [];
+      for (let r = newMinRow; r <= newMaxRow; r++) {
+        for (let c = newMinCol; c <= newMaxCol; c++) {
+          if (!grid[r][c].hidden) cells.push({ row: r, col: c });
+        }
+      }
+      setSelectedCells(cells);
+      return;
+    }
+
     if (!isMouseDown || !startCell) return;
     const rowStart = Math.min(startCell.row, row);
     const rowEnd = Math.max(startCell.row, row);
@@ -312,6 +362,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       }
     }
     setSelectedCells(cells);
+  };
+
+  const handleMouseOver = (row: number, col: number) => {
+    updateSelection(row, col);
   };
 
   // Touch handlers
@@ -332,28 +386,21 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
-    if (!isMouseDown || !startCell) return;
+    if (!isMouseDown && selectionDragMode === 'none') return;
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
     if (element?.dataset?.row && element?.dataset?.col) {
       const row = parseInt(element.dataset.row);
       const col = parseInt(element.dataset.col);
-      const rowStart = Math.min(startCell.row, row);
-      const rowEnd = Math.max(startCell.row, row);
-      const colStart = Math.min(startCell.col, col);
-      const colEnd = Math.max(startCell.col, col);
-      const cells: { row: number; col: number }[] = [];
-      for (let r = rowStart; r <= rowEnd; r++) {
-        for (let c = colStart; c <= colEnd; c++) {
-          if (!grid[r][c].hidden) cells.push({ row: r, col: c });
-        }
-      }
-      setSelectedCells(cells);
+      updateSelection(row, col);
     }
   };
 
   useEffect(() => {
-    const handleUp = () => setIsMouseDown(false);
+    const handleUp = () => {
+      setIsMouseDown(false);
+      setSelectionDragMode('none');
+    };
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchend', handleUp);
     return () => {
@@ -411,17 +458,23 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
     if (!range && savedSelectionRange.current && td.contains(savedSelectionRange.current.commonAncestorContainer)) {
       range = savedSelectionRange.current;
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-      td.focus();
     }
 
     if (range && !range.collapsed) {
       if (activeElem !== td) {
-        td.focus();
+        td.focus({ preventScroll: true });
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
       }
+      
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+      } catch (e) {
+        // Ignore error if not supported
+      }
+
       if (command === 'createLink') {
          document.execCommand(command, false, value);
          const links = td.querySelectorAll('a');
@@ -600,11 +653,13 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const handleFormulaChange = (val: string) => {
     setFormulaValue(val);
     if (activeCell) {
+      skipHtmlUpdateForCell.current = null;
       updateCell(activeCell.row, activeCell.col, { text: val });
     }
   };
 
   const handleCellInput = (row: number, col: number, html: string) => {
+    skipHtmlUpdateForCell.current = { row, col };
     updateCell(row, col, { text: html });
     if (activeCell && activeCell.row === row && activeCell.col === col) {
       const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
@@ -729,11 +784,17 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         const c = parseInt(td.getAttribute('data-col') || '0');
         if (r < TOTAL_ROWS && c < TOTAL_COLS) {
           const cell = grid[r][c];
+          
+          if (skipHtmlUpdateForCell.current && skipHtmlUpdateForCell.current.row === r && skipHtmlUpdateForCell.current.col === c) {
+            return;
+          }
+
           if (td.innerHTML !== cell.text) {
             td.innerHTML = cell.text;
           }
         }
       });
+      skipHtmlUpdateForCell.current = null;
     }
   }, [gridKey, grid]);
 
@@ -824,6 +885,24 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const activeCellData = activeCell ? grid[activeCell.row][activeCell.col] : null;
 
+  const getActiveCellRect = () => {
+    if (!activeCell) return null;
+    let top = 24; // Header height
+    let left = 40; // Header width
+    for (let r = 0; r < activeCell.row; r++) top += rowHeights[r];
+    for (let c = 0; c < activeCell.col; c++) left += colWidths[c];
+    
+    const cell = grid[activeCell.row][activeCell.col];
+    let width = 0;
+    let height = 0;
+    for (let c = activeCell.col; c < activeCell.col + cell.colSpan; c++) width += colWidths[c];
+    for (let r = activeCell.row; r < activeCell.row + cell.rowSpan; r++) height += rowHeights[r];
+    
+    return { top, left, width, height };
+  };
+
+  const activeRect = getActiveCellRect();
+
   return (
     <div>
       {/* Ribbon */}
@@ -907,11 +986,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               <input type="color" value={rgbToHex(activeCellData?.backgroundColor === 'transparent' || !activeCellData?.backgroundColor ? '#ffffff' : activeCellData.backgroundColor)} onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" value={textColorHex} onChange={e => setTextColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = textColorHex.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
+              <input type="text" value={textColorHex} onChange={e => setTextColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = textColorHex.trim(); if (val) { const color = /^[0-9A-Fa-f]{3,6}$/.test(val) ? `#${val}` : val; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
               <label className="text-[10px]">Text</label>
             </div>
             <div className="flex items-center gap-0.5">
-              <input type="text" value={bgColorHex} onChange={e => setBgColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { const val = bgColorHex.trim(); if (val) { const color = val.startsWith('#') ? val : `#${val}`; if (!applyRichTextFormat('hiliteColor', color)) applyToSelection('backgroundColor', color); } } }} title="Fill Color Code" />
+              <input type="text" value={bgColorHex} onChange={e => setBgColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = bgColorHex.trim(); if (val) { const color = /^[0-9A-Fa-f]{3,6}$/.test(val) ? `#${val}` : val; if (!applyRichTextFormat('hiliteColor', color)) applyToSelection('backgroundColor', color); } } }} title="Fill Color Code" />
               <label className="text-[10px]">Fill</label>
             </div>
           </div>
@@ -925,11 +1004,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyCenter')) applyToSelection('textAlign', 'center'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyCenter || activeCellData?.textAlign === 'center' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Center">⬌ C</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyRight')) applyToSelection('textAlign', 'right'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyRight || activeCellData?.textAlign === 'right' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Right">➡ R</button>
             <span className="border-l border-border mx-1 h-6"></span>
-            <button onClick={() => applyToSelection('verticalAlign', 'top')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'top' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Top">⬆ T</button>
-            <button onClick={() => applyToSelection('verticalAlign', 'middle')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'middle' || !activeCellData?.verticalAlign ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Middle">⬍ M</button>
-            <button onClick={() => applyToSelection('verticalAlign', 'bottom')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'bottom' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Bottom">⬇ B</button>
-            <button onClick={mergeCells} className="px-2 cursor-pointer bg-primary/10 font-bold border border-primary text-sm hover:bg-primary/20 rounded">🔗 Merge</button>
-            <button onClick={unmergeCells} className="px-2 cursor-pointer bg-destructive/10 font-bold border border-destructive text-sm hover:bg-destructive/20 rounded">🔓 Unmerge</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyToSelection('verticalAlign', 'top')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'top' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Top">⬆ T</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyToSelection('verticalAlign', 'middle')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'middle' || !activeCellData?.verticalAlign ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Middle">⬍ M</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyToSelection('verticalAlign', 'bottom')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'bottom' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Bottom">⬇ B</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={mergeCells} className="px-2 cursor-pointer bg-primary/10 font-bold border border-primary text-sm hover:bg-primary/20 rounded">🔗 Merge</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={unmergeCells} className="px-2 cursor-pointer bg-destructive/10 font-bold border border-destructive text-sm hover:bg-destructive/20 rounded">🔓 Unmerge</button>
           </div>
           <span className="text-[10px] text-muted-foreground uppercase">Alignment</span>
         </div>
@@ -937,9 +1016,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Borders */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onClick={() => applyBorder('all')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">⬛ All</button>
-            <button onClick={() => applyBorder('outside')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">▢ Outside</button>
-            <button onClick={() => applyBorder('none')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">❌ No</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyBorder('all')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">⬛ All</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyBorder('outside')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">▢ Outside</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => applyBorder('none')} className="px-1 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">❌ No</button>
           </div>
           <span className="text-[10px] text-muted-foreground uppercase">Borders</span>
         </div>
@@ -1005,9 +1084,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             <tr>
               <th className="excel-header sticky top-0 left-0 z-10 bg-muted" style={{ width: 40 }}></th>
               {Array.from({ length: TOTAL_COLS }, (_, c) => (
-                <th key={c} className="excel-header sticky top-0 z-[2] relative" style={{ width: colWidths[c] }}>
+                <th key={c} className={`excel-header sticky top-0 z-[2] relative ${activeCell?.col === c ? 'bg-slate-200' : ''}`} style={{ width: colWidths[c] }}>
                   {getColLetter(c)}
-                  <div className="absolute top-0 right-[-3px] w-[6px] h-full cursor-col-resize z-10" onMouseDown={(e) => handleColResize(c, e)} />
+                  {activeCell?.col === c && (
+                    <div className="absolute top-1/2 -translate-y-1/2 right-[-2px] w-[4px] h-[12px] bg-slate-600 rounded-full cursor-col-resize z-20" onMouseDown={(e) => handleColResize(c, e)} />
+                  )}
                 </th>
               ))}
             </tr>
@@ -1015,9 +1096,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           <tbody>
             {grid.map((row, ri) => (
               <tr key={ri}>
-                <td className="excel-header sticky left-0 z-[3] bg-muted text-center font-bold text-xs relative" style={{ width: 40, height: rowHeights[ri] }}>
+                <td className={`excel-header sticky left-0 z-[3] text-center font-bold text-xs relative ${activeCell?.row === ri ? 'bg-slate-200' : 'bg-muted'}`} style={{ width: 40, height: rowHeights[ri] }}>
                   {ri + 1}
-                  <div className="absolute bottom-[-3px] left-0 w-full h-[6px] cursor-row-resize z-10" onMouseDown={(e) => handleRowResize(ri, e)} />
+                  {activeCell?.row === ri && (
+                    <div className="absolute bottom-[-2px] left-1/2 -translate-x-1/2 w-[12px] h-[4px] bg-slate-600 rounded-full cursor-row-resize z-20" onMouseDown={(e) => handleRowResize(ri, e)} />
+                  )}
                 </td>
                 {row.map((cell, ci) => {
                   if (cell.hidden) return null;
@@ -1055,6 +1138,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         }
                       }}
                       onBlur={e => {
+                        skipHtmlUpdateForCell.current = { row: ri, col: ci };
                         updateCell(ri, ci, { text: (e.target as HTMLElement).innerHTML });
                       }}
                     />
@@ -1064,6 +1148,42 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             ))}
           </tbody>
         </table>
+
+        {/* Selection Handles Overlay */}
+        {activeRect && (
+          <div 
+            className="absolute pointer-events-none z-20"
+            style={{
+              top: activeRect.top,
+              left: activeRect.left,
+              width: activeRect.width,
+              height: activeRect.height,
+            }}
+          >
+            <div 
+              className="absolute top-[-4px] left-[-4px] w-[8px] h-[8px] bg-primary border border-white rounded-full cursor-nwse-resize pointer-events-auto"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setSelectionDragMode('top-left');
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                setSelectionDragMode('top-left');
+              }}
+            />
+            <div 
+              className="absolute bottom-[-4px] right-[-4px] w-[8px] h-[8px] bg-primary border border-white rounded-full cursor-nwse-resize pointer-events-auto"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setSelectionDragMode('bottom-right');
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                setSelectionDragMode('bottom-right');
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Add Table Button */}

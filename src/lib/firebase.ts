@@ -19,9 +19,9 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore with auto-detect long polling for restricted network environments
+// Initialize Firestore with force long polling for restricted network environments (like Node.js build scripts)
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true
+  experimentalForceLongPolling: true
 });
 
 export default app;

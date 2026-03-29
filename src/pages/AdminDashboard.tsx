@@ -203,10 +203,18 @@ const AdminDashboard = () => {
           return linkSlug === slug || linkSlug === post.id;
         });
         await Promise.all(linkedLinks.map(l => deleteCategoryLink(l.id)));
+
+        const linkedTabletItems = tabletItems.filter(t => {
+          if (!t.url) return false;
+          const match = t.url.match(/\/post\/(.+)/);
+          const linkSlug = match ? match[1] : (!t.url.startsWith('http') && !t.url.startsWith('/') ? t.url : null);
+          return linkSlug === slug || linkSlug === post.id;
+        });
+        await Promise.all(linkedTabletItems.map(t => deleteTabletItemFn(t.id)));
       }
       await deletePostFn(id);
       await fetchAll();
-      toast({ title: 'Post & linked category links deleted!' });
+      toast({ title: 'Post & linked items deleted!' });
     });
   };
 

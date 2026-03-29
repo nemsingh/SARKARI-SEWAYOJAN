@@ -80,12 +80,14 @@ const CategoryMore = () => {
       
       let foundCategory = false;
       const decodedName = decodeURIComponent(name);
-      if (cachedCats && cachedLinks) {
+      if (cachedCats && cachedLinks && cachedSettings) {
         const cat = cachedCats.find((c: any) => c.name === decodedName);
         if (cat) {
           setCategory(cat);
           setLinks(cachedLinks.filter((l: any) => l.category_id === cat.id));
+          setNotFound(false);
           foundCategory = true;
+          return;
         }
       }
 

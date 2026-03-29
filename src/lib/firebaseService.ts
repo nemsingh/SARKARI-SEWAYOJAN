@@ -1,4 +1,5 @@
 import { db } from './firebase';
+import LZString from 'lz-string';
 import {
   collection,
   doc,
@@ -14,6 +15,20 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
+
+const decompressHtml = (html: string | null | undefined) => {
+  if (!html) return html;
+  if (html.startsWith('LZ16:')) {
+    return LZString.decompressFromUTF16(html.substring(5)) || html;
+  }
+  return html;
+};
+
+const compressHtml = (html: string | null | undefined) => {
+  if (!html) return html;
+  // Compress everything to be safe and consistent.
+  return 'LZ16:' + LZString.compressToUTF16(html);
+};
 
 // ============ CATEGORIES ============
 export const getCategories = async () => {
@@ -111,6 +126,8 @@ export const getPosts = async () => {
     return {
       id: d.id,
       ...data,
+      tables_html: decompressHtml(data.tables_html),
+      tables_html_hi: decompressHtml(data.tables_html_hi),
       created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
       updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
     };
@@ -127,12 +144,24 @@ export const getPostBySlug = async (slug: string): Promise<Record<string, any> |
   const snap = await getDocs(q);
   if (!snap.empty) {
     const d = snap.docs[0];
-    return { id: d.id, ...d.data() };
+    const data = d.data();
+    return { 
+      id: d.id, 
+      ...data,
+      tables_html: decompressHtml(data.tables_html),
+      tables_html_hi: decompressHtml(data.tables_html_hi),
+    };
   }
   const docRef = doc(db, 'posts', slug);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() };
+    const data = docSnap.data();
+    return { 
+      id: docSnap.id, 
+      ...data,
+      tables_html: decompressHtml(data.tables_html),
+      tables_html_hi: decompressHtml(data.tables_html_hi),
+    };
   }
   return null;
 };
@@ -141,14 +170,24 @@ export const getPostById = async (id: string): Promise<Record<string, any> | nul
   const docRef = doc(db, 'posts', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() };
+    const data = docSnap.data();
+    return { 
+      id: docSnap.id, 
+      ...data,
+      tables_html: decompressHtml(data.tables_html),
+      tables_html_hi: decompressHtml(data.tables_html_hi),
+    };
   }
   return null;
 };
 
 export const createPost = async (data: Record<string, any>) => {
+  const postData = { ...data };
+  if (postData.tables_html) postData.tables_html = compressHtml(postData.tables_html);
+  if (postData.tables_html_hi) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
+
   const docRef = await addDoc(collection(db, 'posts'), {
-    ...data,
+    ...postData,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
@@ -156,8 +195,12 @@ export const createPost = async (data: Record<string, any>) => {
 };
 
 export const updatePost = async (id: string, data: Record<string, any>) => {
+  const postData = { ...data };
+  if (postData.tables_html !== undefined) postData.tables_html = compressHtml(postData.tables_html);
+  if (postData.tables_html_hi !== undefined) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
+
   await updateDoc(doc(db, 'posts', id), {
-    ...data,
+    ...postData,
     updated_at: serverTimestamp(),
   });
 };

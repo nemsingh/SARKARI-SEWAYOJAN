@@ -24,7 +24,7 @@ async function generate() {
     getSiteSettingsFlat(),
   ]);
 
-  // Fix broken category links
+  // Fix or remove broken category links
   const postSlugs = posts.map(p => p.slug);
   const postIds = posts.map(p => p.id);
   const categoryLinks = initialCategoryLinks.map(l => {
@@ -35,10 +35,26 @@ async function generate() {
         if (match) {
           return { ...l, url: `/post/${match.slug}` };
         }
+        // Mark as broken if no match found
+        return { ...l, _broken: true };
       }
     }
     return l;
-  });
+  }).filter(l => !l._broken);
+
+  const validTabletItems = tabletItems.map(t => {
+    if (t.url && t.url.startsWith('/post/')) {
+      const slug = t.url.replace('/post/', '');
+      if (!postSlugs.includes(slug) && !postIds.includes(slug)) {
+        const match = posts.find(p => p.slug && p.slug.startsWith(slug));
+        if (match) {
+          return { ...t, url: `/post/${match.slug}` };
+        }
+        return { ...t, _broken: true };
+      }
+    }
+    return t;
+  }).filter(t => !t._broken);
 
   console.log('Data fetched successfully.');
 
@@ -101,7 +117,7 @@ async function generate() {
   const homeData = {
     categories,
     category_links: categoryLinks,
-    tablet_items: tabletItems,
+    tablet_items: validTabletItems,
     posts: lightweightPosts,
     settings_flat: settings,
   };
