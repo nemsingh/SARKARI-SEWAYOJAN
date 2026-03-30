@@ -170,6 +170,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const [clipboardRange, setClipboardRange] = useState<{ rows: number; cols: number; data: { text: string; style: Partial<CellData> }[][] } | null>(null);
   const [colWidths, setColWidths] = useState<number[]>(Array(TOTAL_COLS).fill(80));
   const [rowHeights, setRowHeights] = useState<number[]>(Array(TOTAL_ROWS).fill(24));
+  const [selectedRowHeader, setSelectedRowHeader] = useState<number | null>(null);
+  const [selectedColHeader, setSelectedColHeader] = useState<number | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
   const savedSelectionRange = useRef<Range | null>(null);
   const skipHtmlUpdateForCell = useRef<{row: number, col: number} | null>(null);
@@ -385,13 +387,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
     if (!isMouseDown && selectionDragMode === 'none') return;
+    e.preventDefault(); // Only prevent default if we are dragging
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
-    if (element?.dataset?.row && element?.dataset?.col) {
-      const row = parseInt(element.dataset.row);
-      const col = parseInt(element.dataset.col);
+    const td = element?.closest('td');
+    if (td?.dataset?.row && td?.dataset?.col) {
+      const row = parseInt(td.dataset.row);
+      const col = parseInt(td.dataset.col);
       updateSelection(row, col);
     }
   };
@@ -485,11 +488,22 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
            }
          });
       } else if (command === 'fontSizePx') {
+         document.execCommand('styleWithCSS', false, 'false');
          document.execCommand('fontSize', false, '7');
+         document.execCommand('styleWithCSS', false, 'true');
+         
          const fonts = td.querySelectorAll('font[size="7"]');
          fonts.forEach(f => {
            f.removeAttribute('size');
            f.style.fontSize = value || '18px';
+         });
+         
+         // Fallback for browsers that create spans instead of fonts even with styleWithCSS=false
+         const spans = td.querySelectorAll('span');
+         spans.forEach(s => {
+           if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
+             s.style.fontSize = value || '18px';
+           }
          });
       } else if (command === 'fontNameCustom') {
          document.execCommand('fontName', false, value);
@@ -533,12 +547,13 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     updateGrid(g => {
       const newGrid = g.map(r => [...r]);
       selectedCells.forEach(({ row, col }) => {
-        const cell = newGrid[row][col];
+        const cell = { ...newGrid[row][col] };
         if (['fontWeight', 'fontStyle', 'textDecoration'].includes(prop)) {
           (cell as any)[prop] = (cell as any)[prop] === value ? 'normal' : value;
         } else {
           (cell as any)[prop] = value;
         }
+        newGrid[row][col] = cell;
       });
       return newGrid;
     });
@@ -670,34 +685,74 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const isSelected = (row: number, col: number) => selectedCells.some(c => c.row === row && c.col === col);
   const isActive = (row: number, col: number) => activeCell?.row === row && activeCell?.col === col;
 
+  const handleColHeaderClick = (colIndex: number) => {
+    const cells: { row: number; col: number }[] = [];
+    for (let r = 0; r < TOTAL_ROWS; r++) {
+      if (!grid[r][colIndex].hidden) cells.push({ row: r, col: colIndex });
+    }
+    setSelectedCells(cells);
+    setActiveCellState({ row: 0, col: colIndex });
+    setStartCell({ row: 0, col: colIndex });
+    setSelectedColHeader(colIndex);
+    setSelectedRowHeader(null);
+  };
+
+  const handleRowHeaderClick = (rowIndex: number) => {
+    const cells: { row: number; col: number }[] = [];
+    for (let c = 0; c < TOTAL_COLS; c++) {
+      if (!grid[rowIndex][c].hidden) cells.push({ row: rowIndex, col: c });
+    }
+    setSelectedCells(cells);
+    setActiveCellState({ row: rowIndex, col: 0 });
+    setStartCell({ row: rowIndex, col: 0 });
+    setSelectedRowHeader(rowIndex);
+    setSelectedColHeader(null);
+  };
+
   // Column resize
-  const handleColResize = (colIndex: number, e: React.MouseEvent) => {
+  const handleColResize = (colIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const startX = e.clientX;
+    const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const startWidth = colWidths[colIndex];
-    const onMouseMove = (ev: MouseEvent) => {
-      const diff = ev.clientX - startX;
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      const currentX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
+      const diff = currentX - startX;
       setColWidths(prev => { const next = [...prev]; next[colIndex] = Math.max(30, startWidth + diff); return next; });
     };
-    const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    const onUp = () => { 
+      window.removeEventListener('mousemove', onMove as any); 
+      window.removeEventListener('mouseup', onUp); 
+      window.removeEventListener('touchmove', onMove as any); 
+      window.removeEventListener('touchend', onUp); 
+    };
+    window.addEventListener('mousemove', onMove as any);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove as any, { passive: false });
+    window.addEventListener('touchend', onUp);
   };
 
   // Row resize
-  const handleRowResize = (rowIndex: number, e: React.MouseEvent) => {
+  const handleRowResize = (rowIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const startY = e.clientY;
+    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const startHeight = rowHeights[rowIndex];
-    const onMouseMove = (ev: MouseEvent) => {
-      const diff = ev.clientY - startY;
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      const currentY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
+      const diff = currentY - startY;
       setRowHeights(prev => { const next = [...prev]; next[rowIndex] = Math.max(15, startHeight + diff); return next; });
     };
-    const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    const onUp = () => { 
+      window.removeEventListener('mousemove', onMove as any); 
+      window.removeEventListener('mouseup', onUp); 
+      window.removeEventListener('touchmove', onMove as any); 
+      window.removeEventListener('touchend', onUp); 
+    };
+    window.addEventListener('mousemove', onMove as any);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove as any, { passive: false });
+    window.addEventListener('touchend', onUp);
   };
 
   // Sync all DOM cell contents to grid state before generating HTML
@@ -775,7 +830,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     }
   }, [isEditing, initialHtml, resetGrid]);
 
-  // Inject HTML into contentEditable cells when gridKey changes (e.g., on load)
+  // Inject HTML into contentEditable cells when gridKey changes (e.g., on load) or after any render
   useEffect(() => {
     if (gridRef.current) {
       const cells = gridRef.current.querySelectorAll('td[data-row][data-col]');
@@ -796,7 +851,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       });
       skipHtmlUpdateForCell.current = null;
     }
-  }, [gridKey, grid]);
+  });
 
   const handleAddTable = () => {
     const syncedGrid = syncDomToGrid();
@@ -885,23 +940,48 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const activeCellData = activeCell ? grid[activeCell.row][activeCell.col] : null;
 
-  const getActiveCellRect = () => {
-    if (!activeCell) return null;
-    let top = 24; // Header height
-    let left = 40; // Header width
-    for (let r = 0; r < activeCell.row; r++) top += rowHeights[r];
-    for (let c = 0; c < activeCell.col; c++) left += colWidths[c];
-    
-    const cell = grid[activeCell.row][activeCell.col];
-    let width = 0;
-    let height = 0;
-    for (let c = activeCell.col; c < activeCell.col + cell.colSpan; c++) width += colWidths[c];
-    for (let r = activeCell.row; r < activeCell.row + cell.rowSpan; r++) height += rowHeights[r];
-    
-    return { top, left, width, height };
-  };
+  const [selectionRect, setSelectionRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
 
-  const activeRect = getActiveCellRect();
+  useEffect(() => {
+    if (selectedCells.length === 0 || !gridRef.current) {
+      setSelectionRect(null);
+      return;
+    }
+    
+    let minTop = Infinity;
+    let minLeft = Infinity;
+    let maxBottom = -Infinity;
+    let maxRight = -Infinity;
+    
+    let found = false;
+
+    selectedCells.forEach(({ row, col }) => {
+      const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+      if (td) {
+        found = true;
+        const top = td.offsetTop;
+        const left = td.offsetLeft;
+        const bottom = top + td.offsetHeight;
+        const right = left + td.offsetWidth;
+        
+        if (top < minTop) minTop = top;
+        if (left < minLeft) minLeft = left;
+        if (bottom > maxBottom) maxBottom = bottom;
+        if (right > maxRight) maxRight = right;
+      }
+    });
+
+    if (found) {
+      setSelectionRect({
+        top: minTop,
+        left: minLeft,
+        width: maxRight - minLeft,
+        height: maxBottom - minTop,
+      });
+    } else {
+      setSelectionRect(null);
+    }
+  }, [selectedCells, grid, colWidths, rowHeights]);
 
   return (
     <div>
@@ -1078,16 +1158,32 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       </div>
 
       {/* Grid */}
-      <div className="h-[500px] overflow-auto bg-muted relative border border-border">
-        <table key={gridKey} ref={gridRef} className="border-collapse bg-background" style={{ tableLayout: 'fixed' }}>
+      <div className="h-[500px] overflow-auto bg-muted border border-border">
+        <div 
+          className="relative inline-block min-w-full"
+          onTouchMove={handleTouchMove}
+        >
+          <table key={gridKey} ref={gridRef} className="border-collapse bg-background" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr>
               <th className="excel-header sticky top-0 left-0 z-10 bg-muted" style={{ width: 40 }}></th>
               {Array.from({ length: TOTAL_COLS }, (_, c) => (
-                <th key={c} className={`excel-header sticky top-0 z-[2] relative ${activeCell?.col === c ? 'bg-slate-200' : ''}`} style={{ width: colWidths[c] }}>
+                <th 
+                  key={c} 
+                  className={`excel-header sticky top-0 z-[2] relative cursor-pointer ${selectedColHeader === c ? 'bg-slate-300' : activeCell?.col === c ? 'bg-slate-200' : ''}`} 
+                  style={{ width: colWidths[c] }}
+                  onClick={() => handleColHeaderClick(c)}
+                >
                   {getColLetter(c)}
-                  {activeCell?.col === c && (
-                    <div className="absolute top-1/2 -translate-y-1/2 right-[-2px] w-[4px] h-[12px] bg-slate-600 rounded-full cursor-col-resize z-20" onMouseDown={(e) => handleColResize(c, e)} />
+                  {selectedColHeader === c && (
+                    <div 
+                      className="absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center" 
+                      onMouseDown={(e) => handleColResize(c, e)}
+                      onTouchStart={(e) => handleColResize(c, e)}
+                    >
+                      <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
+                      <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
+                    </div>
                   )}
                 </th>
               ))}
@@ -1096,10 +1192,21 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           <tbody>
             {grid.map((row, ri) => (
               <tr key={ri}>
-                <td className={`excel-header sticky left-0 z-[3] text-center font-bold text-xs relative ${activeCell?.row === ri ? 'bg-slate-200' : 'bg-muted'}`} style={{ width: 40, height: rowHeights[ri] }}>
+                <td 
+                  className={`excel-header sticky left-0 z-[3] text-center font-bold text-xs relative cursor-pointer ${selectedRowHeader === ri ? 'bg-slate-300' : activeCell?.row === ri ? 'bg-slate-200' : 'bg-muted'}`} 
+                  style={{ width: 40, height: rowHeights[ri] }}
+                  onClick={() => handleRowHeaderClick(ri)}
+                >
                   {ri + 1}
-                  {activeCell?.row === ri && (
-                    <div className="absolute bottom-[-2px] left-1/2 -translate-x-1/2 w-[12px] h-[4px] bg-slate-600 rounded-full cursor-row-resize z-20" onMouseDown={(e) => handleRowResize(ri, e)} />
+                  {selectedRowHeader === ri && (
+                    <div 
+                      className="absolute bottom-[-4px] left-0 w-full h-[8px] cursor-row-resize z-20 flex flex-col items-center justify-center" 
+                      onMouseDown={(e) => handleRowResize(ri, e)}
+                      onTouchStart={(e) => handleRowResize(ri, e)}
+                    >
+                      <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
+                      <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
+                    </div>
                   )}
                 </td>
                 {row.map((cell, ci) => {
@@ -1131,7 +1238,6 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                       onMouseDown={() => handleMouseDown(ri, ci)}
                       onMouseOver={() => handleMouseOver(ri, ci)}
                       onTouchStart={(e) => handleTouchStart(e, ri, ci)}
-                      onTouchMove={handleTouchMove}
                       onInput={e => {
                         if (activeCell && activeCell.row === ri && activeCell.col === ci) {
                           setFormulaValue((e.target as HTMLElement).innerText);
@@ -1149,41 +1255,42 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           </tbody>
         </table>
 
-        {/* Selection Handles Overlay */}
-        {activeRect && (
-          <div 
-            className="absolute pointer-events-none z-20"
-            style={{
-              top: activeRect.top,
-              left: activeRect.left,
-              width: activeRect.width,
-              height: activeRect.height,
-            }}
-          >
+          {/* Selection Handles Overlay */}
+          {selectionRect && (
             <div 
-              className="absolute top-[-4px] left-[-4px] w-[8px] h-[8px] bg-primary border border-white rounded-full cursor-nwse-resize pointer-events-auto"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setSelectionDragMode('top-left');
+              className="absolute pointer-events-none z-20 border-2 border-primary"
+              style={{
+                top: selectionRect.top,
+                left: selectionRect.left,
+                width: selectionRect.width,
+                height: selectionRect.height,
               }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                setSelectionDragMode('top-left');
-              }}
-            />
-            <div 
-              className="absolute bottom-[-4px] right-[-4px] w-[8px] h-[8px] bg-primary border border-white rounded-full cursor-nwse-resize pointer-events-auto"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setSelectionDragMode('bottom-right');
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                setSelectionDragMode('bottom-right');
-              }}
-            />
-          </div>
-        )}
+            >
+              <div 
+                className="absolute top-[-6px] left-[-6px] w-[10px] h-[10px] bg-primary border-2 border-white rounded-full cursor-nwse-resize pointer-events-auto"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setSelectionDragMode('top-left');
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  setSelectionDragMode('top-left');
+                }}
+              />
+              <div 
+                className="absolute bottom-[-6px] right-[-6px] w-[10px] h-[10px] bg-primary border-2 border-white rounded-full cursor-nwse-resize pointer-events-auto"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setSelectionDragMode('bottom-right');
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  setSelectionDragMode('bottom-right');
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add Table Button */}

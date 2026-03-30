@@ -91,32 +91,6 @@ const CategoryMore = () => {
         }
       }
 
-      if (import.meta.env.DEV) {
-        try {
-          const { getCategories, getCategoryLinks, getSiteSettingsFlat } = await import('@/lib/firebaseService');
-          const [allCats, allLinks, sett] = await Promise.all([
-            getCategories(),
-            getCategoryLinks(),
-            getSiteSettingsFlat()
-          ]);
-          
-          const decodedName2 = decodeURIComponent(name);
-          const cat = allCats.find((c: any) => c.name === decodedName2);
-          if (cat) {
-            setCategory(cat);
-            setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
-          } else {
-            setNotFound(true);
-          }
-          setCategories(allCats);
-          setCategoryLinks(allLinks);
-          setSettings(sett);
-          return;
-        } catch (e) {
-          console.error("Firebase fetch error in DEV mode:", e);
-        }
-      }
-
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
       let data: any;
 

@@ -37,23 +37,6 @@ const Index = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        if (import.meta.env.DEV) {
-          const { getCategories, getCategoryLinks, getPosts, getTabletItems, getSiteSettingsFlat } = await import('@/lib/firebaseService');
-          const [cats, links, psts, tabs, sett] = await Promise.all([
-            getCategories(),
-            getCategoryLinks(),
-            getPosts(),
-            getTabletItems(),
-            getSiteSettingsFlat()
-          ]);
-          setCategories(cats);
-          setCategoryLinks(links);
-          setPosts(psts);
-          setTabletItems(tabs);
-          setSettings(sett);
-          return;
-        }
-
         const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
         let data: any;
 

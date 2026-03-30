@@ -2,7 +2,7 @@
 // These are publishable client-side keys (safe to include in frontend code)
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC_Tl9QGjU2jXd_1F_dWxF7XoxhP_9ttyU",
@@ -19,9 +19,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore with force long polling for restricted network environments (like Node.js build scripts)
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
-});
+// Initialize Firestore
+export const db = getFirestore(app);
 
 export default app;

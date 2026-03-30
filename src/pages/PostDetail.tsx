@@ -1,8 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
-import { supabase } from '@/integrations/supabase/client';
-import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -50,9 +48,6 @@ const PostDetail = () => {
   const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
   const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
-  const [translating, setTranslating] = useState(false);
-  const [translated, setTranslated] = useState<Record<string, string>>({});
-  const [translationSource, setTranslationSource] = useState<'ai' | 'google' | null>(null);
 
   const [notFound, setNotFound] = useState(() => {
     if (initialData) {
@@ -111,29 +106,14 @@ const PostDetail = () => {
         
         // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
         if (!postData || postData.tables_html === undefined) {
-          if (import.meta.env.DEV) {
-            try {
-              const { getPostBySlug, getPostById } = await import('@/lib/firebaseService');
-              const fbPost = await getPostBySlug(slug);
-              if (fbPost) {
-                postData = fbPost;
-              } else {
-                const fbPostById = await getPostById(slug);
-                if (fbPostById) postData = fbPostById;
-              }
-            } catch (err) {
-              console.error("Error fetching from Firebase fallback:", err);
+          // Fetch the individual post JSON generated at build time
+          try {
+            const res = await fetch(`/data/post_${slug}.json`);
+            if (res.ok) {
+              postData = await res.json();
             }
-          } else {
-            // Fetch the individual post JSON generated at build time
-            try {
-              const res = await fetch(`/data/post_${slug}.json`);
-              if (res.ok) {
-                postData = await res.json();
-              }
-            } catch (err) {
-              console.error("Error fetching static post JSON:", err);
-            }
+          } catch (err) {
+            console.error("Error fetching static post JSON:", err);
           }
         }
 
@@ -151,115 +131,28 @@ const PostDetail = () => {
         setCache('category_links', links);
         setCache('settings_flat', sett);
       } else {
-        // If data.json fails, try fetching individual post JSON or Firebase in DEV
-        if (import.meta.env.DEV) {
-          try {
-            const { getPostBySlug, getPostById } = await import('@/lib/firebaseService');
-            let postData = await getPostBySlug(slug);
-            if (!postData) {
-              postData = await getPostById(slug);
-            }
-            if (postData) {
-              setPost(postData);
-              setNotFound(false);
-            } else {
-              setNotFound(true);
-            }
-          } catch (err) {
+        // If data.json fails, try fetching individual post JSON
+        try {
+          const res = await fetch(`/data/post_${slug}.json`);
+          if (res.ok) {
+            const postData = await res.json();
+            setPost(postData);
+            setNotFound(false);
+          } else {
             setNotFound(true);
           }
-        } else {
-          try {
-            const res = await fetch(`/data/post_${slug}.json`);
-            if (res.ok) {
-              const postData = await res.json();
-              setPost(postData);
-              setNotFound(false);
-            } else {
-              setNotFound(true);
-            }
-          } catch (err) {
-            setNotFound(true);
-          }
+        } catch (err) {
+          setNotFound(true);
         }
       }
     };
     fetchData();
   }, [slug]);
 
-  // Determine which fields need translation (not manually filled by admin)
-  const getFieldsNeedingTranslation = useCallback(() => {
-    if (!post) return [];
-    return TRANSLATABLE_FIELDS.filter(
-      ({ en, hi }) => !post[hi] && post[en] // No manual Hindi, but English exists
-    ).map(({ en }) => en);
-  }, [post]);
-
-  // Try AI translation first, then Google Translate as fallback
-  const translateFields = useCallback(async () => {
-    if (!post || translating) return;
-    const fieldsToTranslate = getFieldsNeedingTranslation();
-    if (fieldsToTranslate.length === 0) return; // All fields have manual Hindi
-
-    setTranslating(true);
-    const results: Record<string, string> = {};
-    let aiSuccess = true;
-
-    // Step 1: Try Lovable AI translation
-    try {
-      await Promise.all(
-        fieldsToTranslate.map(async (key) => {
-          const { data, error } = await supabase.functions.invoke('translate', {
-            body: { text: post[key], targetLang: 'hi' },
-          });
-          if (error || !data?.translated) {
-            throw new Error(`AI translation failed for ${key}`);
-          }
-          results[key] = data.translated;
-        })
-      );
-      setTranslationSource('ai');
-      console.log('✅ AI translation successful for fields:', fieldsToTranslate);
-    } catch (aiError) {
-      console.warn('⚠️ AI translation failed, falling back to Google Translate:', aiError);
-      aiSuccess = false;
-    }
-
-    // Step 2: If AI failed, use Google Translate for ALL remaining fields
-    if (!aiSuccess) {
-      try {
-        const googleResults = await Promise.all(
-          fieldsToTranslate.map(async (key) => {
-            const translatedText = await googleTranslate(post[key], 'hi');
-            return { key, translatedText };
-          })
-        );
-        googleResults.forEach(({ key, translatedText }) => {
-          results[key] = translatedText;
-        });
-        setTranslationSource('google');
-        console.log('✅ Google Translate fallback successful');
-      } catch (googleError) {
-        console.error('❌ Both AI and Google Translate failed:', googleError);
-      }
-    }
-
-    setTranslated(results);
-    setTranslating(false);
-  }, [post, translating, getFieldsNeedingTranslation]);
-
-  // Trigger translation when user switches to Hindi
-  useEffect(() => {
-    if (language === 'hi' && Object.keys(translated).length === 0) {
-      translateFields();
-    }
-  }, [language, translated, translateFields]);
-
-  // Smart field getter: Manual Hindi > Translated > English
+  // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
     if (language === 'hi') {
       if (post?.[hiField]) return post[hiField]; // Admin manual Hindi (highest priority)
-      if (translated[enField]) return translated[enField]; // AI or Google translated
       return post?.[enField] || ''; // Fallback to English
     }
     return post?.[enField] || '';
@@ -270,7 +163,7 @@ const PostDetail = () => {
     : { name: 'Name of Post:', date: 'Post Date / Update:', info: 'Short Info:' };
 
   const displayTablesHtml = language === 'hi'
-    ? (post?.tables_html_hi || translated['tables_html'] || post?.tables_html || '')
+    ? (post?.tables_html_hi || post?.tables_html || '')
     : (post?.tables_html || '');
 
   const mediaUrls: string[] = post?.media_urls || [];
@@ -331,10 +224,6 @@ const PostDetail = () => {
                 <option value="hi">हिन्दी</option>
               </select>
             </div>
-
-            {translating && language === 'hi' && (
-              <div className="text-center text-primary text-sm mb-3 animate-pulse">Translating to Hindi...</div>
-            )}
 
             <table key={language} className="w-full border-collapse mb-5">
               <tbody>
