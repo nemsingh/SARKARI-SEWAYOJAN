@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCache, setCache } from '@/lib/cache';
+import { fetchHomeData } from '@/lib/fetchData';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -43,10 +44,7 @@ const Index = () => {
         if (isStaticMode) {
           data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
         } else {
-          const res = await fetch('/data.json');
-          if (res.ok) {
-            data = await res.json();
-          }
+          data = await fetchHomeData();
         }
 
         if (data) {

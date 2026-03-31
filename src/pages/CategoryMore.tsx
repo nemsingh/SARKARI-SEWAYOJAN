@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
+import { fetchHomeData } from '@/lib/fetchData';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -98,10 +99,7 @@ const CategoryMore = () => {
         data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
       } else {
         try {
-          const res = await fetch('/data.json');
-          if (res.ok) {
-            data = await res.json();
-          }
+          data = await fetchHomeData();
         } catch (e) {
           console.error('Fetch error:', e);
         }

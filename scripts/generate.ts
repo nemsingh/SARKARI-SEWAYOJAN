@@ -73,15 +73,15 @@ async function generate() {
   }
   const { render } = await import(serverEntryPath);
 
-  const publicDir = path.resolve(root, 'public');
+  const publicDir = path.resolve(root, 'dist');
   
-  // Copy assets from dist to public
-  const distAssets = path.resolve(root, 'dist/assets');
-  const publicAssets = path.resolve(publicDir, 'assets');
-  if (fs.existsSync(distAssets)) {
-    fs.cpSync(distAssets, publicAssets, { recursive: true });
-    console.log('Copied assets to public/assets');
-  }
+  // No need to copy assets as they are already in dist
+  // const distAssets = path.resolve(root, 'dist/assets');
+  // const publicAssets = path.resolve(publicDir, 'assets');
+  // if (fs.existsSync(distAssets)) {
+  //   fs.cpSync(distAssets, publicAssets, { recursive: true });
+  //   console.log('Copied assets to public/assets');
+  // }
 
   const generatePage = (url: string, data: any, outputPath: string, title: string, description: string) => {
     try {

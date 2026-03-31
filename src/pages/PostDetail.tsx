@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
+import { fetchHomeData, fetchPostData } from '@/lib/fetchData';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -85,10 +86,7 @@ const PostDetail = () => {
         data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
       } else {
         try {
-          const res = await fetch('/data.json');
-          if (res.ok) {
-            data = await res.json();
-          }
+          data = await fetchHomeData();
         } catch (e) {
           console.error('Fetch error:', e);
         }
@@ -108,10 +106,7 @@ const PostDetail = () => {
         if (!postData || postData.tables_html === undefined) {
           // Fetch the individual post JSON generated at build time
           try {
-            const res = await fetch(`/data/post_${slug}.json`);
-            if (res.ok) {
-              postData = await res.json();
-            }
+            postData = await fetchPostData(slug!);
           } catch (err) {
             console.error("Error fetching static post JSON:", err);
           }
@@ -133,9 +128,8 @@ const PostDetail = () => {
       } else {
         // If data.json fails, try fetching individual post JSON
         try {
-          const res = await fetch(`/data/post_${slug}.json`);
-          if (res.ok) {
-            const postData = await res.json();
+          const postData = await fetchPostData(slug!);
+          if (postData) {
             setPost(postData);
             setNotFound(false);
           } else {
