@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import PostDetail from "./pages/PostDetail";
 import CategoryMore from "./pages/CategoryMore";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import DmcaPolicy from "./pages/DmcaPolicy";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
 
 const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
@@ -33,6 +36,9 @@ const App = () => (
             <Route path="/admin/post/:id" element={<AdminPostEditor />} />
             <Route path="/admin/excel-fullscreen" element={<AdminExcelFullscreen />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/dmca-policy" element={<DmcaPolicy />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+            <Route path="/contact-us" element={<ContactUs />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

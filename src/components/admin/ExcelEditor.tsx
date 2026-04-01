@@ -445,6 +445,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const applyRichTextFormat = (command: string, value?: string) => {
     if (!activeCell) return false;
     
+    // If multiple cells are selected, we should apply to all cells via applyToSelection
+    if (selectedCells.length > 1) return false;
+    
     const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
     if (!td) return false;
 
@@ -463,6 +466,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       range = savedSelectionRange.current;
     }
 
+    // Only apply rich text format if there is a text selection inside the cell
+    // Otherwise, return false to let applyToSelection handle the whole cell
     if (range && !range.collapsed) {
       if (activeElem !== td) {
         td.focus({ preventScroll: true });
@@ -763,7 +768,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       cells.forEach(td => {
         const r = parseInt(td.getAttribute('data-row') || '0');
         const c = parseInt(td.getAttribute('data-col') || '0');
-        if (r < TOTAL_ROWS && c < TOTAL_COLS) {
+        if (r < newGrid.length && c < newGrid[0].length) {
           const html = (td as HTMLElement).innerHTML || '';
           // Always use innerHTML to preserve all rich text formatting (colors, bold, links, lists, etc.)
           newGrid[r][c].text = html;
@@ -837,7 +842,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       cells.forEach(td => {
         const r = parseInt(td.getAttribute('data-row') || '0');
         const c = parseInt(td.getAttribute('data-col') || '0');
-        if (r < TOTAL_ROWS && c < TOTAL_COLS) {
+        if (r < grid.length && c < grid[0].length) {
           const cell = grid[r][c];
           
           if (skipHtmlUpdateForCell.current && skipHtmlUpdateForCell.current.row === r && skipHtmlUpdateForCell.current.col === c) {
@@ -1172,7 +1177,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           <thead>
             <tr>
               <th className="excel-header sticky top-0 left-0 z-10 bg-muted" style={{ width: 40 }}></th>
-              {Array.from({ length: TOTAL_COLS }, (_, c) => (
+              {Array.from({ length: grid[0]?.length || TOTAL_COLS }, (_, c) => (
                 <th 
                   key={c} 
                   className={`excel-header sticky top-0 z-[2] relative cursor-pointer ${selectedColHeader === c ? 'bg-slate-300' : activeCell?.col === c ? 'bg-slate-200' : ''}`} 

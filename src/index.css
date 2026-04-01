@@ -178,7 +178,8 @@
 }
 
 .excel-cell.active-cell {
-  border: 2px solid hsl(var(--primary)) !important;
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: -1px;
   z-index: 5;
 }
 

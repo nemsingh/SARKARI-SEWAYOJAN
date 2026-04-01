@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
 import { fetchHomeData, fetchPostData } from '@/lib/fetchData';
+import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -49,6 +50,8 @@ const PostDetail = () => {
   const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
   const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [translatedContent, setTranslatedContent] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [notFound, setNotFound] = useState(() => {
     if (initialData) {
@@ -143,10 +146,40 @@ const PostDetail = () => {
     fetchData();
   }, [slug]);
 
+  useEffect(() => {
+    if (language === 'hi' && post) {
+      const translateFields = async () => {
+        setIsTranslating(true);
+        const newTranslated: Record<string, string> = {};
+        let hasChanges = false;
+        
+        for (const { en, hi } of TRANSLATABLE_FIELDS) {
+          if (!post[hi] && post[en] && !translatedContent[en]) {
+            try {
+              const translated = await googleTranslate(post[en], 'hi');
+              newTranslated[en] = translated;
+              hasChanges = true;
+            } catch (e) {
+              console.error(`Translation failed for ${en}:`, e);
+            }
+          }
+        }
+        
+        if (hasChanges) {
+          setTranslatedContent(prev => ({ ...prev, ...newTranslated }));
+        }
+        setIsTranslating(false);
+      };
+      
+      translateFields();
+    }
+  }, [language, post]);
+
   // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
     if (language === 'hi') {
       if (post?.[hiField]) return post[hiField]; // Admin manual Hindi (highest priority)
+      if (translatedContent[enField]) return translatedContent[enField]; // Translated Hindi
       return post?.[enField] || ''; // Fallback to English
     }
     return post?.[enField] || '';
@@ -157,7 +190,7 @@ const PostDetail = () => {
     : { name: 'Name of Post:', date: 'Post Date / Update:', info: 'Short Info:' };
 
   const displayTablesHtml = language === 'hi'
-    ? (post?.tables_html_hi || post?.tables_html || '')
+    ? (post?.tables_html_hi || translatedContent['tables_html'] || post?.tables_html || '')
     : (post?.tables_html || '');
 
   const mediaUrls: string[] = post?.media_urls || [];

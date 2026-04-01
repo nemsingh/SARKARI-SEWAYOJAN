@@ -148,8 +148,11 @@ async function generate() {
     generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, catPath, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
   }
 
-  // 4. Generate Privacy Policy
+  // 4. Generate Static Policy Pages
   generatePage('/privacy-policy', homeData, 'privacy-policy/index.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
+  generatePage('/dmca-policy', homeData, 'dmca-policy/index.html', 'DMCA Policy - Sarkari Sewayojan', 'DMCA Policy');
+  generatePage('/terms-and-conditions', homeData, 'terms-and-conditions/index.html', 'Terms and Conditions - Sarkari Sewayojan', 'Terms and Conditions');
+  generatePage('/contact-us', homeData, 'contact-us/index.html', 'Contact Us - Sarkari Sewayojan', 'Contact Us');
 
   // 5. Generate Admin Shell
   const adminHtml = template.replace(`<!--ssr-outlet-->`, '')
