@@ -8,11 +8,18 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
       return await res.json();
     }
   } catch (e) {
-    console.warn(`Failed to fetch static JSON from ${url}, falling back to Firebase...`, e);
+    console.warn(`Failed to fetch static JSON from ${url}`, e);
   }
   
-  console.log(`Falling back to Firebase for ${url}`);
-  return await fallbackFetch();
+  // ONLY fallback to Firebase in development mode.
+  // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.
+  if (import.meta.env.DEV) {
+    console.log(`[DEV MODE] Falling back to Firebase for ${url}`);
+    return await fallbackFetch();
+  } else {
+    console.error(`[PROD MODE] Static JSON fetch failed for ${url}. No Firebase fallback allowed to save reads.`);
+    return null;
+  }
 }
 
 export async function fetchHomeData() {

@@ -186,6 +186,12 @@ export const createPost = async (data: Record<string, any>) => {
   if (postData.tables_html) postData.tables_html = compressHtml(postData.tables_html);
   if (postData.tables_html_hi) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
 
+  // Check size to prevent Firebase 1MB limit error (approx 500,000 UTF-16 chars)
+  const totalSize = (postData.tables_html?.length || 0) + (postData.tables_html_hi?.length || 0);
+  if (totalSize > 450000) {
+    throw new Error('Post content is too large. Please reduce the number of tables or text.');
+  }
+
   const docRef = await addDoc(collection(db, 'posts'), {
     ...postData,
     created_at: serverTimestamp(),
@@ -198,6 +204,12 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   const postData = { ...data };
   if (postData.tables_html !== undefined) postData.tables_html = compressHtml(postData.tables_html);
   if (postData.tables_html_hi !== undefined) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
+
+  // Check size to prevent Firebase 1MB limit error (approx 500,000 UTF-16 chars)
+  const totalSize = (postData.tables_html?.length || 0) + (postData.tables_html_hi?.length || 0);
+  if (totalSize > 450000) {
+    throw new Error('Post content is too large. Please reduce the number of tables or text.');
+  }
 
   await updateDoc(doc(db, 'posts', id), {
     ...postData,

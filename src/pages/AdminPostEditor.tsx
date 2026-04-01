@@ -402,7 +402,8 @@ const AdminPostEditor = () => {
         toast({ title: 'Post updated!' });
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      console.error('Save error:', error);
+      toast({ title: 'Error saving post', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
     }
   };
 

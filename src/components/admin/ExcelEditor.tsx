@@ -844,6 +844,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             return;
           }
 
+          // DO NOT overwrite if this cell is currently focused by the user
+          if (document.activeElement === td) {
+            return;
+          }
+
           if (td.innerHTML !== cell.text) {
             td.innerHTML = cell.text;
           }
