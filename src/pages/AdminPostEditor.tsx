@@ -344,6 +344,21 @@ const AdminPostEditor = () => {
       media_urls: mediaUrls.length > 0 ? mediaUrls : null,
     };
 
+    // Firebase document size limit check (1MB = 1,048,576 bytes)
+    // We use a safe threshold of 900KB (0.9MB) to account for metadata overhead
+    const postDataString = JSON.stringify(postData);
+    const sizeInBytes = new Blob([postDataString]).size;
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+
+    if (sizeInMB > 0.9) {
+      toast({ 
+        title: 'Post Too Large', 
+        description: `Your post is ${sizeInMB.toFixed(2)} MB. Firebase has a strict 1MB limit per post. Please reduce the amount of text or the number of tables.`, 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     try {
       if (isNew) {
         const result = await createPost(postData);

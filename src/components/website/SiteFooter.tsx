@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
 interface FooterSection {
   title: string;
   items: { text: string; url: string }[];
@@ -17,6 +20,26 @@ interface SiteFooterProps {
 }
 
 const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) => {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
+  useEffect(() => {
+    if (isHomePage) return;
+
+    // Load DMCA script dynamically
+    const script = document.createElement('script');
+    script.src = 'https://images.dmca.com/Badges/DMCABadgeHelper.min.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup script if component unmounts
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [isHomePage]);
+
   const quickLinks = [
     ...parseFooterSection(settings['footer_quick_links'] || ''),
     { text: 'Privacy Policy', url: '/privacy-policy' },
@@ -106,11 +129,13 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
       </div>
 
       {/* DMCA Badge */}
-      <div className="flex justify-center mb-4">
-        <a href="//www.dmca.com/Protection/Status.aspx?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" title="DMCA.com Protection Status" className="dmca-badge">
-          <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-07.png?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" alt="DMCA.com Protection Status" />
-        </a>
-      </div>
+      {!isHomePage && (
+        <div className="flex justify-center mb-4">
+          <a href="//www.dmca.com/Protection/Status.aspx?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" title="DMCA.com Protection Status" className="dmca-badge">
+            <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-07.png?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" alt="DMCA.com Protection Status" />
+          </a>
+        </div>
+      )}
 
       {/* Full Width Bottom Footer */}
       <div className="w-full bg-[#0b3d91] text-white py-6 text-center font-bold mt-8">
