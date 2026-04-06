@@ -325,22 +325,6 @@ const AdminDashboard = () => {
               onToggleLinkNew={handleToggleLinkNew}
               onUpdateLinkLastDate={handleUpdateLinkLastDate}
               onUpdateLink={async (id: string, data: Record<string, any>) => {
-                // If URL is being updated, check if it's a post link and update the post slug too
-                if (data.url) {
-                  const oldLink = categoryLinks.find(l => l.id === id);
-                  if (oldLink && oldLink.url !== data.url && oldLink.url.startsWith('/post/')) {
-                    const oldSlug = oldLink.url.replace('/post/', '');
-                    const newSlug = data.url.replace('/post/', '');
-                    try {
-                      const postToUpdate = await getPostBySlug(oldSlug);
-                      if (postToUpdate) {
-                        await updatePost(postToUpdate.id, { slug: newSlug });
-                      }
-                    } catch (err) {
-                      console.error("Failed to sync post slug:", err);
-                    }
-                  }
-                }
                 await updateCategoryLink(id, data);
                 await fetchAll();
                 toast({ title: 'Link updated!' });

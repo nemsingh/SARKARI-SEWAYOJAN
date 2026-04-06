@@ -73,16 +73,8 @@ async function generate() {
   }
   const { render } = await import(serverEntryPath);
 
-  const publicDir = path.resolve(root, 'public');
+  const outDir = path.resolve(root, 'dist');
   
-  // Copy assets from dist to public
-  const distAssets = path.resolve(root, 'dist/assets');
-  const publicAssets = path.resolve(publicDir, 'assets');
-  if (fs.existsSync(distAssets)) {
-    fs.cpSync(distAssets, publicAssets, { recursive: true });
-    console.log('Copied assets to public/assets');
-  }
-
   const generatePage = (url: string, data: any, outputPath: string, title: string, description: string) => {
     try {
       const appHtml = render(url, data);
@@ -98,7 +90,7 @@ async function generate() {
       html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
       html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, `<meta name="description" content="${description}" />`);
 
-      const fullPath = path.resolve(publicDir, outputPath);
+      const fullPath = path.resolve(outDir, outputPath);
       fs.mkdirSync(path.dirname(fullPath), { recursive: true });
       fs.writeFileSync(fullPath, html);
       console.log(`Generated ${outputPath}`);
@@ -124,7 +116,7 @@ async function generate() {
   generatePage('/', homeData, 'index.html', settings.tagline || 'Sarkari Sewayojan', 'Latest Government Jobs, Results & Notifications');
 
   // 2. Generate Post Detail Pages
-  const dataDir = path.resolve(publicDir, 'data');
+  const dataDir = path.resolve(outDir, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
 
   for (const post of posts) {
@@ -157,14 +149,14 @@ async function generate() {
   // 5. Generate Admin Shell
   const adminHtml = template.replace(`<!--ssr-outlet-->`, '')
                             .replace(`<div id="root"></div>`, `<div id="root"></div>`);
-  fs.writeFileSync(path.resolve(publicDir, 'admin.html'), adminHtml);
+  fs.writeFileSync(path.resolve(outDir, 'admin.html'), adminHtml);
   console.log(`Generated admin.html shell`);
 
   // 5.5 Generate 404 Page
   generatePage('/404', homeData, '404.html', '404 - Page Not Found', 'The page you are looking for does not exist.');
 
   // 6. Generate data.json
-  fs.writeFileSync(path.resolve(publicDir, 'data.json'), JSON.stringify(homeData));
+  fs.writeFileSync(path.resolve(outDir, 'data.json'), JSON.stringify(homeData));
   console.log(`Generated data.json`);
 
   console.log('Static site generation complete.');

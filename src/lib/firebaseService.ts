@@ -1,5 +1,6 @@
 import { db } from './firebase';
 import LZString from 'lz-string';
+import { clearCache } from './cache';
 import {
   collection,
   doc,
@@ -39,19 +40,23 @@ export const getCategories = async () => {
 };
 
 export const addCategory = async (name: string, displayOrder: number) => {
-  return addDoc(collection(db, 'categories'), {
+  const res = await addDoc(collection(db, 'categories'), {
     name,
     display_order: displayOrder,
     created_at: serverTimestamp(),
   });
+  clearCache();
+  return res;
 };
 
 export const updateCategory = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'categories', id), data);
+  clearCache();
 };
 
 export const deleteCategory = async (id: string) => {
   await deleteDoc(doc(db, 'categories', id));
+  clearCache();
 };
 
 // ============ CATEGORY LINKS ============
@@ -70,18 +75,22 @@ export const addCategoryLink = async (data: {
   is_new: boolean;
   last_date_text: string | null;
 }) => {
-  return addDoc(collection(db, 'category_links'), {
+  const res = await addDoc(collection(db, 'category_links'), {
     ...data,
     created_at: serverTimestamp(),
   });
+  clearCache();
+  return res;
 };
 
 export const updateCategoryLink = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'category_links', id), data);
+  clearCache();
 };
 
 export const deleteCategoryLink = async (id: string) => {
   await deleteDoc(doc(db, 'category_links', id));
+  clearCache();
 };
 
 export const deleteCategoryLinksByCategoryId = async (categoryId: string) => {
@@ -89,6 +98,7 @@ export const deleteCategoryLinksByCategoryId = async (categoryId: string) => {
   const snap = await getDocs(q);
   const deletes = snap.docs.map(d => deleteDoc(d.ref));
   await Promise.all(deletes);
+  clearCache();
 };
 
 // ============ TABLET ITEMS ============
@@ -100,21 +110,25 @@ export const getTabletItems = async () => {
 };
 
 export const addTabletItem = async (title: string, subtitle: string, url: string, displayOrder: number) => {
-  return addDoc(collection(db, 'tablet_items'), {
+  const res = await addDoc(collection(db, 'tablet_items'), {
     title,
     subtitle,
     url,
     display_order: displayOrder,
     created_at: serverTimestamp(),
   });
+  clearCache();
+  return res;
 };
 
 export const updateTabletItem = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'tablet_items', id), data);
+  clearCache();
 };
 
 export const deleteTabletItem = async (id: string) => {
   await deleteDoc(doc(db, 'tablet_items', id));
+  clearCache();
 };
 
 // ============ POSTS ============
@@ -197,6 +211,7 @@ export const createPost = async (data: Record<string, any>) => {
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
+  clearCache();
   return { id: docRef.id, ...data };
 };
 
@@ -215,10 +230,12 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
     ...postData,
     updated_at: serverTimestamp(),
   });
+  clearCache();
 };
 
 export const deletePost = async (id: string) => {
   await deleteDoc(doc(db, 'posts', id));
+  clearCache();
 };
 
 // ============ SITE SETTINGS ============
@@ -248,6 +265,7 @@ export const updateSiteSetting = async (key: string, value: string, existingId?:
   } else {
     await addDoc(collection(db, 'site_settings'), { key, value, updated_at: serverTimestamp() });
   }
+  clearCache();
 };
 
 export const getSiteLastUpdated = async (): Promise<number> => {

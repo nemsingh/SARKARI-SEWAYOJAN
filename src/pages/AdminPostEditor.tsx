@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, getPostBySlug, updateCategoryLink } from '@/lib/firebaseService';
+import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, getPostBySlug, updateCategoryLink, getTabletItems, updateTabletItem } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -405,11 +405,19 @@ const AdminPostEditor = () => {
               last_date_text: null,
             });
           }
-        } else if (oldSlug !== finalSlug) {
+        }
+        
+        if (oldSlug !== finalSlug) {
           const existingLinks = await getCategoryLinks();
           for (const link of existingLinks) {
-            if (link.url === `/post/${oldSlug}`) {
+            if (link.url === `/post/${oldSlug}` && link.id !== linkId) {
               await updateCategoryLink(link.id, { url: `/post/${finalSlug}` });
+            }
+          }
+          const tabletItems = await getTabletItems();
+          for (const item of tabletItems) {
+            if (item.url === `/post/${oldSlug}`) {
+              await updateTabletItem(item.id, { url: `/post/${finalSlug}` });
             }
           }
         }

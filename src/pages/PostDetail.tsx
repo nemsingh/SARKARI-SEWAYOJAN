@@ -173,7 +173,7 @@ const PostDetail = () => {
       
       translateFields();
     }
-  }, [language, post]);
+  }, [language, post, translatedContent]);
 
   // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
