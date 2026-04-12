@@ -9,6 +9,7 @@ import TabletGrid from '@/components/website/TabletGrid';
 import CategoryBox from '@/components/website/CategoryBox';
 import SeoContentBox from '@/components/website/SeoContentBox';
 import SiteFooter from '@/components/website/SiteFooter';
+import SEO from '@/components/SEO';
 
 const Index = () => {
   const getInitialData = () => {
@@ -146,8 +147,49 @@ const Index = () => {
     }
   }
 
+  const schema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://sarkarisewayojan.com/#website",
+        "url": "https://sarkarisewayojan.com/",
+        "name": "Sarkari Sewayojan",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://sarkarisewayojan.com/?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://sarkarisewayojan.com/#organization",
+        "name": "Sarkari Sewayojan",
+        "url": "https://sarkarisewayojan.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": settings.logo_url || "https://sarkarisewayojan.com/logo.png"
+        }
+      }
+    ]
+  };
+
+  const pageTitle = activeFilter === 'Home' 
+    ? "Sarkari Sewayojan | Sarkari Result, Sarkari Exam, Latest Govt Jobs Portal"
+    : `${activeFilter} Jobs - Sarkari Sewayojan | Sarkari Result, Sarkari Exam`;
+
+  const pageDescription = activeFilter === 'Home'
+    ? "Sarkari Sewayojan is India's No.1 Govt Jobs Portal. Get latest Sarkari Result, Sarkari Exam, Free Job Alert, Railway, Bank, SSC, UPSSSC, and Police Jobs updates instantly."
+    : `Get the latest updates, online forms, and Sarkari Result for ${activeFilter} jobs on Sarkari Sewayojan. Stay updated with Sarkari Exam notifications.`;
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden font-sans">
+      <SEO 
+        title={pageTitle}
+        description={pageDescription}
+        schema={schema}
+        url="https://sarkarisewayojan.com/"
+      />
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
       <SiteHeader logoUrl={settings.logo_url} />
       <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />

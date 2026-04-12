@@ -77,7 +77,7 @@ async function generate() {
   
   const generatePage = (url: string, data: any, outputPath: string, title: string, description: string) => {
     try {
-      const appHtml = render(url, data);
+      const { html: appHtml, helmet } = render(url, data);
       
       let html = template.replace(`<!--ssr-outlet-->`, appHtml)
                          .replace(`<div id="root"></div>`, `<div id="root">${appHtml}</div>`);
@@ -86,9 +86,23 @@ async function generate() {
       const scriptTag = `<script>window.__INITIAL_DATA__ = ${JSON.stringify(data).replace(/</g, '\\u003c')};</script>`;
       html = html.replace('</body>', `${scriptTag}</body>`);
 
-      // Update SEO tags
-      html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
-      html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, `<meta name="description" content="${description}" />`);
+      // Update SEO tags using Helmet if available
+      if (helmet) {
+        const helmetTags = `
+          ${helmet.title.toString()}
+          ${helmet.meta.toString()}
+          ${helmet.link.toString()}
+          ${helmet.script.toString()}
+        `;
+        // Remove default title and description
+        html = html.replace(/<title>.*?<\/title>/, '');
+        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, '');
+        // Inject helmet tags before </head>
+        html = html.replace('</head>', `${helmetTags}\n</head>`);
+      } else {
+        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, `<meta name="description" content="${description}" />`);
+      }
 
       const fullPath = path.resolve(outDir, outputPath);
       fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -158,6 +172,67 @@ async function generate() {
   // 6. Generate data.json
   fs.writeFileSync(path.resolve(outDir, 'data.json'), JSON.stringify(homeData));
   console.log(`Generated data.json`);
+
+  // 7. Generate Sitemap
+  const baseUrl = 'https://sarkarisewayojan.com';
+  let sitemapUrls = `
+    <url>
+      <loc>${baseUrl}/</loc>
+      <changefreq>hourly</changefreq>
+      <priority>1.0</priority>
+    </url>
+  `;
+
+  for (const post of posts) {
+    let lastmod = new Date().toISOString();
+    try {
+      if (post.post_date) {
+        const parsedDate = new Date(post.post_date);
+        if (!isNaN(parsedDate.getTime())) {
+          lastmod = parsedDate.toISOString();
+        }
+      }
+    } catch (e) {
+      // fallback to current date
+    }
+
+    sitemapUrls += `
+      <url>
+        <loc>${baseUrl}/post/${post.slug || post.id}</loc>
+        <lastmod>${lastmod}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+      </url>
+    `;
+  }
+
+  for (const cat of categories) {
+    sitemapUrls += `
+      <url>
+        <loc>${baseUrl}/category/${encodeURIComponent(cat.name)}</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+      </url>
+    `;
+  }
+
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${sitemapUrls}
+</urlset>`;
+
+  fs.writeFileSync(path.resolve(outDir, 'sitemap.xml'), sitemapXml);
+  console.log(`Generated sitemap.xml`);
+
+  // 8. Generate robots.txt
+  const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+  fs.writeFileSync(path.resolve(outDir, 'robots.txt'), robotsTxt);
+  console.log(`Generated robots.txt`);
 
   console.log('Static site generation complete.');
   process.exit(0);

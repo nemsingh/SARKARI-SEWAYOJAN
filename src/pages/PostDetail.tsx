@@ -8,6 +8,7 @@ import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
 import CategoryBox from '@/components/website/CategoryBox';
 import SiteFooter from '@/components/website/SiteFooter';
+import SEO from '@/components/SEO';
 
 // Fields that can be translated, mapped to their Hindi manual counterparts
 const TRANSLATABLE_FIELDS = [
@@ -218,8 +219,41 @@ const PostDetail = () => {
   if (notFound) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Post Not Found</div>;
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
 
+  const postTitle = post?.name_of_post || 'Job Post';
+  const postDescription = post?.short_info ? post.short_info.replace(/<[^>]*>?/gm, '').substring(0, 160) : `Check out the latest details for ${postTitle} on Sarkari Sewayojan.`;
+  
+  const schema = post ? {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    "title": post.name_of_post,
+    "description": post.short_info || post.name_of_post,
+    "datePosted": post.post_date || new Date().toISOString(),
+    "hiringOrganization": {
+      "@type": "Organization",
+      "name": "Government of India",
+      "sameAs": "https://sarkarisewayojan.com"
+    },
+    "jobLocation": {
+      "@type": "Place",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "IN"
+      }
+    }
+  } : undefined;
+
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
+      {post && (
+        <SEO 
+          title={`${postTitle} - Sarkari Sewayojan`}
+          description={postDescription}
+          keywords={`${postTitle}, ${postTitle} online form, ${postTitle} recruitment, sarkari result`}
+          schema={schema}
+          url={`https://sarkarisewayojan.com/post/${post.slug || post.id}`}
+          image={mediaUrls.length > 0 ? mediaUrls[0] : undefined}
+        />
+      )}
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
       <SiteHeader logoUrl={settings.logo_url} />
       <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />

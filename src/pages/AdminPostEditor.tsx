@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -113,6 +113,62 @@ const AdminPostEditor = () => {
   const [loading, setLoading] = useState(!isNew);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
+
+  const shortInfoRef = useRef<HTMLTextAreaElement>(null);
+  const shortInfoHiRef = useRef<HTMLTextAreaElement>(null);
+
+  const applyFormat = (
+    ref: React.RefObject<HTMLTextAreaElement>,
+    value: string,
+    setter: (val: string) => void,
+    prefix: string,
+    suffix: string
+  ) => {
+    if (!ref.current) return;
+    const start = ref.current.selectionStart;
+    const end = ref.current.selectionEnd;
+    if (start === end) {
+      alert("Please select some text first.");
+      return;
+    }
+    const selectedText = value.substring(start, end);
+    const newText = value.substring(0, start) + prefix + selectedText + suffix + value.substring(end);
+    setter(newText);
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.focus();
+        ref.current.setSelectionRange(start + prefix.length, end + prefix.length);
+      }
+    }, 0);
+  };
+
+  const applyLink = (
+    ref: React.RefObject<HTMLTextAreaElement>,
+    value: string,
+    setter: (val: string) => void
+  ) => {
+    if (!ref.current) return;
+    const start = ref.current.selectionStart;
+    const end = ref.current.selectionEnd;
+    if (start === end) {
+      alert("Please select some text first to add a link.");
+      return;
+    }
+    const url = window.prompt("Enter the website URL (e.g., https://google.com):");
+    if (!url) return;
+
+    const prefix = `<a href="${url}" target="_blank" rel="noopener noreferrer">`;
+    const suffix = `</a>`;
+    const selectedText = value.substring(start, end);
+    const newText = value.substring(0, start) + prefix + selectedText + suffix + value.substring(end);
+    setter(newText);
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.focus();
+        ref.current.setSelectionRange(start + prefix.length, end + prefix.length);
+      }
+    }, 0);
+  };
 
   // Excel editor reset keys & channel IDs
   const [editorKey, setEditorKey] = useState(0);
@@ -344,21 +400,6 @@ const AdminPostEditor = () => {
       media_urls: mediaUrls.length > 0 ? mediaUrls : null,
     };
 
-    // Firebase document size limit check (1MB = 1,048,576 bytes)
-    // We use a safe threshold of 900KB (0.9MB) to account for metadata overhead
-    const postDataString = JSON.stringify(postData);
-    const sizeInBytes = new Blob([postDataString]).size;
-    const sizeInMB = sizeInBytes / (1024 * 1024);
-
-    if (sizeInMB > 0.9) {
-      toast({ 
-        title: 'Post Too Large', 
-        description: `Your post is ${sizeInMB.toFixed(2)} MB. Firebase has a strict 1MB limit per post. Please reduce the amount of text or the number of tables.`, 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
     try {
       if (isNew) {
         const result = await createPost(postData);
@@ -546,7 +587,13 @@ const AdminPostEditor = () => {
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">Short Info (HTML allowed)</label>
-              <Textarea value={shortInfo} onChange={e => setShortInfo(e.target.value)} placeholder="Short info about the post..." rows={4} />
+              <div className="flex gap-2 mb-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoRef, shortInfo, setShortInfo, '<b>', '</b>')}><b>B</b></Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoRef, shortInfo, setShortInfo, '<span style="color: red;">', '</span>')} className="text-red-600 font-bold">Red</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoRef, shortInfo, setShortInfo, '<span style="color: blue;">', '</span>')} className="text-blue-600 font-bold">Blue</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyLink(shortInfoRef, shortInfo, setShortInfo)}>🔗 Link</Button>
+              </div>
+              <Textarea ref={shortInfoRef} value={shortInfo} onChange={e => setShortInfo(e.target.value)} placeholder="Short info about the post..." rows={4} />
             </div>
           </div>
         </div>
@@ -623,7 +670,13 @@ const AdminPostEditor = () => {
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">संक्षिप्त जानकारी (Short Info - Hindi, HTML allowed)</label>
-              <Textarea value={shortInfoHi} onChange={e => setShortInfoHi(e.target.value)} placeholder="पोस्ट के बारे में संक्षिप्त जानकारी..." rows={4} />
+              <div className="flex gap-2 mb-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoHiRef, shortInfoHi, setShortInfoHi, '<b>', '</b>')}><b>B</b></Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoHiRef, shortInfoHi, setShortInfoHi, '<span style="color: red;">', '</span>')} className="text-red-600 font-bold">Red</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoHiRef, shortInfoHi, setShortInfoHi, '<span style="color: blue;">', '</span>')} className="text-blue-600 font-bold">Blue</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => applyLink(shortInfoHiRef, shortInfoHi, setShortInfoHi)}>🔗 Link</Button>
+              </div>
+              <Textarea ref={shortInfoHiRef} value={shortInfoHi} onChange={e => setShortInfoHi(e.target.value)} placeholder="पोस्ट के बारे में संक्षिप्त जानकारी..." rows={4} />
             </div>
           </div>
         </div>

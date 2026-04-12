@@ -7,6 +7,7 @@ import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
 import CategoryBox from '@/components/website/CategoryBox';
 import SiteFooter from '@/components/website/SiteFooter';
+import SEO from '@/components/SEO';
 
 const getValidUrl = (url: string | null) => {
   if (!url) return '#';
@@ -149,8 +150,16 @@ const CategoryMore = () => {
 
   if (notFound) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Category Not Found</div>;
 
+  const categoryName = category?.name || decodeURIComponent(name || 'Category');
+
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
+      <SEO 
+        title={`${categoryName} - Sarkari Sewayojan`}
+        description={`All latest updates, forms, and details for ${categoryName} on Sarkari Sewayojan.`}
+        keywords={`${categoryName}, ${categoryName} online form, ${categoryName} result, ${categoryName} admit card`}
+        url={`https://sarkarisewayojan.com/category/${encodeURIComponent(categoryName)}`}
+      />
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
       <SiteHeader logoUrl={settings.logo_url} />
       <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />
@@ -175,7 +184,7 @@ const CategoryMore = () => {
         </>
       ) : (
         <div className="mx-auto my-8 px-3">
-          <h2 className="text-3xl font-bold text-primary mb-6">{category?.name || 'Category'} - All Links</h2>
+          <h2 className="text-3xl font-bold text-primary mb-6">{categoryName} - All Links</h2>
           <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
             <ul className="list-none p-0">
               {links.map(link => (
