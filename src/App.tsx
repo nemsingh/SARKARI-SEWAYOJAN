@@ -12,6 +12,7 @@ import DmcaPolicy from "./pages/DmcaPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
+import FloatingSocialButtons from "./components/FloatingSocialButtons";
 
 const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/contact-us" element={<ContactUs />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <FloatingSocialButtons />
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>

@@ -272,6 +272,41 @@ const AdminDashboard = () => {
               {['logo_url', 'tagline', 'contact_text', 'build_webhook_url'].map(key => (
                 <SettingEditor key={key} label={key.replace(/_/g, ' ').toUpperCase()} value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
               ))}
+
+              <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Floating Social Buttons</h3>
+              <p className="text-sm text-muted-foreground mb-4">Toggle 'Show' to enable the button. You must provide a valid URL for the button fully work. These buttons will appear on the bottom-right completely styled in original brand colors.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {['whatsapp', 'instagram', 'youtube', 'telegram', 'facebook', 'linkedin'].map(network => {
+                  const urlKey = `social_${network}_url`;
+                  const enabledKey = `social_${network}_enabled`;
+                  const urlValue = settings[urlKey]?.value || '';
+                  const isEnabled = settings[enabledKey]?.value === 'true';
+
+                  return (
+                    <div key={network} className="border border-border p-4 rounded-lg bg-secondary flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-primary capitalize">{network}</span>
+                        <Button 
+                          variant={isEnabled ? 'default' : 'outline'} 
+                          size="sm" 
+                          onClick={() => handleUpdateSetting(enabledKey, isEnabled ? 'false' : 'true')}
+                          className={isEnabled ? (network === 'whatsapp' ? 'bg-green-600' : network === 'youtube' ? 'bg-red-600' : 'bg-primary') : ''}
+                        >
+                          {isEnabled ? 'Shown' : 'Hidden'}
+                        </Button>
+                      </div>
+                      <Input 
+                        placeholder={`${network} URL`} 
+                        value={urlValue} 
+                        onChange={(e) => handleUpdateSetting(urlKey, e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
               <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Footer Sections</h3>
               {['footer_quick_links', 'footer_apps', 'footer_more'].map(key => (
                 <div key={key}>
