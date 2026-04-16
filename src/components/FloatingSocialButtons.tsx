@@ -20,8 +20,8 @@ const Icons = {
     </svg>
   ),
   telegram: (
-    <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 pl-[2px] pt-[2px]">
-      <path d="M23.91 3.79L20.3 20.84c-.25 1.21-.98 1.5-2 .94l-5.5-4.06-2.66 2.57c-.3.3-.55.56-1.1.56-.72 0-.6-.27-.84-.95L6.3 13.7l-5.45-1.7c-1.18-.35-1.19-1.16.26-1.75l21.26-8.22c.97-.43 1.9.24 1.53 1.73z"/>
+    <svg viewBox="0 0 24 24" fill="white" className="w-[26px] h-[26px] pr-[3px] pb-[1px]">
+      <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
     </svg>
   ),
   facebook: (
@@ -129,7 +129,7 @@ export default function FloatingSocialButtons() {
 
   return (
     <div 
-      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-500 ease-in-out ${
+      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out ${
         isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-90 pointer-events-none'
       }`}
     >
