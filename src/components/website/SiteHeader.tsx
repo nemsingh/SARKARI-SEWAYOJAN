@@ -12,18 +12,18 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
     if (savedTheme === 'bhagwa') {
-      document.body.classList.add('theme-bhagwa');
+      document.documentElement.classList.add('theme-bhagwa');
       setIsThemeBhagwa(true);
     }
   }, []);
 
   const toggleTheme = () => {
     if (isThemeBhagwa) {
-      document.body.classList.remove('theme-bhagwa');
+      document.documentElement.classList.remove('theme-bhagwa');
       localStorage.setItem('theme-mode', 'default');
       setIsThemeBhagwa(false);
     } else {
-      document.body.classList.add('theme-bhagwa');
+      document.documentElement.classList.add('theme-bhagwa');
       localStorage.setItem('theme-mode', 'bhagwa');
       setIsThemeBhagwa(true);
     }

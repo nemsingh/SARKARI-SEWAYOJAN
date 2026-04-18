@@ -404,13 +404,14 @@ const AdminPostEditor = () => {
       if (isNew) {
         const result = await createPost(postData);
         if (linkTitle.trim() && linkCategoryId) {
-          const existingLinks = await getCategoryLinks();
-          const catLinks = existingLinks.filter((l: any) => l.category_id === linkCategoryId);
+          const inputDate = parseDateTime(postDate, 'en');
+          const customTs = inputDate ? inputDate.getTime() : Date.now();
+
           await addCategoryLink({
             category_id: linkCategoryId,
             title: linkTitle.trim(),
             url: `/post/${finalSlug || result.id}`,
-            display_order: catLinks.length + 1,
+            link_timestamp: customTs,
             is_new: true,
             last_date_text: null,
           });
@@ -426,22 +427,23 @@ const AdminPostEditor = () => {
 
         await updatePost(id!, postData);
 
-        // Update category links if slug changed or link details changed
+        const inputDate = parseDateTime(postDate, 'en');
+        const customTs = inputDate ? inputDate.getTime() : Date.now();
+
         if (linkTitle.trim() && linkCategoryId) {
           if (linkId) {
             await updateCategoryLink(linkId, {
               title: linkTitle.trim(),
               category_id: linkCategoryId,
-              url: `/post/${finalSlug}`
+              url: `/post/${finalSlug}`,
+              link_timestamp: customTs
             });
           } else {
-            const existingLinks = await getCategoryLinks();
-            const catLinks = existingLinks.filter((l: any) => l.category_id === linkCategoryId);
             await addCategoryLink({
               category_id: linkCategoryId,
               title: linkTitle.trim(),
               url: `/post/${finalSlug}`,
-              display_order: catLinks.length + 1,
+              link_timestamp: customTs,
               is_new: true,
               last_date_text: null,
             });

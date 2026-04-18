@@ -30,7 +30,7 @@ const defaultCell = (): CellData => ({
   verticalAlign: 'middle',
   color: '#0b3d91',
   backgroundColor: '#ffffff',
-  borderAll: false,
+  borderAll: true,
   borderOutside: false,
   colSpan: 1,
   rowSpan: 1,
@@ -566,8 +566,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const resetGrid = useCallback(() => {
     setGrid(createEmptyGrid());
-    setSelectedCells([]);
-    setActiveCellState(null);
+    setSelectedCells([{ row: 0, col: 0 }]);
+    setActiveCellState({ row: 0, col: 0 });
     setFormulaValue('');
     setGridKey(prev => prev + 1);
   }, []);
@@ -687,6 +687,103 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     }
   };
 
+  const handleKeyDownCell = (e: React.KeyboardEvent, row: number, col: number) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      let nextRow = row;
+      let nextCol = e.shiftKey ? col - 1 : col + 1;
+
+      while (nextRow >= 0 && nextRow < TOTAL_ROWS) {
+        if (nextCol >= TOTAL_COLS) {
+          nextRow++;
+          nextCol = 0;
+        } else if (nextCol < 0) {
+          nextRow--;
+          nextCol = TOTAL_COLS - 1;
+        }
+
+        if (nextRow >= 0 && nextRow < TOTAL_ROWS && !grid[nextRow][nextCol].hidden) {
+          focusDOMCell(nextRow, nextCol);
+          break;
+        }
+        
+        nextCol = e.shiftKey ? nextCol - 1 : nextCol + 1;
+      }
+    } else if (e.key === 'ArrowUp') {
+      let nextRow = row - 1;
+      while (nextRow >= 0 && grid[nextRow][col].hidden) nextRow--;
+      if (nextRow >= 0) {
+        e.preventDefault();
+        focusDOMCell(nextRow, col);
+      }
+    } else if (e.key === 'ArrowDown') {
+      let nextRow = row + 1;
+      while (nextRow < TOTAL_ROWS && grid[nextRow][col].hidden) nextRow++;
+      if (nextRow < TOTAL_ROWS) {
+        e.preventDefault();
+        focusDOMCell(nextRow, col);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      const sel = window.getSelection();
+      let isEdge = false;
+      if (!sel || sel.isCollapsed && sel.anchorOffset === 0 || grid[row][col].text === '') isEdge = true;
+      if (sel && !sel.isCollapsed) {
+        const textLen = (e.currentTarget as HTMLElement).innerText.length;
+        if (sel.toString().length === textLen || sel.toString().length === textLen - 1) isEdge = true;
+      }
+      
+      if (isEdge) {
+        let nextCol = col - 1;
+        while (nextCol >= 0 && grid[row][nextCol].hidden) nextCol--;
+        if (nextCol >= 0) {
+           e.preventDefault();
+           focusDOMCell(row, nextCol);
+        }
+      }
+    } else if (e.key === 'ArrowRight') {
+      const sel = window.getSelection();
+      let isEdge = false;
+      if (!sel || grid[row][col].text === '') isEdge = true;
+      else if (sel.isCollapsed && sel.anchorNode) {
+        isEdge = sel.anchorOffset === sel.anchorNode.textContent?.length;
+      }
+      if (sel && !sel.isCollapsed) {
+        const textLen = (e.currentTarget as HTMLElement).innerText.length;
+        if (sel.toString().trim().length >= textLen - 1) isEdge = true;
+      }
+      
+      if (isEdge) {
+         let nextCol = col + 1;
+         while (nextCol < TOTAL_COLS && grid[row][nextCol].hidden) nextCol++;
+         if (nextCol < TOTAL_COLS) {
+           e.preventDefault();
+           focusDOMCell(row, nextCol);
+         }
+      }
+    }
+  };
+
+  const focusDOMCell = (r: number, c: number) => {
+    setActiveCellState({row: r, col: c});
+    setSelectedCells([{row: r, col: c}]);
+    setTimeout(() => {
+      const td = gridRef.current?.querySelector(`td[data-row="${r}"][data-col="${c}"]`) as HTMLElement;
+      if (td) {
+        td.focus();
+        
+        // Select all text in the cell, mirroring Excel behavior where a focused cell has its content selected
+        // unless they explicitly double-click.
+        const selection = window.getSelection();
+        const range = document.createRange();
+        if (td.childNodes.length > 0) {
+          range.selectNodeContents(td);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      }
+    }, 0);
+  };
+
   const isSelected = (row: number, col: number) => selectedCells.some(c => c.row === row && c.col === col);
   const isActive = (row: number, col: number) => activeCell?.row === row && activeCell?.col === col;
 
@@ -720,16 +817,24 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     e.stopPropagation();
     const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const startWidth = colWidths[colIndex];
+    let newWidth = startWidth;
+    
+    const thElement = gridRef.current?.querySelector(`th:nth-child(${colIndex + 2})`) as HTMLElement;
+
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const currentX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
       const diff = currentX - startX;
-      setColWidths(prev => { const next = [...prev]; next[colIndex] = Math.max(30, startWidth + diff); return next; });
+      newWidth = Math.max(30, startWidth + diff);
+      if (thElement) {
+        thElement.style.width = `${newWidth}px`;
+      }
     };
     const onUp = () => { 
       window.removeEventListener('mousemove', onMove as any); 
       window.removeEventListener('mouseup', onUp); 
       window.removeEventListener('touchmove', onMove as any); 
       window.removeEventListener('touchend', onUp); 
+      setColWidths(prev => { const next = [...prev]; next[colIndex] = newWidth; return next; });
     };
     window.addEventListener('mousemove', onMove as any);
     window.addEventListener('mouseup', onUp);
@@ -743,16 +848,25 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     e.stopPropagation();
     const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const startHeight = rowHeights[rowIndex];
+    let newHeight = startHeight;
+    
+    // The row header cell is at col 0 essentially, but we can set the height of the row header td itself
+    const tdElement = gridRef.current?.querySelector(`tr:nth-child(${rowIndex + 1}) > td:first-child`) as HTMLElement;
+
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const currentY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
       const diff = currentY - startY;
-      setRowHeights(prev => { const next = [...prev]; next[rowIndex] = Math.max(15, startHeight + diff); return next; });
+      newHeight = Math.max(15, startHeight + diff);
+      if (tdElement) {
+        tdElement.style.height = `${newHeight}px`;
+      }
     };
     const onUp = () => { 
       window.removeEventListener('mousemove', onMove as any); 
       window.removeEventListener('mouseup', onUp); 
       window.removeEventListener('touchmove', onMove as any); 
       window.removeEventListener('touchend', onUp); 
+      setRowHeights(prev => { const next = [...prev]; next[rowIndex] = newHeight; return next; });
     };
     window.addEventListener('mousemove', onMove as any);
     window.addEventListener('mouseup', onUp);
@@ -808,7 +922,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         if (cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
         if (cell.fontFamily !== 'Arial') style += `font-family:${cell.fontFamily};`;
         if (cell.fontSize !== '18px') style += `font-size:${cell.fontSize};`;
-        style += 'border:1px solid #0b3d91;padding:12px;';
+        if (cell.borderAll) {
+          style += 'border:1px solid #000;';
+        } else if (cell.borderOutside) {
+          style += 'border:1px solid #000;';
+        }
+        style += 'padding:12px;';
 
         let attrs = `style="${style}"`;
         if (cell.colSpan > 1) attrs += ` colspan="${cell.colSpan}"`;
@@ -952,7 +1071,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const [selectionRect, setSelectionRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
 
-  useEffect(() => {
+  const updateSelectionRect = useCallback(() => {
     if (selectedCells.length === 0 || !gridRef.current) {
       setSelectionRect(null);
       return;
@@ -991,7 +1110,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     } else {
       setSelectionRect(null);
     }
-  }, [selectedCells, grid, colWidths, rowHeights]);
+  }, [selectedCells]);
+
+  useEffect(() => {
+    updateSelectionRect();
+  }, [updateSelectionRect, grid, colWidths, rowHeights]);
 
   return (
     <div>
@@ -1185,16 +1308,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                   onClick={() => handleColHeaderClick(c)}
                 >
                   {getColLetter(c)}
-                  {selectedColHeader === c && (
-                    <div 
-                      className="absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center" 
-                      onMouseDown={(e) => handleColResize(c, e)}
-                      onTouchStart={(e) => handleColResize(c, e)}
-                    >
-                      <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
-                      <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
-                    </div>
-                  )}
+                  <div 
+                    className={`absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center opacity-0 hover:opacity-100 ${selectedColHeader === c ? 'opacity-100' : ''}`} 
+                    onMouseDown={(e) => handleColResize(c, e)}
+                    onTouchStart={(e) => handleColResize(c, e)}
+                  >
+                    <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
+                    <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -1204,20 +1325,18 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               <tr key={ri}>
                 <td 
                   className={`excel-header sticky left-0 z-[3] text-center font-bold text-xs relative cursor-pointer ${selectedRowHeader === ri ? 'bg-slate-300' : activeCell?.row === ri ? 'bg-slate-200' : 'bg-muted'}`} 
-                  style={{ width: 40, height: rowHeights[ri] }}
+                  style={{ width: 40, minHeight: rowHeights[ri], height: 'auto' }}
                   onClick={() => handleRowHeaderClick(ri)}
                 >
                   {ri + 1}
-                  {selectedRowHeader === ri && (
-                    <div 
-                      className="absolute bottom-[-4px] left-0 w-full h-[8px] cursor-row-resize z-20 flex flex-col items-center justify-center" 
-                      onMouseDown={(e) => handleRowResize(ri, e)}
-                      onTouchStart={(e) => handleRowResize(ri, e)}
-                    >
-                      <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
-                      <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
-                    </div>
-                  )}
+                  <div 
+                    className={`absolute bottom-[-4px] left-0 w-full h-[8px] cursor-row-resize z-20 flex flex-col items-center justify-center opacity-0 hover:opacity-100 ${selectedRowHeader === ri ? 'opacity-100' : ''}`} 
+                    onMouseDown={(e) => handleRowResize(ri, e)}
+                    onTouchStart={(e) => handleRowResize(ri, e)}
+                  >
+                    <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
+                    <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
+                  </div>
                 </td>
                 {row.map((cell, ci) => {
                   if (cell.hidden) return null;
@@ -1238,7 +1357,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         color: cell.color,
                         backgroundColor: cell.backgroundColor,
                         border: cell.borderAll ? '1px solid #000' : cell.borderOutside ? '1px solid #000' : undefined,
-                        height: rowHeights[ri],
+                        minHeight: rowHeights[ri],
+                        height: 'auto',
                         width: colWidths[ci],
                       }}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
@@ -1248,9 +1368,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                       onMouseDown={() => handleMouseDown(ri, ci)}
                       onMouseOver={() => handleMouseOver(ri, ci)}
                       onTouchStart={(e) => handleTouchStart(e, ri, ci)}
+                      onKeyDown={(e) => { handleKeyDownCell(e, ri, ci); updateSelectionRect(); }}
                       onInput={e => {
                         if (activeCell && activeCell.row === ri && activeCell.col === ci) {
                           setFormulaValue((e.target as HTMLElement).innerText);
+                          updateSelectionRect();
                         }
                       }}
                       onBlur={e => {

@@ -63,20 +63,32 @@ export const deleteCategory = async (id: string) => {
 export const getCategoryLinks = async () => {
   const q = query(collection(db, 'category_links'));
   const snap = await getDocs(q);
-  const links = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-  return links.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  const links = snap.docs.map(d => {
+    const data = d.data() as any;
+    let ts = data.link_timestamp;
+    if (typeof ts === 'undefined') {
+      ts = data.created_at?.toMillis ? data.created_at.toMillis() : 0;
+    }
+    // If the old item had display_order, subtract it so older items keep rough relative order (smaller display_order = higher priority natively, so we give them a slight boost)
+    if (typeof ts === 'undefined') ts = 0;
+    return { id: d.id, ...data, link_timestamp: ts };
+  });
+  // Sort descending by timestamp (newest or intentionally bumped to top)
+  return links.sort((a, b) => b.link_timestamp - a.link_timestamp);
 };
 
 export const addCategoryLink = async (data: {
   category_id: string;
   title: string;
   url: string;
-  display_order: number;
+  link_timestamp?: number;
   is_new: boolean;
   last_date_text: string | null;
 }) => {
+  const ts = typeof data.link_timestamp !== 'undefined' ? data.link_timestamp : Date.now();
   const res = await addDoc(collection(db, 'category_links'), {
     ...data,
+    link_timestamp: ts,
     created_at: serverTimestamp(),
   });
   clearCache();

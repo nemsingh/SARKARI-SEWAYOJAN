@@ -143,12 +143,11 @@ const AdminDashboard = () => {
   };
 
   const handleAddLink = async (categoryId: string, title: string, url: string, isNew: boolean, lastDateText: string) => {
-    const maxOrder = categoryLinks.filter(l => l.category_id === categoryId).length;
     await addCategoryLink({
       category_id: categoryId,
       title,
       url,
-      display_order: maxOrder + 1,
+      link_timestamp: Date.now(),
       is_new: isNew,
       last_date_text: lastDateText || null,
     });
@@ -177,7 +176,12 @@ const AdminDashboard = () => {
   };
 
   const handleAddTabletItem = async (title: string, subtitle: string, url: string) => {
-    await addTabletItemFn(title, subtitle, url, tabletItems.length + 1);
+    // Top ordering: shift all down
+    const items = [...tabletItems].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    for (let i = 0; i < items.length; i++) {
+      await updateTabletItemFn(items[i].id, { display_order: i + 1 });
+    }
+    await addTabletItemFn(title, subtitle, url, 0);
     await fetchAll();
     toast({ title: 'Table item added!' });
   };
@@ -367,21 +371,19 @@ const AdminDashboard = () => {
               onMoveLink={async (linkId: string, categoryId: string, moveType: 'up' | 'top') => {
                 const catLinks = categoryLinks
                   .filter(l => l.category_id === categoryId)
-                  .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                  .sort((a, b) => b.link_timestamp - a.link_timestamp);
                 const idx = catLinks.findIndex(l => l.id === linkId);
                 if (idx < 0) return;
                 if (moveType === 'up' && idx > 0) {
-                  // Swap with previous
-                  await updateCategoryLink(catLinks[idx].id, { display_order: catLinks[idx - 1].display_order || idx });
-                  await updateCategoryLink(catLinks[idx - 1].id, { display_order: catLinks[idx].display_order || idx + 1 });
+                  // Swap with previous timestamp to move it up (make it newer than previous)
+                  const prevTs = catLinks[idx - 1].link_timestamp;
+                  const currentTs = catLinks[idx].link_timestamp;
+                  await updateCategoryLink(catLinks[idx].id, { link_timestamp: prevTs + 1 });
+                  await updateCategoryLink(catLinks[idx - 1].id, { link_timestamp: currentTs });
                 } else if (moveType === 'top' && idx > 0) {
-                  // Move to top: set this to order 0, shift others down
-                  await updateCategoryLink(linkId, { display_order: 0 });
-                  for (let i = 0; i < catLinks.length; i++) {
-                    if (catLinks[i].id !== linkId) {
-                      await updateCategoryLink(catLinks[i].id, { display_order: i < idx ? i + 1 : i + 1 });
-                    }
-                  }
+                  // Move to top: make it slightly newer than the current top item
+                  const topTs = catLinks[0].link_timestamp;
+                  await updateCategoryLink(linkId, { link_timestamp: topTs + 1000 });
                 }
                 await fetchAll();
               }}

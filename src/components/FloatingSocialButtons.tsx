@@ -92,12 +92,14 @@ export default function FloatingSocialButtons() {
       const currentScrollY = window.scrollY;
       
       if (currentScrollY > 50) {
-        if (currentScrollY < lastScrollY) {
-          // Scrolling UP (viewport goes up, finger dragged down)
-          setIsVisible(true);
-        } else if (currentScrollY > lastScrollY) {
-          // Scrolling DOWN (viewport goes down, finger dragged up)
+        if (currentScrollY > lastScrollY) {
+          // Scrolling DOWN (window moves down, user swipes UP)
+          // Hide buttons
           setIsVisible(false);
+        } else if (currentScrollY < lastScrollY) {
+          // Scrolling UP (window moves up, user swipes DOWN)
+          // Show buttons
+          setIsVisible(true);
         }
       } else {
         // Alway show at the very top
