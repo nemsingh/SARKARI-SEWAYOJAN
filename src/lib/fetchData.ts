@@ -1,6 +1,15 @@
 export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Promise<any>) {
+  // In development, directly hit Firebase to ensure live preview works after Admin edits.
+  if (import.meta.env.DEV) {
+    console.log(`[DEV MODE] Fetching live data from Firebase for ${url}`);
+    return await fallbackFetch();
+  }
+
+  // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.
   try {
-    const res = await fetch(url);
+    // Add cache-busting timestamp to prevent stale static files from being served by the browser
+    const cacheBuster = `?t=${Date.now()}`;
+    const res = await fetch(`${url}${cacheBuster}`);
     const contentType = res.headers.get('content-type');
     if (res.ok && contentType && contentType.includes('application/json')) {
       return await res.json();
@@ -9,15 +18,8 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
     console.warn(`Failed to fetch static JSON from ${url}`, e);
   }
   
-  // ONLY fallback to Firebase in development mode.
-  // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.
-  if (import.meta.env.DEV) {
-    console.log(`[DEV MODE] Falling back to Firebase for ${url}`);
-    return await fallbackFetch();
-  } else {
-    console.error(`[PROD MODE] Static JSON fetch failed for ${url}. No Firebase fallback allowed to save reads.`);
-    return null;
-  }
+  console.error(`[PROD MODE] Static JSON fetch failed for ${url}. No Firebase fallback allowed to save reads.`);
+  return null;
 }
 
 export async function fetchHomeData() {

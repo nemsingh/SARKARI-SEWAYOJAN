@@ -39,7 +39,7 @@ const UpdateBar = ({ text, direction = 'left' }: UpdateBarProps) => {
   const animClass = direction === 'right' ? 'animate-scroll-right' : direction === 'bounce' ? 'animate-scroll-bounce' : 'animate-scroll-left';
 
   return (
-    <div className="bg-[hsl(var(--update-bar-bg))] py-3 overflow-hidden relative">
+    <div className="update-bar-wrapper bg-[hsl(var(--update-bar-bg))] py-3 overflow-hidden relative">
       <div className={`inline-block whitespace-nowrap text-accent text-[22px] font-semibold ${animClass}`}>
         {items.map((item, i) => (
           <span key={i}>

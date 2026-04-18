@@ -71,9 +71,10 @@ export default function FloatingSocialButtons() {
       
       networks.forEach(network => {
         const url = settingsData[`social_${network}_url`];
-        const enabled = settingsData[`social_${network}_enabled`] === 'true';
+        const rawEnabled = settingsData[`social_${network}_enabled`];
+        const enabled = rawEnabled === 'true' || rawEnabled === '1' || rawEnabled === true;
         if (url && enabled) {
-          compiledLinks[network] = { url, enabled };
+          compiledLinks[network] = { url, enabled: true };
         }
       });
 
@@ -92,10 +93,10 @@ export default function FloatingSocialButtons() {
       
       if (currentScrollY > 50) {
         if (currentScrollY < lastScrollY) {
-          // Scrolling UP -> Show
+          // Scrolling UP (viewport goes up, finger dragged down)
           setIsVisible(true);
         } else if (currentScrollY > lastScrollY) {
-          // Scrolling DOWN -> Hide
+          // Scrolling DOWN (viewport goes down, finger dragged up)
           setIsVisible(false);
         }
       } else {
@@ -139,7 +140,7 @@ export default function FloatingSocialButtons() {
           href={data.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${getBackgroundClass(network)} w-12 h-12 rounded-full flex justify-center items-center text-white shadow-lg shadow-black/20 hover:shadow-xl hover:scale-110 hover:-translate-y-1 transition-all duration-300 ring-2 ring-white/20`}
+          className={`social-flip-hover ${getBackgroundClass(network)} w-12 h-12 rounded-full flex justify-center items-center text-white shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ring-2 ring-white/20`}
           aria-label={network}
           title={network.charAt(0).toUpperCase() + network.slice(1)}
         >

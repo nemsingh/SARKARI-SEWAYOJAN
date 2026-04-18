@@ -167,6 +167,181 @@
 .admin-panel .text-2xl { font-size: 1.875rem !important; line-height: 2.25rem !important; } /* 30px */
 .admin-panel .text-3xl { font-size: 2.25rem !important; line-height: 2.5rem !important; } /* 36px */
 
+@keyframes social-flip {
+  0% { transform: perspective(400px) rotateY(0); }
+  100% { transform: perspective(400px) rotateY(360deg); }
+}
+
+.theme-bhagwa .social-flip-hover:hover {
+  animation: social-flip 1s linear infinite;
+}
+
+/* -------------------------------------
+   Theme Bhagwa (Sovereign Theme) 
+--------------------------------------*/
+.theme-bhagwa {
+  --bhagwa-color: #F18D1B;
+  --chocolaty-color: #5C3E26;
+  --bhagwa-blue: #0B3D91;
+}
+
+.theme-bhagwa .site-header {
+  background-color: var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .site-header h1,
+.theme-bhagwa .site-header div {
+  color: white !important;
+}
+
+.theme-bhagwa .site-menu {
+  background-color: white !important;
+}
+
+.theme-bhagwa .site-menu > a {
+  color: black !important;
+}
+
+.theme-bhagwa .site-menu > a:hover {
+  background-color: var(--bhagwa-color) !important;
+  color: white !important;
+}
+
+.theme-bhagwa .update-bar-wrapper {
+  background: linear-gradient(to bottom, var(--chocolaty-color) 0%, var(--bhagwa-color) 50%, var(--chocolaty-color) 100%) !important;
+}
+
+.theme-bhagwa .update-bar-wrapper a,
+.theme-bhagwa .update-bar-wrapper span {
+  color: var(--bhagwa-blue) !important;
+  font-weight: 900 !important;
+}
+
+.theme-bhagwa .update-bar-wrapper svg {
+  stroke: var(--bhagwa-blue) !important;
+}
+
+.theme-bhagwa .tablet-grid {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+.theme-bhagwa .tablet-grid-header {
+  background-color: var(--chocolaty-color) !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+.theme-bhagwa a.tablet-grid-cell {
+  background-color: var(--chocolaty-color) !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+.theme-bhagwa a.tablet-grid-cell span {
+  color: white !important;
+}
+
+.theme-bhagwa a.tablet-grid-cell:hover {
+  background-color: var(--bhagwa-color) !important;
+  border-color: var(--chocolaty-color) !important;
+}
+
+.theme-bhagwa .category-box-header {
+  background-color: var(--bhagwa-color) !important;
+  color: white !important;
+}
+
+.theme-bhagwa .category-box-header * {
+  color: white !important;
+  fill: white !important;
+}
+
+.theme-bhagwa .category-box-body {
+  background-color: white !important;
+  border-top: 2px solid var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .category-box-body a {
+  color: blue !important;
+}
+
+.theme-bhagwa .category-link-item {
+  border: 1.5px dashed var(--chocolaty-color) !important;
+  border-radius: 6px !important;
+  padding: 0.4rem 0.6rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.7rem !important;
+}
+
+.theme-bhagwa .sidebar {
+  background-color: rgba(92, 62, 38, 0.95) !important;
+}
+
+.theme-bhagwa .sidebar * {
+  color: white !important;
+  font-weight: bold !important;
+}
+
+.theme-bhagwa .sidebar a:hover {
+  background-color: var(--bhagwa-color) !important;
+  color: white !important;
+}
+
+.theme-bhagwa div.hamburger-line {
+  background-color: var(--chocolaty-color) !important;
+}
+
+.theme-bhagwa div.hamburger-menu.is-open .hamburger-line {
+  background-color: var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .search-bar-container {
+  border: 1px solid var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .search-bar-container svg,
+.theme-bhagwa .search-bar-container svg circle,
+.theme-bhagwa .search-bar-container svg line {
+  stroke: var(--chocolaty-color) !important;
+}
+
+.theme-bhagwa .site-footer-bottom {
+  background-color: var(--chocolaty-color) !important;
+  color: white !important;
+}
+
+.theme-bhagwa .post-tables-content td,
+.theme-bhagwa .post-tables-content th {
+  color: black !important;
+}
+
+/* Override all general primary backgrounds to bhagwa */
+.theme-bhagwa .bg-primary {
+  background-color: var(--bhagwa-color) !important;
+  color: white !important;
+}
+
+.theme-bhagwa .text-primary {
+  color: black !important;
+}
+
+.theme-bhagwa .border-primary {
+  border-color: var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .w-2.h-2.bg-primary {
+  background-color: var(--bhagwa-color) !important;
+}
+
+.theme-bhagwa .text-primary-foreground {
+  color: white !important;
+}
+
+.theme-bhagwa .bg-primary\/10 {
+  background-color: rgba(241, 141, 27, 0.1) !important;
+}
+
 /* Excel editor styles */
 .excel-cell {
   @apply border border-border outline-none px-1 text-sm cursor-cell whitespace-nowrap overflow-hidden;

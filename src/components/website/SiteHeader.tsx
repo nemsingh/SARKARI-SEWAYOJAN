@@ -1,12 +1,36 @@
+import { Sun, Moon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
 interface SiteHeaderProps {
   logoUrl?: string;
 }
 
 const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
   const defaultLogo = "https://res.cloudinary.com/dokzm0ban/image/upload/v1772811965/Sarkari_Sewayojan_a6lcdm.png";
+  const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme-mode');
+    if (savedTheme === 'bhagwa') {
+      document.body.classList.add('theme-bhagwa');
+      setIsThemeBhagwa(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isThemeBhagwa) {
+      document.body.classList.remove('theme-bhagwa');
+      localStorage.setItem('theme-mode', 'default');
+      setIsThemeBhagwa(false);
+    } else {
+      document.body.classList.add('theme-bhagwa');
+      localStorage.setItem('theme-mode', 'bhagwa');
+      setIsThemeBhagwa(true);
+    }
+  };
   
   return (
-    <div className="bg-background py-8 sticky top-0 z-50 flex items-center relative" style={{ boxShadow: 'var(--box-shadow-medium)' }}>
+    <div className="site-header bg-background py-8 sticky top-0 z-50 flex items-center relative" style={{ boxShadow: 'var(--box-shadow-medium)' }}>
       {/* Logo - Positioned exactly next to the hamburger menu with a tiny gap */}
       <div className="absolute left-[52px] top-0 bottom-0 h-full flex items-center justify-center">
         <img 
@@ -28,6 +52,17 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
         <div className="text-[10px] text-accent mt-1.5 tracking-[3px] max-sm:tracking-[1px] font-medium max-sm:text-[9px]">
           LATEST GOVERNMENT JOBS, RESULTS & NOTIFICATIONS
         </div>
+      </div>
+
+      {/* Theme Switcher Button */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
+        <button 
+          onClick={toggleTheme}
+          className="p-2 rounded-full hover:bg-black/10 transition-colors"
+          title="Switch Theme"
+        >
+          {isThemeBhagwa ? <Sun className="w-6 h-6 text-white" /> : <Moon className="w-6 h-6 text-primary" />}
+        </button>
       </div>
     </div>
   );

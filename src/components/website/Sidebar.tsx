@@ -15,10 +15,10 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
   return (
     <>
       {/* Hamburger */}
-      <div className="fixed top-8 left-5 cursor-pointer z-[3000]" onClick={onToggle}>
-        <div className="w-7 h-[3px] bg-primary my-1.5 rounded-sm" />
-        <div className="w-7 h-[3px] bg-primary my-1.5 rounded-sm" />
-        <div className="w-7 h-[3px] bg-primary my-1.5 rounded-sm" />
+      <div className={`hamburger-menu fixed top-8 left-5 cursor-pointer z-[3000] ${isOpen ? 'is-open' : ''}`} onClick={onToggle}>
+        <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
+        <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
+        <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
       </div>
 
       {/* Overlay */}
@@ -28,7 +28,7 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 h-full w-[280px] backdrop-blur-[20px] bg-primary/5 transition-all duration-400 pt-24 z-[2500] ${
+        className={`sidebar fixed top-0 h-full w-[280px] backdrop-blur-[20px] bg-primary/5 transition-all duration-400 pt-24 z-[2500] ${
           isOpen ? 'left-0' : '-left-[280px]'
         }`}
       >

@@ -138,7 +138,7 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
       )}
 
       {/* Full Width Bottom Footer */}
-      <div className="w-full bg-[#0b3d91] text-white py-6 text-center font-bold mt-8">
+      <div className="site-footer-bottom w-full bg-[#0b3d91] text-white py-6 text-center font-bold mt-8">
         <p className="text-[16px] md:text-[18px] mb-3">
           © 2026 Sarkari Sewayojan | www.sarkarisewayojan.com | All Rights Reserved
         </p>
