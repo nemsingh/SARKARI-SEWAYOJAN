@@ -20,9 +20,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore
-// Use experimentalForceLongPolling to prevent issues in Node.js and proxy environments
+// Use experimentalAutoDetectLongPolling to prevent issues in Node.js, proxy environments, or browsers with strict adblockers.
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: typeof window === 'undefined' ? true : false,
+  experimentalAutoDetectLongPolling: true,
 } as any);
 
 export default app;

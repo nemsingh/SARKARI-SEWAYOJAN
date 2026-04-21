@@ -172,6 +172,12 @@
   100% { transform: perspective(400px) rotateY(360deg); }
 }
 
+/* Category item divider (Navy Blue) styling - only between items */
+.category-link-item + .category-link-item {
+  border-top: 1.5px dashed hsl(var(--primary));
+  padding-top: 0.625rem; /* Matches mb-2.5 (0.625rem) to keep spacing perfectly even */
+}
+
 .theme-bhagwa .social-flip-hover:hover {
   animation: social-flip 1s linear infinite;
 }

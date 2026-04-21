@@ -14,14 +14,27 @@ import { getCategories, getCategoryLinks, getTabletItems, getPosts, getSiteSetti
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 3000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (i === retries - 1) throw e;
+      console.warn(`[Firebase Fetch] Attempt ${i + 1} failed, retrying in ${delayMs}ms. Error: ${e.message || String(e)}`);
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 async function generate() {
   console.log('Fetching data from Firebase...');
   const [categories, initialCategoryLinks, tabletItems, posts, settings] = await Promise.all([
-    getCategories(),
-    getCategoryLinks(),
-    getTabletItems(),
-    getPosts(),
-    getSiteSettingsFlat(),
+    withRetry(() => getCategories()),
+    withRetry(() => getCategoryLinks()),
+    withRetry(() => getTabletItems()),
+    withRetry(() => getPosts()),
+    withRetry(() => getSiteSettingsFlat()),
   ]);
 
   // Fix or remove broken category links
