@@ -183,10 +183,6 @@
   color: #ff0033 !important;
 }
 
-.theme-bhagwa .update-bar-wrapper .update-bar-item:hover {
-  color: #ffffff !important;
-}
-
 .theme-bhagwa .social-flip-hover:hover {
   animation: social-flip 1s linear infinite;
 }
@@ -230,6 +226,10 @@
 .theme-bhagwa .update-bar-wrapper span {
   color: var(--bhagwa-blue) !important;
   font-weight: 900 !important;
+}
+
+.theme-bhagwa .update-bar-wrapper span.update-bar-item:hover {
+  color: #ffffff !important;
 }
 
 .theme-bhagwa .update-bar-wrapper svg {
