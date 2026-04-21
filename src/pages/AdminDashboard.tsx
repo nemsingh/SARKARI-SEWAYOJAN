@@ -270,66 +270,82 @@ const AdminDashboard = () => {
 
           {/* SITE SETTINGS */}
           <TabsContent value="settings">
-            <div className="bg-background rounded-2xl p-6 space-y-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-              <h2 className="text-2xl font-bold text-primary">Site Settings</h2>
-              <UpdateBarManager settings={settings} onSave={handleUpdateSetting} />
-              {['logo_url', 'tagline', 'contact_text', 'build_webhook_url'].map(key => (
-                <SettingEditor key={key} label={key.replace(/_/g, ' ').toUpperCase()} value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
-              ))}
-
-              <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Floating Social Buttons</h3>
-              <p className="text-sm text-muted-foreground mb-4">Toggle 'Show' to enable the button. You must provide a valid URL for the button fully work. These buttons will appear on the bottom-right completely styled in original brand colors.</p>
+            <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+              <h2 className="text-2xl font-bold text-primary mb-6 border-b-4 border-dashed border-slate-500 pb-4">Site Settings</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {['whatsapp', 'instagram', 'youtube', 'telegram', 'facebook', 'linkedin'].map(network => {
-                  const urlKey = `social_${network}_url`;
-                  const enabledKey = `social_${network}_enabled`;
-                  const urlValue = settings[urlKey]?.value || '';
-                  const isEnabled = settings[enabledKey]?.value === 'true';
-
-                  return (
-                    <div key={network} className="border border-border p-4 rounded-lg bg-secondary flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-primary capitalize">{network}</span>
-                        <Button 
-                          variant={isEnabled ? 'default' : 'outline'} 
-                          size="sm" 
-                          onClick={() => handleUpdateSetting(enabledKey, isEnabled ? 'false' : 'true')}
-                          className={isEnabled ? (network === 'whatsapp' ? 'bg-green-600' : network === 'youtube' ? 'bg-red-600' : 'bg-primary') : ''}
-                        >
-                          {isEnabled ? 'Shown' : 'Hidden'}
-                        </Button>
-                      </div>
-                      <Input 
-                        placeholder={`${network} URL`} 
-                        value={urlValue} 
-                        onChange={(e) => handleUpdateSetting(urlKey, e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                  );
-                })}
+              <div className="pb-8 mb-8 border-b-4 border-dashed border-slate-500">
+                <UpdateBarManager settings={settings} onSave={handleUpdateSetting} />
               </div>
 
-              <h3 className="text-xl font-bold text-primary pt-4 border-t border-border">Footer Sections</h3>
-              {['footer_quick_links', 'footer_apps', 'footer_more'].map(key => (
-                <div key={key}>
-                  <label className="text-base font-bold text-primary block mb-1">{key.replace('footer_', '').replace(/_/g, ' ').toUpperCase()}</label>
-                  <p className="text-sm text-muted-foreground mb-2">Har line me: <code className="bg-muted px-1 rounded">Text||URL</code> (URL optional)</p>
-                  <UpdateBarEditor value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
+              <div className="pb-8 mb-8 border-b-4 border-dashed border-slate-500 space-y-6">
+                {['logo_url', 'tagline', 'contact_text', 'build_webhook_url'].map(key => (
+                  <div key={key} className="border-b-2 border-dashed border-slate-300 pb-6 last:border-b-0 last:pb-0">
+                    <SettingEditor label={key.replace(/_/g, ' ').toUpperCase()} value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="pb-8 mb-8 border-b-4 border-dashed border-slate-500">
+                <h3 className="text-xl font-bold text-primary mb-2">Floating Social Buttons</h3>
+                <p className="text-sm text-muted-foreground mb-4">Toggle 'Show' to enable the button. You must provide a valid URL for the button fully work. These buttons will appear on the bottom-right completely styled in original brand colors.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {['whatsapp', 'instagram', 'youtube', 'telegram', 'facebook', 'linkedin'].map(network => {
+                    const urlKey = `social_${network}_url`;
+                    const enabledKey = `social_${network}_enabled`;
+                    const urlValue = settings[urlKey]?.value || '';
+                    const isEnabled = settings[enabledKey]?.value === 'true';
+
+                    return (
+                      <div key={network} className="border-2 border-dashed border-slate-300 p-4 rounded-lg bg-secondary flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-primary capitalize">{network}</span>
+                          <Button 
+                            variant={isEnabled ? 'default' : 'outline'} 
+                            size="sm" 
+                            onClick={() => handleUpdateSetting(enabledKey, isEnabled ? 'false' : 'true')}
+                            className={isEnabled ? (network === 'whatsapp' ? 'bg-green-600' : network === 'youtube' ? 'bg-red-600' : 'bg-primary') : ''}
+                          >
+                            {isEnabled ? 'Shown' : 'Hidden'}
+                          </Button>
+                        </div>
+                        <Input 
+                          placeholder={`${network} URL`} 
+                          value={urlValue} 
+                          onChange={(e) => handleUpdateSetting(urlKey, e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-primary mb-4 border-b-2 border-dashed border-slate-300 pb-2">Footer Sections</h3>
+                <div className="space-y-6 mt-4">
+                  {['footer_quick_links', 'footer_apps', 'footer_more'].map(key => (
+                    <div key={key} className="border-b-2 border-dashed border-slate-300 pb-6 last:border-b-0 last:pb-0">
+                      <label className="text-base font-bold text-primary block mb-1">{key.replace('footer_', '').replace(/_/g, ' ').toUpperCase()}</label>
+                      <p className="text-sm text-muted-foreground mb-2">Har line me: <code className="bg-muted px-1 rounded">Text||URL</code> (URL optional)</p>
+                      <UpdateBarEditor value={settings[key]?.value || ''} onSave={(val) => handleUpdateSetting(key, val)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </TabsContent>
 
           {/* TABLE ITEMS */}
           <TabsContent value="tablets">
             <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-              <h2 className="text-2xl font-bold text-primary mb-4">Table Items (Top Cards)</h2>
+              <h2 className="text-2xl font-bold text-primary mb-4 border-b-4 border-dashed border-slate-500 pb-4">Table Items (Top Cards)</h2>
               <AddTabletForm onAdd={handleAddTabletItem} />
-              <div className="space-y-2 mt-4">
+              <div className="space-y-4 mt-6 border-t-4 border-dashed border-slate-500 pt-6">
                 {tabletItems.map(item => (
-                  <TabletItemRow key={item.id} item={item} onDelete={handleDeleteTabletItem} onUpdate={async (id, data) => { await updateTabletItemFn(id, data); await fetchAll(); toast({ title: 'Table item updated!' }); }} formatDate={formatDate} />
+                  <div key={item.id} className="border-b-2 border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
+                    <TabletItemRow item={item} onDelete={handleDeleteTabletItem} onUpdate={async (id, data) => { await updateTabletItemFn(id, data); await fetchAll(); toast({ title: 'Table item updated!' }); }} formatDate={formatDate} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -482,8 +498,8 @@ const UpdateBarManager = ({ settings, onSave }: { settings: Record<string, any>;
         const dirKey = getDirectionKey(idx);
         const currentDir = settings[dirKey]?.value || settings['update_bar_direction']?.value || 'left';
         return (
-          <div key={key} className="border border-border rounded-lg p-3">
-            <div className="flex justify-between items-center mb-2">
+          <div key={key} className="border-2 border-dashed border-slate-300 rounded-lg p-3 mb-4 last:mb-0">
+            <div className="flex justify-between items-center mb-2 border-b border-dashed border-slate-200 pb-2">
               <span className="text-sm font-bold text-primary">Scrolling Line {idx + 1}</span>
               <div className="flex items-center gap-2">
                 <select
@@ -590,20 +606,21 @@ const CategoryLinksTab = ({
         </select>
       </div>
       {filteredCategories.map(cat => (
-        <CategoryCard
-          key={cat.id}
-          cat={cat}
-          links={categoryLinks.filter(l => l.category_id === cat.id)}
-          onDelete={() => onDeleteCategory(cat.id)}
-          onUpdateName={(name) => onUpdateCategory(cat.id, name)}
-          onAddLink={onAddLink}
-          onDeleteLink={onDeleteLink}
-          onToggleLinkNew={onToggleLinkNew}
-          onUpdateLinkLastDate={onUpdateLinkLastDate}
-          onUpdateLink={onUpdateLink}
-          onMoveLink={onMoveLink}
-          formatDate={formatDate}
-        />
+        <div key={cat.id} className="pb-8 mb-8 border-b-4 border-dashed border-slate-500 last:border-b-0 last:pb-0 last:mb-0">
+          <CategoryCard
+            cat={cat}
+            links={categoryLinks.filter(l => l.category_id === cat.id)}
+            onDelete={() => onDeleteCategory(cat.id)}
+            onUpdateName={(name) => onUpdateCategory(cat.id, name)}
+            onAddLink={onAddLink}
+            onDeleteLink={onDeleteLink}
+            onToggleLinkNew={onToggleLinkNew}
+            onUpdateLinkLastDate={onUpdateLinkLastDate}
+            onUpdateLink={onUpdateLink}
+            onMoveLink={onMoveLink}
+            formatDate={formatDate}
+          />
+        </div>
       ))}
     </div>
   );
@@ -650,9 +667,11 @@ const CategoryCard = ({
         </div>
       </div>
       <AddLinkForm categoryId={cat.id} onAdd={onAddLink} />
-      <div className="space-y-2 mt-3">
+      <div className="space-y-4 mt-5 border-t-2 border-dashed border-slate-300 pt-5">
         {links.map((link, idx) => (
-          <LinkRow key={link.id} link={link} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
+          <div key={link.id} className="border-b border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
+            <LinkRow link={link} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
+          </div>
         ))}
       </div>
     </div>
@@ -825,24 +844,26 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
           <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setFilterCat('all'); }}>Clear Filters</Button>
         </div>
       )}
-      <div className="space-y-3">
+      <div className="space-y-4 mt-6 border-t-4 border-dashed border-slate-500 pt-6">
         {filteredPosts.map(post => (
-          <div key={post.id} className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="font-bold text-primary text-base">{post.name_of_post}</div>
-                <div className="text-sm text-muted-foreground">{post.post_date}</div>
+          <div key={post.id} className="border-b-2 border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
+            <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="font-bold text-primary text-base">{post.name_of_post}</div>
+                  <div className="text-sm text-muted-foreground">{post.post_date}</div>
+                </div>
+                {post.created_at && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{formatDate(post.created_at)}</span>}
               </div>
-              {post.created_at && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{formatDate(post.created_at)}</span>}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
-              <Button variant="outline" size="sm" onClick={() => window.open(`/post/${post.slug || post.id}`, '_blank')}>Preview</Button>
-              <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
+                <Button variant="outline" size="sm" onClick={() => window.open(`/post/${post.slug || post.id}`, '_blank')}>Preview</Button>
+                <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
+              </div>
             </div>
           </div>
         ))}
-        {filteredPosts.length === 0 && <p className="text-muted-foreground text-center py-8">{(searchQuery || filterCat !== 'all') ? 'No posts found.' : 'No posts yet. Create one!'}</p>}
+        {filteredPosts.length === 0 && <p className="text-muted-foreground text-center py-8 border-b-2 border-dashed border-slate-300 pb-4">{(searchQuery || filterCat !== 'all') ? 'No posts found.' : 'No posts yet. Create one!'}</p>}
       </div>
     </div>
   );
