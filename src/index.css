@@ -178,6 +178,11 @@
   padding-top: 0.625rem; /* Matches mb-2.5 (0.625rem) to keep spacing perfectly even */
 }
 
+/* Update Bar Hover Rules (Both UI Themes) */
+.update-bar-item:hover {
+  color: #ff0033 !important;
+}
+
 .theme-bhagwa .social-flip-hover:hover {
   animation: social-flip 1s linear infinite;
 }

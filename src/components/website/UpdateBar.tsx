@@ -39,16 +39,16 @@ const UpdateBar = ({ text, direction = 'left' }: UpdateBarProps) => {
   const animClass = direction === 'right' ? 'animate-scroll-right' : direction === 'bounce' ? 'animate-scroll-bounce' : 'animate-scroll-left';
 
   return (
-    <div className="update-bar-wrapper bg-[hsl(var(--update-bar-bg))] py-3 overflow-hidden relative">
-      <div className={`inline-block whitespace-nowrap text-accent text-[22px] font-semibold ${animClass}`}>
+    <div className="update-bar-wrapper group bg-[hsl(var(--update-bar-bg))] py-3 overflow-hidden relative">
+      <div className={`inline-block whitespace-nowrap text-accent text-[22px] font-semibold group-hover:[animation-play-state:paused] ${animClass}`}>
         {items.map((item, i) => (
-          <span key={i}>
+          <span key={i} className="inline-block">
             {item.url ? (
-              <span onClick={() => handleClick(item.url)} className="cursor-pointer hover:underline">
+              <span onClick={() => handleClick(item.url)} className="cursor-pointer hover:underline update-bar-item transition-colors">
                 {item.text}
               </span>
             ) : (
-              <span>{item.text}</span>
+              <span className="update-bar-item transition-colors">{item.text}</span>
             )}
             {i < items.length - 1 && <span className="mx-4">•</span>}
           </span>
