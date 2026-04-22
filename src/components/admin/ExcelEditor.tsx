@@ -306,6 +306,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const updateCell = useCallback((row: number, col: number, updates: Partial<CellData>) => {
     updateGrid(g => {
       const newGrid = g.map(r => [...r]);
+      
+      // Auto-detect double stars and make bold instantly
+      if (updates.text !== undefined) {
+        updates.text = updates.text.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>');
+      }
+
       newGrid[row][col] = { ...newGrid[row][col], ...updates };
       return newGrid;
     });

@@ -506,11 +506,11 @@ const AdminPostEditor = () => {
 <div class="main-wrapper">
   <div class="job-detail-box">
     <table>
-      <tr><td style="color:#FF0033;font-weight:bold;width:150px;">Name of Post:</td><td style="color:#0b3d91;font-weight:bold;">${nameOfPost}</td></tr>
-      <tr><td style="color:#FF0033;font-weight:bold;">Post Date / Update:</td><td style="color:#0b3d91;font-weight:bold;">${postDate}</td></tr>
-      <tr><td style="color:#FF0033;font-weight:bold;">Short Info:</td><td style="color:#0b3d91;">${shortInfo}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;width:150px;">Name of Post:</td><td style="color:#0b3d91;font-weight:bold;">${nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;">Post Date / Update:</td><td style="color:#0b3d91;font-weight:bold;">${postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;">Short Info:</td><td style="color:#0b3d91;">${shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
     </table>
-    ${tablesHtml}
+    ${tablesHtml ? tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}
   </div>
 </div>
 </body>
@@ -732,12 +732,12 @@ const AdminPostEditor = () => {
           <div className="border-t-4 border-primary rounded-lg p-4">
             <table className="w-full border-collapse mb-5">
               <tbody>
-                <tr><td className="p-2.5 text-destructive font-bold w-[150px] border-b border-border">Name of Post:</td><td className="p-2.5 text-primary font-bold border-b border-border">{nameOfPost}</td></tr>
-                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Post Date / Update:</td><td className="p-2.5 text-primary font-bold border-b border-border">{postDate}</td></tr>
-                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Short Info:</td><td className="p-2.5 text-primary border-b border-border" dangerouslySetInnerHTML={{ __html: shortInfo }} /></tr>
+                <tr><td className="p-2.5 text-destructive font-bold w-[150px] border-b border-border">Name of Post:</td><td className="p-2.5 text-primary font-bold border-b border-border" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Post Date / Update:</td><td className="p-2.5 text-primary font-bold border-b border-border" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Short Info:</td><td className="p-2.5 text-primary border-b border-border" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
               </tbody>
             </table>
-            {tablesHtml && <div dangerouslySetInnerHTML={{ __html: tablesHtml }} />}
+            {tablesHtml && <div dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
           </div>
         </div>
 
