@@ -99,6 +99,9 @@
 /* Sarkari Sewayojan specific styles */
 .post-tables-content {
   font-size: 1.1875rem !important; /* 19px base for post content */
+  overflow-x: auto;
+  max-width: 100%;
+  display: block;
 }
 .post-tables-content *[style*="font-size:10px"] { font-size: 15px !important; }
 .post-tables-content *[style*="font-size:11px"] { font-size: 16px !important; }
@@ -326,12 +329,66 @@
   color: white !important;
 }
 
-.theme-bhagwa .post-tables-content td,
-.theme-bhagwa .post-tables-content th {
-  color: black !important;
+/* Force standard text to be black and use appropriate fonts in Bhagwa theme ONLY if they were default */
+/* We target the explicitly generated #0b3d91 (default Navy Blue) from Excel Editor and make it Black */
+.theme-bhagwa .post-tables-content *[style*="color:#0b3d91"],
+.theme-bhagwa .post-tables-content *[style*="color: #0b3d91"],
+.theme-bhagwa .post-tables-content *[style*="color: rgb(11, 61, 145)"] {
+  color: #000000 !important; 
 }
 
-/* Override all general primary backgrounds to bhagwa */
+/* We target the default Arial from Excel Editor and replace it with Sarkari Result's typical font stack */
+.theme-bhagwa .post-tables-content *[style*="font-family:Arial"],
+.theme-bhagwa .post-tables-content *[style*="font-family: Arial"] {
+  font-family: Tahoma, Arial, Helvetica, sans-serif !important;
+}
+
+/* Also apply to generic tables in Post Detail that aren't Excel generated */
+.theme-bhagwa table.w-full.border-collapse td.text-primary,
+.theme-bhagwa table.w-full.border-collapse td.text-primary * {
+  color: #000000 !important;
+  font-family: Tahoma, Arial, Helvetica, sans-serif !important;
+}
+
+/* Let the 'text-primary' class strictly be black in Bhagwa */
+.theme-bhagwa .text-primary {
+  color: #000000 !important;
+}
+
+/* Default (Navy Blue) Theme Table Border Colors: Find Excel Default Black Borders and make them Navy Blue */
+html:not(.theme-bhagwa) .post-tables-content *[style*="border:1px solid #000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="border: 1px solid #000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="border:1px solid #000000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="border: 1px solid black"] {
+  border-color: #0b3d91 !important;
+}
+html:not(.theme-bhagwa) .post-tables-content table,
+html:not(.theme-bhagwa) table.w-full.border-collapse,
+html:not(.theme-bhagwa) table.w-full.border-collapse td,
+html:not(.theme-bhagwa) table.w-full.border-collapse th {
+  border-color: #0b3d91 !important;
+}
+
+/* Ensure links are blue in Bhagwa Tables */
+.theme-bhagwa .post-tables-content a,
+.theme-bhagwa table.w-full.border-collapse a {
+  color: blue !important;
+  text-decoration: underline !important;
+}
+
+/* BHAGWA THEME Table Borders: Force ALL #0b3d91 explicitly back to Black */
+.theme-bhagwa .post-tables-content table,
+.theme-bhagwa .post-tables-content td,
+.theme-bhagwa .post-tables-content th,
+.theme-bhagwa .post-tables-content *[style*="border-color:#0b3d91"],
+.theme-bhagwa .post-tables-content *[style*="border-color: #0b3d91"],
+.theme-bhagwa table.w-full.border-collapse,
+.theme-bhagwa table.w-full.border-collapse td,
+.theme-bhagwa table.w-full.border-collapse th {
+  border-color: #000000 !important;
+}
+
+/* Navigation & Button overrides for Bhagwa */
 .theme-bhagwa .bg-primary {
   background-color: var(--bhagwa-color) !important;
   color: white !important;
