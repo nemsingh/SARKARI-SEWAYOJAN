@@ -178,21 +178,25 @@ const PostDetail = () => {
 
   // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
+    let val = '';
     if (language === 'hi') {
-      if (post?.[hiField]) return post[hiField]; // Admin manual Hindi (highest priority)
-      if (translatedContent[enField]) return translatedContent[enField]; // Translated Hindi
-      return post?.[enField] || ''; // Fallback to English
+      if (post?.[hiField]) val = post[hiField]; // Admin manual Hindi (highest priority)
+      else if (translatedContent[enField]) val = translatedContent[enField]; // Translated Hindi
+      else val = post?.[enField] || ''; // Fallback to English
+    } else {
+      val = post?.[enField] || '';
     }
-    return post?.[enField] || '';
+    return val ? val.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
   };
 
   const labels = language === 'hi'
     ? { name: 'पद का नाम:', date: 'पोस्ट तिथि / अपडेट:', info: 'संक्षिप्त जानकारी:' }
     : { name: 'Name of Post:', date: 'Post Date / Update:', info: 'Short Info:' };
 
-  const displayTablesHtml = language === 'hi'
+  const rawTablesHtml = language === 'hi'
     ? (post?.tables_html_hi || translatedContent['tables_html'] || post?.tables_html || '')
     : (post?.tables_html || '');
+  const displayTablesHtml = rawTablesHtml ? rawTablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
 
   const mediaUrls: string[] = post?.media_urls || [];
 
@@ -220,13 +224,14 @@ const PostDetail = () => {
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
 
   const postTitle = post?.name_of_post || 'Job Post';
-  const postDescription = post?.short_info ? post.short_info.replace(/<[^>]*>?/gm, '').substring(0, 160) : `Check out the latest details for ${postTitle} on Sarkari Sewayojan.`;
+  const cleanShortInfo = post?.short_info ? post.short_info.replace(/\*\*(.*?)\*\*/gs, '$1').replace(/<[^>]*>?/gm, '') : '';
+  const postDescription = cleanShortInfo ? cleanShortInfo.substring(0, 160) : `Check out the latest details for ${postTitle} on Sarkari Sewayojan.`;
   
   const schema = post ? {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     "title": post.name_of_post,
-    "description": post.short_info || post.name_of_post,
+    "description": cleanShortInfo || post.name_of_post,
     "datePosted": post.post_date || new Date().toISOString(),
     "hiringOrganization": {
       "@type": "Organization",

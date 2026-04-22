@@ -151,7 +151,8 @@ async function generate() {
       ...homeData,
       [`post_${post.slug || post.id}`]: post,
     };
-    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}/index.html`, `${post.name_of_post} - Sarkari Sewayojan`, post.short_info || '');
+    const cleanDesc = (post.short_info || '').replace(/\*\*(.*?)\*\*/gs, '$1').replace(/<[^>]*>?/gm, '').substring(0, 160);
+    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}/index.html`, `${post.name_of_post} - Sarkari Sewayojan`, cleanDesc || post.name_of_post);
     
     // Generate individual JSON file for client-side navigation
     fs.writeFileSync(path.resolve(dataDir, `post_${post.slug || post.id}.json`), JSON.stringify(post));

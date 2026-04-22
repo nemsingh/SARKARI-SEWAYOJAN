@@ -934,7 +934,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         if (cell.rowSpan > 1) attrs += ` rowspan="${cell.rowSpan}"`;
 
         // Preserve HTML content (links, lists)
-        const cellContent = cell.text;
+        let cellContent = cell.text;
+        if (cellContent) {
+          cellContent = cellContent.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>');
+        }
         html += `    <td ${attrs}>${cellContent}</td>\n`;
       }
       html += '  </tr>\n';
