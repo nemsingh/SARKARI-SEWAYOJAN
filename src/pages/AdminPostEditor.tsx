@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, getPostBySlug, updateCategoryLink, getTabletItems, updateTabletItem } from '@/lib/firebaseService';
+import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, updateCategoryLink } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import ExcelEditor from '@/components/admin/ExcelEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { Sun, Moon } from 'lucide-react';
 
 const generateSlug = (text: string) => {
   return text
@@ -113,6 +114,27 @@ const AdminPostEditor = () => {
   const [loading, setLoading] = useState(!isNew);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
+  const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme-mode');
+    if (savedTheme === 'bhagwa') {
+      document.documentElement.classList.add('theme-bhagwa');
+      setIsThemeBhagwa(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isThemeBhagwa) {
+      document.documentElement.classList.remove('theme-bhagwa');
+      localStorage.setItem('theme-mode', 'default');
+      setIsThemeBhagwa(false);
+    } else {
+      document.documentElement.classList.add('theme-bhagwa');
+      localStorage.setItem('theme-mode', 'bhagwa');
+      setIsThemeBhagwa(true);
+    }
+  };
 
   const shortInfoRef = useRef<HTMLTextAreaElement>(null);
   const shortInfoHiRef = useRef<HTMLTextAreaElement>(null);
@@ -523,7 +545,14 @@ const AdminPostEditor = () => {
     <div className="admin-panel min-h-screen bg-secondary">
       <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
         <h1 className="text-2xl font-black text-primary">{isNew ? 'Create New Post' : 'Edit Post'}</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <button 
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-black/10 transition-colors mr-2"
+            title="Switch Theme"
+          >
+            {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
+          </button>
           <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
           <Button onClick={handleSave}>Save Post</Button>
           <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
@@ -737,7 +766,7 @@ const AdminPostEditor = () => {
                 <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Short Info:</td><td className="p-2.5 text-primary border-b border-border" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
               </tbody>
             </table>
-            {tablesHtml && <div dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
+            {tablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
           </div>
         </div>
 

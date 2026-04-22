@@ -21,14 +21,14 @@ interface CellData {
 
 const defaultCell = (): CellData => ({
   text: '',
-  fontFamily: 'Arial',
-  fontSize: '18px',
+  fontFamily: 'inherit',
+  fontSize: '19px',
   fontWeight: 'normal',
   fontStyle: 'normal',
   textDecoration: 'none',
   textAlign: 'left',
   verticalAlign: 'middle',
-  color: '#0b3d91',
+  color: 'inherit',
   backgroundColor: '#ffffff',
   borderAll: true,
   borderOutside: false,
@@ -104,14 +104,35 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
         }
       });
 
-      if (styleObj['color']) cell.color = styleObj['color'];
+      if (styleObj['color']) {
+        const c = styleObj['color'].replace(/\s/g, '').toLowerCase();
+        if (c === '#0b3d91' || c === 'rgb(11,61,145)') {
+          cell.color = 'inherit';
+        } else {
+          cell.color = styleObj['color'];
+        }
+      } else {
+        cell.color = 'inherit';
+      }
+
       if (styleObj['background-color']) cell.backgroundColor = styleObj['background-color'];
       if (styleObj['font-weight']) cell.fontWeight = styleObj['font-weight'];
       if (styleObj['font-style']) cell.fontStyle = styleObj['font-style'];
       if (styleObj['text-decoration']) cell.textDecoration = styleObj['text-decoration'];
       if (styleObj['text-align']) cell.textAlign = styleObj['text-align'];
       if (styleObj['vertical-align']) cell.verticalAlign = styleObj['vertical-align'];
-      if (styleObj['font-family']) cell.fontFamily = styleObj['font-family'];
+      
+      if (styleObj['font-family']) {
+        const ff = styleObj['font-family'].replace(/['"]/g, '').toLowerCase();
+        if (ff.includes('arial') || ff.includes('tahoma') || ff.includes('inherit')) {
+          cell.fontFamily = 'inherit';
+        } else {
+          cell.fontFamily = styleObj['font-family'];
+        }
+      } else {
+        cell.fontFamily = 'inherit';
+      }
+      
       if (styleObj['font-size']) cell.fontSize = styleObj['font-size'];
       
       if (styleObj['border']) {
@@ -304,17 +325,36 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   }, []);
 
   const updateCell = useCallback((row: number, col: number, updates: Partial<CellData>) => {
+    let estimatedWidth: number | null = null;
+    
     updateGrid(g => {
       const newGrid = g.map(r => [...r]);
       
       // Auto-detect double stars and make bold instantly
       if (updates.text !== undefined) {
         updates.text = updates.text.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>');
+        
+        // Auto-adjust width estimate
+        const rawText = updates.text.replace(/<[^>]+>/g, ''); 
+        if (rawText && rawText.length > 10) {
+          estimatedWidth = Math.min(600, Math.max(80, rawText.length * 8));
+        }
       }
 
       newGrid[row][col] = { ...newGrid[row][col], ...updates };
       return newGrid;
     });
+
+    if (estimatedWidth !== null) {
+      setColWidths(prev => {
+        if (estimatedWidth! > prev[col]) {
+          const w = [...prev];
+          w[col] = estimatedWidth!;
+          return w;
+        }
+        return prev;
+      });
+    }
   }, [updateGrid]);
 
   // Mouse handlers
@@ -911,7 +951,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
     if (maxRow === 0 && maxCol === 0 && !sourceGrid[0][0].text) return '';
 
-    let html = '<table class="data-table" style="width:100%;border:1px solid #0b3d91;border-collapse:collapse;margin-top:15px;">\n';
+    let html = '<table class="data-table" style="width:100%;border-collapse:collapse;margin-top:15px;">\n';
     for (let r = 0; r <= maxRow; r++) {
       html += '  <tr>\n';
       for (let c = 0; c <= maxCol; c++) {
@@ -919,19 +959,20 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         if (cell.hidden) continue;
 
         let style = '';
-        style += `color:${cell.color};`;
-        if (cell.backgroundColor !== '#ffffff') style += `background-color:${cell.backgroundColor};`;
+        if (cell.color && cell.color !== 'inherit') style += `color:${cell.color};`;
+        if (cell.backgroundColor && cell.backgroundColor !== '#ffffff' && cell.backgroundColor !== 'transparent') style += `background-color:${cell.backgroundColor};`;
         if (cell.fontWeight === 'bold') style += 'font-weight:bold;';
         if (cell.fontStyle === 'italic') style += 'font-style:italic;';
         if (cell.textDecoration === 'underline') style += 'text-decoration:underline;';
-        if (cell.textAlign !== 'left') style += `text-align:${cell.textAlign};`;
-        if (cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
-        if (cell.fontFamily !== 'Arial') style += `font-family:${cell.fontFamily};`;
-        if (cell.fontSize !== '18px') style += `font-size:${cell.fontSize};`;
+        if (cell.textAlign && cell.textAlign !== 'left') style += `text-align:${cell.textAlign};`;
+        if (cell.verticalAlign && cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
+        if (cell.fontFamily && cell.fontFamily !== 'inherit') style += `font-family:${cell.fontFamily};`;
+        if (cell.fontSize && cell.fontSize !== '19px' && cell.fontSize !== '18px') style += `font-size:${cell.fontSize};`;
+        
         if (cell.borderAll) {
-          style += 'border:1px solid #000;';
+          style += 'border:1px solid currentColor;';
         } else if (cell.borderOutside) {
-          style += 'border:1px solid #000;';
+          style += 'border:1px solid currentColor;';
         }
         style += 'padding:12px;';
 
@@ -1365,7 +1406,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         verticalAlign: cell.verticalAlign as any,
                         color: cell.color,
                         backgroundColor: cell.backgroundColor,
-                        border: cell.borderAll ? '1px solid #000' : cell.borderOutside ? '1px solid #000' : undefined,
+                        border: cell.borderAll ? '1px solid currentColor' : cell.borderOutside ? '1px solid currentColor' : undefined,
                         minHeight: rowHeights[ri],
                         height: 'auto',
                         width: colWidths[ci],

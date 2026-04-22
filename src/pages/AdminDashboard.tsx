@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sun, Moon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +59,32 @@ const AdminDashboard = () => {
   const [confirm, setConfirm] = useState<ConfirmState>({ open: false, title: '', description: '', onConfirm: () => {} });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const ThemeToggle = () => {
+    const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+    useEffect(() => {
+      if (document.documentElement.classList.contains('theme-bhagwa') || localStorage.getItem('theme-mode') === 'bhagwa') {
+        document.documentElement.classList.add('theme-bhagwa');
+        setIsThemeBhagwa(true);
+      }
+    }, []);
+    const toggle = () => {
+      if (isThemeBhagwa) {
+        document.documentElement.classList.remove('theme-bhagwa');
+        localStorage.setItem('theme-mode', 'default');
+        setIsThemeBhagwa(false);
+      } else {
+        document.documentElement.classList.add('theme-bhagwa');
+        localStorage.setItem('theme-mode', 'bhagwa');
+        setIsThemeBhagwa(true);
+      }
+    };
+    return (
+      <button onClick={toggle} className="p-2 rounded-full hover:bg-black/10 transition-colors mr-2" title="Switch Theme">
+        {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
+      </button>
+    );
+  };
 
   const askConfirm = (title: string, description: string, onConfirm: () => void) => {
     setConfirm({ open: true, title, description, onConfirm });
@@ -252,7 +279,8 @@ const AdminDashboard = () => {
 
       <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
         <h1 className="text-2xl font-black text-primary">ADMIN PANEL - Sarkari Sewayojan</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <ThemeToggle />
           <Button variant="default" className="bg-green-600 hover:bg-green-700" onClick={handlePublish}>🚀 Publish Website</Button>
           <Button variant="outline" onClick={() => window.open('/', '_blank')}>⬅ Back to Website</Button>
           <Button variant="destructive" onClick={handleLogout}>Logout</Button>

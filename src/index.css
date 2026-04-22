@@ -343,25 +343,19 @@
   font-family: Tahoma, Arial, Helvetica, sans-serif !important;
 }
 
-/* Also apply to generic tables in Post Detail that aren't Excel generated */
+/* Generic table text fix for Bhagwa theme */
 .theme-bhagwa table.w-full.border-collapse td.text-primary,
 .theme-bhagwa table.w-full.border-collapse td.text-primary * {
-  color: #000000 !important;
-  font-family: Tahoma, Arial, Helvetica, sans-serif !important;
+  color: #000 !important;
+  font-family: inherit;
 }
 
 /* Let the 'text-primary' class strictly be black in Bhagwa */
 .theme-bhagwa .text-primary {
-  color: #000000 !important;
+  color: #000 !important;
 }
 
-/* Default (Navy Blue) Theme Table Border Colors: Find Excel Default Black Borders and make them Navy Blue */
-html:not(.theme-bhagwa) .post-tables-content *[style*="border:1px solid #000"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="border: 1px solid #000"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="border:1px solid #000000"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="border: 1px solid black"] {
-  border-color: #0b3d91 !important;
-}
+/* Default (Navy Blue) Theme Table Border Colors: Ensure generic borders get adapted to Navy Blue */
 html:not(.theme-bhagwa) .post-tables-content table,
 html:not(.theme-bhagwa) table.w-full.border-collapse,
 html:not(.theme-bhagwa) table.w-full.border-collapse td,
@@ -376,16 +370,12 @@ html:not(.theme-bhagwa) table.w-full.border-collapse th {
   text-decoration: underline !important;
 }
 
-/* BHAGWA THEME Table Borders: Force ALL #0b3d91 explicitly back to Black */
+/* BHAGWA THEME Table Borders: Force generic borders to Black */
 .theme-bhagwa .post-tables-content table,
-.theme-bhagwa .post-tables-content td,
-.theme-bhagwa .post-tables-content th,
-.theme-bhagwa .post-tables-content *[style*="border-color:#0b3d91"],
-.theme-bhagwa .post-tables-content *[style*="border-color: #0b3d91"],
 .theme-bhagwa table.w-full.border-collapse,
 .theme-bhagwa table.w-full.border-collapse td,
 .theme-bhagwa table.w-full.border-collapse th {
-  border-color: #000000 !important;
+  border-color: #000 !important;
 }
 
 /* Navigation & Button overrides for Bhagwa */
