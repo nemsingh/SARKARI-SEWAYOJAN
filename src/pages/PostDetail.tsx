@@ -294,16 +294,16 @@ const PostDetail = () => {
             <table key={language} className="w-full border-collapse mb-5">
               <tbody>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold w-[180px] text-[19px]">{labels.name}</td>
-                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[19px]">{getField('name_of_post', 'name_of_post_hi')}</td>
+                  <td className="p-3 align-top text-destructive font-bold w-[180px] text-[19px]">{labels.name}</td>
+                  <td className="p-3 align-top text-primary font-bold text-[19px]">{getField('name_of_post', 'name_of_post_hi')}</td>
                 </tr>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[19px]">{labels.date}</td>
-                  <td className="p-3 align-top border-b border-border text-primary font-bold text-[19px]">{getField('post_date', 'post_date_hi')}</td>
+                  <td className="p-3 align-top text-destructive font-bold text-[19px]">{labels.date}</td>
+                  <td className="p-3 align-top text-primary font-bold text-[19px]">{getField('post_date', 'post_date_hi')}</td>
                 </tr>
                 <tr>
-                  <td className="p-3 align-top border-b border-border text-destructive font-bold text-[19px]">{labels.info}</td>
-                  <td className="p-3 align-top border-b border-border text-primary text-[19px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
+                  <td className="p-3 align-top border-b border-border/20 text-destructive font-bold text-[19px]">{labels.info}</td>
+                  <td className="p-3 align-top border-b border-border/20 text-primary text-[19px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
                 </tr>
               </tbody>
             </table>

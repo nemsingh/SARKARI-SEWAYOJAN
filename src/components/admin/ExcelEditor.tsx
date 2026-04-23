@@ -578,6 +578,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   const pasteData = () => {
     if (!activeCell || !clipboardRange) return;
+    
+    // Calculate new column widths and row heights if pasting text makes them larger
+    const tdElementsToMeasure: { row: number, col: number, text: string }[] = [];
+    
     updateGrid(g => {
       const newGrid = g.map(r => [...r]);
       for (let r = 0; r < clipboardRange.rows; r++) {
@@ -587,11 +591,41 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           if (targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
             const src = clipboardRange.data[r][c];
             newGrid[targetRow][targetCol] = { ...newGrid[targetRow][targetCol], text: src.text };
+            tdElementsToMeasure.push({ row: targetRow, col: targetCol, text: src.text });
           }
         }
       }
       return newGrid;
     });
+    
+    // Set a timeout to allow DOM to render before measuring new sizes
+    setTimeout(() => {
+       let newColWidths = [...colWidths];
+       let newRowHeights = [...rowHeights];
+       let changed = false;
+       
+       tdElementsToMeasure.forEach(({ row, col }) => {
+          const tdElement = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+          if (tdElement) {
+             const scrollWidth = tdElement.scrollWidth + 12;
+             const scrollHeight = tdElement.scrollHeight;
+             
+             if (scrollWidth > newColWidths[col] && scrollWidth < 600) {
+                 newColWidths[col] = scrollWidth;
+                 changed = true;
+             }
+             if (scrollHeight > newRowHeights[row]) {
+                 newRowHeights[row] = scrollHeight;
+                 changed = true;
+             }
+          }
+       });
+       
+       if (changed) {
+           setColWidths(newColWidths);
+           setRowHeights(newRowHeights);
+       }
+    }, 50);
   };
 
   const applyToSelection = (prop: keyof CellData, value: string) => {
@@ -864,23 +898,20 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const startWidth = colWidths[colIndex];
     let newWidth = startWidth;
-    
-    const thElement = gridRef.current?.querySelector(`th:nth-child(${colIndex + 2})`) as HTMLElement;
 
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const currentX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
       const diff = currentX - startX;
       newWidth = Math.max(30, startWidth + diff);
-      if (thElement) {
-        thElement.style.width = `${newWidth}px`;
-      }
+      // Update state during move for real-time feedback
+      setColWidths(prev => { const next = [...prev]; next[colIndex] = newWidth; return next; });
     };
     const onUp = () => { 
       window.removeEventListener('mousemove', onMove as any); 
       window.removeEventListener('mouseup', onUp); 
       window.removeEventListener('touchmove', onMove as any); 
       window.removeEventListener('touchend', onUp); 
-      setColWidths(prev => { const next = [...prev]; next[colIndex] = newWidth; return next; });
+      updateSelectionRect(); // Update selection outlines when done resizing
     };
     window.addEventListener('mousemove', onMove as any);
     window.addEventListener('mouseup', onUp);
@@ -895,24 +926,20 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const startHeight = rowHeights[rowIndex];
     let newHeight = startHeight;
-    
-    // The row header cell is at col 0 essentially, but we can set the height of the row header td itself
-    const tdElement = gridRef.current?.querySelector(`tr:nth-child(${rowIndex + 1}) > td:first-child`) as HTMLElement;
 
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const currentY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
       const diff = currentY - startY;
       newHeight = Math.max(15, startHeight + diff);
-      if (tdElement) {
-        tdElement.style.height = `${newHeight}px`;
-      }
+      // Update state during move for real-time feedback
+      setRowHeights(prev => { const next = [...prev]; next[rowIndex] = newHeight; return next; });
     };
     const onUp = () => { 
       window.removeEventListener('mousemove', onMove as any); 
       window.removeEventListener('mouseup', onUp); 
       window.removeEventListener('touchmove', onMove as any); 
       window.removeEventListener('touchend', onUp); 
-      setRowHeights(prev => { const next = [...prev]; next[rowIndex] = newHeight; return next; });
+      updateSelectionRect(); // Update selection outlines when done resizing
     };
     window.addEventListener('mousemove', onMove as any);
     window.addEventListener('mouseup', onUp);
@@ -1362,6 +1389,28 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                     className={`absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center opacity-0 hover:opacity-100 ${selectedColHeader === c ? 'opacity-100' : ''}`} 
                     onMouseDown={(e) => handleColResize(c, e)}
                     onTouchStart={(e) => handleColResize(c, e)}
+                    onDoubleClick={() => {
+                      // Auto-fit column width on double click
+                      let maxContentWidth = 80;
+                      grid.forEach((row, ri) => {
+                        const cell = row[c];
+                        if (!cell.hidden) {
+                          const tdElement = gridRef.current?.querySelector(`td[data-row="${ri}"][data-col="${c}"]`) as HTMLElement;
+                          if (tdElement) {
+                             // Temporarily reset width to auto to measure natural content width
+                             tdElement.style.width = 'auto';
+                             // Add some padding
+                             const contentWidth = tdElement.scrollWidth + 12;
+                             // Restore original width before state update
+                             tdElement.style.width = `${colWidths[c]}px`;
+                             if (contentWidth > maxContentWidth) {
+                               maxContentWidth = contentWidth;
+                             }
+                          }
+                        }
+                      });
+                      setColWidths(prev => { const next = [...prev]; next[c] = Math.min(maxContentWidth, 600); return next; });
+                    }}
                   >
                     <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>
                     <div className="w-[2px] h-full bg-blue-500 mx-[1px]"></div>

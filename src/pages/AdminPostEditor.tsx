@@ -761,9 +761,9 @@ const AdminPostEditor = () => {
           <div className="border-t-4 border-primary rounded-lg p-4">
             <table className="w-full border-collapse mb-5">
               <tbody>
-                <tr><td className="p-2.5 text-destructive font-bold w-[150px] border-b border-border">Name of Post:</td><td className="p-2.5 text-primary font-bold border-b border-border" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
-                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Post Date / Update:</td><td className="p-2.5 text-primary font-bold border-b border-border" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
-                <tr><td className="p-2.5 text-destructive font-bold border-b border-border">Short Info:</td><td className="p-2.5 text-primary border-b border-border" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
+                <tr><td className="p-2.5 text-destructive font-bold w-[150px]">Name of Post:</td><td className="p-2.5 text-primary font-bold" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold">Post Date / Update:</td><td className="p-2.5 text-primary font-bold" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-border/20">Short Info:</td><td className="p-2.5 text-primary border-b border-border/20" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
               </tbody>
             </table>
             {tablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
