@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import ExcelEditor from '@/components/admin/ExcelEditor';
+import DirectPasteEditor from '@/components/admin/DirectPasteEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Sun, Moon } from 'lucide-react';
 
@@ -423,6 +424,16 @@ const AdminPostEditor = () => {
     };
 
     try {
+      const payloadSize = new Blob([JSON.stringify(postData)]).size;
+      // Warn when approaching 1 MB limit (1,048,576 bytes)
+      if (payloadSize > 850000) {
+         toast({ title: 'Size Warning', description: `This post is extremely large (${(payloadSize/1024/1024).toFixed(2)} MB) and close to the database limit. If saving fails, reduce the number of tables.`, variant: 'destructive' });
+      }
+    } catch(e) {
+      console.warn("Could not calculate payload size", e);
+    }
+
+    try {
       if (isNew) {
         const result = await createPost(postData);
         if (linkTitle.trim() && linkCategoryId) {
@@ -641,6 +652,7 @@ const AdminPostEditor = () => {
             lang="en" 
             channelId={channelEn} 
           />
+          <DirectPasteEditor onAdd={handleAddTable} lang="en" />
         </div>
 
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
@@ -724,6 +736,7 @@ const AdminPostEditor = () => {
             initialHtml={editingTableIndexHi !== null ? tablesHi[editingTableIndexHi] : undefined}
             isEditing={editingTableIndexHi !== null}
           />
+          <DirectPasteEditor onAdd={handleAddTableHi} lang="hi" />
         </div>
 
         <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
@@ -763,7 +776,7 @@ const AdminPostEditor = () => {
               <tbody>
                 <tr><td className="p-2.5 text-destructive font-bold w-[150px]">Name of Post:</td><td className="p-2.5 text-primary font-bold" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
                 <tr><td className="p-2.5 text-destructive font-bold">Post Date / Update:</td><td className="p-2.5 text-primary font-bold" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td></tr>
-                <tr><td className="p-2.5 text-destructive font-bold border-b border-border/20">Short Info:</td><td className="p-2.5 text-primary border-b border-border/20" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
+                <tr><td className="p-2.5 text-destructive font-bold border-b border-black/10">Short Info:</td><td className="p-2.5 text-primary border-b border-black/10" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} /></tr>
               </tbody>
             </table>
             {tablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}

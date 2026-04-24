@@ -9,6 +9,7 @@ import Sidebar from '@/components/website/Sidebar';
 import CategoryBox from '@/components/website/CategoryBox';
 import SiteFooter from '@/components/website/SiteFooter';
 import SEO from '@/components/SEO';
+import NotFound from '@/pages/NotFound';
 
 // Fields that can be translated, mapped to their Hindi manual counterparts
 const TRANSLATABLE_FIELDS = [
@@ -220,7 +221,7 @@ const PostDetail = () => {
     ? categories.filter(c => c.name.includes(activeFilter))
     : [];
 
-  if (notFound) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Post Not Found</div>;
+  if (notFound) return <NotFound />;
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
 
   const postTitle = post?.name_of_post || 'Job Post';
@@ -302,8 +303,8 @@ const PostDetail = () => {
                   <td className="p-3 align-top text-primary font-bold text-[19px]">{getField('post_date', 'post_date_hi')}</td>
                 </tr>
                 <tr>
-                  <td className="p-3 align-top border-b border-border/20 text-destructive font-bold text-[19px]">{labels.info}</td>
-                  <td className="p-3 align-top border-b border-border/20 text-primary text-[19px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
+                  <td className="p-3 align-top border-b border-black/10 text-destructive font-bold text-[19px]">{labels.info}</td>
+                  <td className="p-3 align-top border-b border-black/10 text-primary text-[19px]" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') }} />
                 </tr>
               </tbody>
             </table>

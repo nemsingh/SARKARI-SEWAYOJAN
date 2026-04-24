@@ -339,20 +339,25 @@
 
 /* We target the default Arial from Excel Editor and replace it with Sarkari Result's typical font stack */
 .theme-bhagwa .post-tables-content *[style*="font-family:Arial"],
-.theme-bhagwa .post-tables-content *[style*="font-family: Arial"] {
-  font-family: Tahoma, Arial, Helvetica, sans-serif !important;
+.theme-bhagwa .post-tables-content *[style*="font-family: Arial"],
+.theme-bhagwa .post-tables-content,
+.theme-bhagwa .post-tables-content *,
+.theme-bhagwa table.w-full.border-collapse,
+.theme-bhagwa table.w-full.border-collapse td,
+.theme-bhagwa table.w-full.border-collapse td * {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 /* Generic table text fix for Bhagwa theme */
-.theme-bhagwa table.w-full.border-collapse td.text-primary,
-.theme-bhagwa table.w-full.border-collapse td.text-primary * {
-  color: #000 !important;
-  font-family: inherit;
+.theme-bhagwa table.w-full.border-collapse td.text-primary:not([style*="color"]),
+.theme-bhagwa table.w-full.border-collapse td.text-primary *:not([style*="color"]):not(font) {
+  color: #000;
 }
 
 /* Let the 'text-primary' class strictly be black in Bhagwa */
-.theme-bhagwa .text-primary {
-  color: #000 !important;
+.theme-bhagwa .text-primary:not([style*="color"]),
+.theme-bhagwa .text-primary *:not([style*="color"]):not(font) {
+  color: #000;
 }
 
 /* Default (Navy Blue) Theme Table Border Colors: Ensure generic borders get adapted to Navy Blue */
@@ -384,9 +389,11 @@ html:not(.theme-bhagwa) table.w-full.border-collapse th {
   color: white !important;
 }
 
-.theme-bhagwa .text-primary {
-  color: black !important;
+.theme-bhagwa .text-primary,
+.theme-bhagwa .text-primary *:not([style*="color"]):not(font) {
+  color: black;
 }
+
 
 .theme-bhagwa .border-primary {
   border-color: var(--bhagwa-color) !important;

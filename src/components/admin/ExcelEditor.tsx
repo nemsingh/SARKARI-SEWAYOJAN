@@ -37,7 +37,7 @@ const defaultCell = (): CellData => ({
   hidden: false,
 });
 
-const TOTAL_ROWS = 50;
+const TOTAL_ROWS = 100;
 const TOTAL_COLS = 26;
 
 const createEmptyGrid = (): CellData[][] => {
@@ -65,7 +65,7 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
 
   trs.forEach((tr) => {
     if (r >= TOTAL_ROWS) return;
-    const tds = tr.querySelectorAll('td');
+    const tds = tr.querySelectorAll('td, th');
     let c = 0;
 
     tds.forEach((td) => {
@@ -600,8 +600,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     
     // Set a timeout to allow DOM to render before measuring new sizes
     setTimeout(() => {
-       let newColWidths = [...colWidths];
-       let newRowHeights = [...rowHeights];
+       const newColWidths = [...colWidths];
+       const newRowHeights = [...rowHeights];
        let changed = false;
        
        tdElementsToMeasure.forEach(({ row, col }) => {
@@ -716,6 +716,61 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     });
   };
 
+  const insertRow = (above: boolean) => {
+    if (!activeCell) return;
+    const targetRow = activeCell.row + (above ? 0 : 1);
+    updateGrid(g => {
+      const newGrid = [...g];
+      const newRow = Array(TOTAL_COLS).fill(0).map(() => defaultCell());
+      newGrid.splice(targetRow, 0, newRow);
+      if (newGrid.length > TOTAL_ROWS) newGrid.pop();
+      return newGrid;
+    });
+    setRowHeights(prev => {
+      const next = [...prev];
+      next.splice(targetRow, 0, 24);
+      if (next.length > TOTAL_ROWS) next.pop();
+      return next;
+    });
+  };
+
+  const insertCol = (left: boolean) => {
+    if (!activeCell) return;
+    const targetCol = activeCell.col + (left ? 0 : 1);
+    updateGrid(g => {
+      return g.map(row => {
+        const newRow = [...row];
+        newRow.splice(targetCol, 0, defaultCell());
+        if (newRow.length > TOTAL_COLS) newRow.pop();
+        return newRow;
+      });
+    });
+    setColWidths(prev => {
+      const next = [...prev];
+      next.splice(targetCol, 0, 80);
+      if (next.length > TOTAL_COLS) next.pop();
+      return next;
+    });
+  };
+
+  const deleteRow = () => {
+    if (!activeCell) return;
+    const rowIndex = activeCell.row;
+    updateGrid(g => {
+      const newGrid = [...g];
+      newGrid.splice(rowIndex, 1);
+      newGrid.push(Array(TOTAL_COLS).fill(0).map(() => defaultCell()));
+      return newGrid;
+    });
+    setRowHeights(prev => {
+      const next = [...prev];
+      next.splice(rowIndex, 1);
+      next.push(24);
+      return next;
+    });
+    setActiveCellState(null);
+  };
+
   const applyBorder = (type: 'all' | 'outside' | 'none') => {
     updateGrid(g => {
       const newGrid = g.map(r => [...r]);
@@ -737,6 +792,26 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       }
       return newGrid;
     });
+  };
+
+  const deleteCol = () => {
+    if (!activeCell) return;
+    const colIndex = activeCell.col;
+    updateGrid(g => {
+      return g.map(row => {
+        const newRow = [...row];
+        newRow.splice(colIndex, 1);
+        newRow.push(defaultCell());
+        return newRow;
+      });
+    });
+    setColWidths(prev => {
+      const next = [...prev];
+      next.splice(colIndex, 1);
+      next.push(80);
+      return next;
+    });
+    setActiveCellState(null);
   };
 
   const autoSum = () => {
@@ -768,6 +843,16 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const handleKeyDownCell = (e: React.KeyboardEvent, row: number, col: number) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const sel = window.getSelection();
+      // If they just selected the cell but are not editing text inside it (or selected all text)
+      if (selectedCells.length > 1 || (sel && sel.toString() === (e.currentTarget as HTMLElement).innerText)) {
+         e.preventDefault();
+         clearSelection();
+         return;
+      }
+    }
+    
     if (e.key === 'Tab') {
       e.preventDefault();
       let nextRow = row;
@@ -966,22 +1051,30 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const generateTableHtml = (sourceGrid: CellData[][]): string => {
-    let maxRow = 0, maxCol = 0;
+    let minRow = TOTAL_ROWS, minCol = TOTAL_COLS;
+    let maxRow = -1, maxCol = -1;
     sourceGrid.forEach((row, ri) => {
       row.forEach((cell, ci) => {
-        if (cell.text || cell.backgroundColor !== '#ffffff' || cell.hidden || cell.colSpan > 1 || cell.rowSpan > 1) {
-          maxRow = Math.max(maxRow, ri);
-          maxCol = Math.max(maxCol, ci);
+        const textContent = cell.text.replace(/<[^>]+>/g, '').trim();
+        const hasContent = textContent.length > 0 || cell.text.includes('<img') || cell.text.includes('<br');
+        if (hasContent) {
+          minRow = Math.min(minRow, ri);
+          minCol = Math.min(minCol, ci);
+          maxRow = Math.max(maxRow, ri + cell.rowSpan - 1);
+          maxCol = Math.max(maxCol, ci + cell.colSpan - 1);
         }
       });
     });
 
-    if (maxRow === 0 && maxCol === 0 && !sourceGrid[0][0].text) return '';
+    if (maxRow === -1) return ''; // blank table
+
+    if (minRow === TOTAL_ROWS) minRow = 0;
+    if (minCol === TOTAL_COLS) minCol = 0;
 
     let html = '<table class="data-table" style="width:100%;border-collapse:collapse;margin-top:15px;">\n';
-    for (let r = 0; r <= maxRow; r++) {
+    for (let r = minRow; r <= maxRow; r++) {
       html += '  <tr>\n';
-      for (let c = 0; c <= maxCol; c++) {
+      for (let c = minCol; c <= maxCol; c++) {
         const cell = sourceGrid[r][c];
         if (cell.hidden) continue;
 
@@ -1343,6 +1436,29 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           <span className="text-[10px] text-muted-foreground uppercase">Insert</span>
         </div>
 
+        {/* Cells */}
+        <div className="border-r border-border pr-2.5 flex flex-col items-center">
+          <div className="flex gap-1 items-center h-10">
+            <div className="relative group">
+              <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border font-bold text-green-700" title="Insert">➕ Insert ▼</button>
+              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertRow(true)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Row Above</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertRow(false)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Row Below</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertCol(true)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Column Left</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={() => insertCol(false)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Column Right</button>
+              </div>
+            </div>
+            <div className="relative group">
+              <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border font-bold text-red-600" title="Delete">❌ Delete ▼</button>
+              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+                <button onMouseDown={e => e.preventDefault()} onClick={deleteRow} className="block w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-muted">Delete Row</button>
+                <button onMouseDown={e => e.preventDefault()} onClick={deleteCol} className="block w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-muted">Delete Column</button>
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase">Cells</span>
+        </div>
+
         {/* Editing */}
         <div className="flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
@@ -1389,20 +1505,22 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                     className={`absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center opacity-0 hover:opacity-100 ${selectedColHeader === c ? 'opacity-100' : ''}`} 
                     onMouseDown={(e) => handleColResize(c, e)}
                     onTouchStart={(e) => handleColResize(c, e)}
-                    onDoubleClick={() => {
-                      // Auto-fit column width on double click
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
                       let maxContentWidth = 80;
                       grid.forEach((row, ri) => {
                         const cell = row[c];
-                        if (!cell.hidden) {
+                        if (!cell.hidden && cell.text.trim() !== '') {
                           const tdElement = gridRef.current?.querySelector(`td[data-row="${ri}"][data-col="${c}"]`) as HTMLElement;
                           if (tdElement) {
-                             // Temporarily reset width to auto to measure natural content width
-                             tdElement.style.width = 'auto';
-                             // Add some padding
-                             const contentWidth = tdElement.scrollWidth + 12;
-                             // Restore original width before state update
-                             tdElement.style.width = `${colWidths[c]}px`;
+                             const clone = tdElement.cloneNode(true) as HTMLElement;
+                             clone.style.width = 'auto';
+                             clone.style.position = 'absolute';
+                             clone.style.visibility = 'hidden';
+                             clone.style.whiteSpace = 'nowrap';
+                             document.body.appendChild(clone);
+                             const contentWidth = clone.scrollWidth + 16;
+                             document.body.removeChild(clone);
                              if (contentWidth > maxContentWidth) {
                                maxContentWidth = contentWidth;
                              }
@@ -1432,6 +1550,28 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                     className={`absolute bottom-[-4px] left-0 w-full h-[8px] cursor-row-resize z-20 flex flex-col items-center justify-center opacity-0 hover:opacity-100 ${selectedRowHeader === ri ? 'opacity-100' : ''}`} 
                     onMouseDown={(e) => handleRowResize(ri, e)}
                     onTouchStart={(e) => handleRowResize(ri, e)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      let maxContentHeight = 24;
+                      row.forEach((cell, ci) => {
+                        if (!cell.hidden && cell.text.trim() !== '') {
+                          const tdElement = gridRef.current?.querySelector(`td[data-row="${ri}"][data-col="${ci}"]`) as HTMLElement;
+                          if (tdElement) {
+                             const clone = tdElement.cloneNode(true) as HTMLElement;
+                             clone.style.height = 'auto';
+                             clone.style.position = 'absolute';
+                             clone.style.visibility = 'hidden';
+                             document.body.appendChild(clone);
+                             const contentHeight = clone.scrollHeight;
+                             document.body.removeChild(clone);
+                             if (contentHeight > maxContentHeight) {
+                               maxContentHeight = contentHeight;
+                             }
+                          }
+                        }
+                      });
+                      setRowHeights(prev => { const next = [...prev]; next[ri] = Math.max(maxContentHeight, 24); return next; });
+                    }}
                   >
                     <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
                     <div className="h-[2px] w-full bg-blue-500 my-[1px]"></div>
@@ -1472,12 +1612,90 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         if (activeCell && activeCell.row === ri && activeCell.col === ci) {
                           setFormulaValue((e.target as HTMLElement).innerText);
                           updateSelectionRect();
+                          
+                          // Auto expand height and width smoothly in the editor
+                          requestAnimationFrame(() => {
+                            const td = e.target as HTMLElement;
+                            const scrollWidth = td.scrollWidth + 12;
+                            const scrollHeight = td.scrollHeight;
+                            if (scrollWidth > colWidths[ci] && scrollWidth < 600) {
+                              setColWidths(prev => { const next = [...prev]; next[ci] = scrollWidth; return next; });
+                            }
+                            if (scrollHeight > rowHeights[ri]) {
+                              setRowHeights(prev => { const next = [...prev]; next[ri] = scrollHeight; return next; });
+                            }
+                          });
                         }
                       }}
                       onBlur={e => {
                         skipHtmlUpdateForCell.current = { row: ri, col: ci };
                         updateCell(ri, ci, { text: (e.target as HTMLElement).innerHTML });
                       }}
+                      onPaste={e => {
+                        const html = e.clipboardData.getData('text/html');
+                        if (html && (html.includes('<table') || html.includes('<tr'))) {
+                          e.preventDefault();
+                          const pastedGrid = parseHtmlToGrid(html);
+                          
+                          let pMaxR = 0, pMaxC = 0;
+                          for(let pr=0; pr<TOTAL_ROWS; pr++) {
+                            for(let pc=0; pc<TOTAL_COLS; pc++) {
+                               if(pastedGrid[pr][pc].text || pastedGrid[pr][pc].backgroundColor !== '#ffffff' || pastedGrid[pr][pc].colSpan > 1 || pastedGrid[pr][pc].rowSpan > 1) {
+                                  pMaxR = Math.max(pMaxR, pr);
+                                  pMaxC = Math.max(pMaxC, pc);
+                               }
+                            }
+                          }
+                          
+                          updateGrid(g => {
+                            const newGrid = g.map(rRow => [...rRow]);
+                            for(let pr=0; pr<=pMaxR; pr++) {
+                              for(let pc=0; pc<=pMaxC; pc++) {
+                                const targetRow = ri + pr;
+                                const targetCol = ci + pc;
+                                if(targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
+                                  newGrid[targetRow][targetCol] = { ...pastedGrid[pr][pc] };
+                                }
+                              }
+                            }
+                            return newGrid;
+                          });
+
+                          setTimeout(() => {
+                             let changed = false;
+                             const newColWidths = [...colWidths];
+                             const newRowHeights = [...rowHeights];
+                             for(let pr=0; pr<=pMaxR; pr++) {
+                               for(let pc=0; pc<=pMaxC; pc++) {
+                                  const targetRow = ri + pr;
+                                  const targetCol = ci + pc;
+                                  if(targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
+                                    const tdElement = gridRef.current?.querySelector(`td[data-row="${targetRow}"][data-col="${targetCol}"]`) as HTMLElement;
+                                    if (tdElement) {
+                                       const scrollWidth = tdElement.scrollWidth + 12;
+                                       const scrollHeight = tdElement.scrollHeight;
+                                       if (scrollWidth > newColWidths[targetCol] && scrollWidth < 600) {
+                                           newColWidths[targetCol] = scrollWidth;
+                                           changed = true;
+                                       }
+                                       if (scrollHeight > newRowHeights[targetRow]) {
+                                           newRowHeights[targetRow] = scrollHeight;
+                                           changed = true;
+                                       }
+                                    }
+                                  }
+                               }
+                             }
+                             if(changed) {
+                                setColWidths(newColWidths);
+                                setRowHeights(newRowHeights);
+                             }
+                          }, 100);
+                        }
+                      }}
+                      {...((skipHtmlUpdateForCell.current?.row === ri && skipHtmlUpdateForCell.current?.col === ci) 
+                        ? {} 
+                        : { dangerouslySetInnerHTML: { __html: cell.text } })}
                     />
                   );
                 })}
