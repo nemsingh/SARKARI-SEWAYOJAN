@@ -11,10 +11,24 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       
       const tables = el.querySelectorAll('table');
       tables.forEach(table => {
-        table.classList.add('w-full', 'border-collapse');
-        // Remove fixed widths so it expands fully
+        table.classList.add('w-full', 'border-collapse', 'data-table');
         table.style.width = '100%';
         table.removeAttribute('width');
+      });
+
+      // Remove fixed widths from columns and cells to allow full fluid width
+      const cells = el.querySelectorAll('td, th');
+      cells.forEach(cell => {
+         // only remove width if we want it to auto-distribute
+         // actually removing explicit width helps it be fluid
+         (cell as HTMLElement).style.width = '';
+         cell.removeAttribute('width');
+      });
+      
+      const cols = el.querySelectorAll('col');
+      cols.forEach(col => {
+         (col as HTMLElement).style.width = '';
+         col.removeAttribute('width');
       });
 
       const html = el.innerHTML;

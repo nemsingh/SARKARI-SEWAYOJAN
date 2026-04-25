@@ -337,15 +337,17 @@
   color: #000000 !important; 
 }
 
-/* We target the default Arial from Excel Editor and replace it with Sarkari Result's typical font stack */
+/* We target the default Arial from Excel Editor and replace it with Sarkari Result's typical font stack (Tahoma/Verdana) */
 .theme-bhagwa .post-tables-content *[style*="font-family:Arial"],
 .theme-bhagwa .post-tables-content *[style*="font-family: Arial"],
 .theme-bhagwa .post-tables-content,
 .theme-bhagwa .post-tables-content *,
 .theme-bhagwa table.w-full.border-collapse,
 .theme-bhagwa table.w-full.border-collapse td,
-.theme-bhagwa table.w-full.border-collapse td * {
-  font-family: Arial, Helvetica, sans-serif !important;
+.theme-bhagwa table.w-full.border-collapse th,
+.theme-bhagwa table.w-full.border-collapse td *,
+.theme-bhagwa table.w-full.border-collapse th * {
+  font-family: Tahoma, Verdana, 'Segoe UI', Arial, sans-serif !important;
 }
 
 /* Generic table text fix for Bhagwa theme */
@@ -360,12 +362,21 @@
   color: #000;
 }
 
-/* Default (Navy Blue) Theme Table Border Colors: Ensure generic borders get adapted to Navy Blue */
+/* Default (Navy Blue) Theme Table Border & Text Colors: Ensure generic borders get adapted to Navy Blue */
 html:not(.theme-bhagwa) .post-tables-content table,
 html:not(.theme-bhagwa) table.w-full.border-collapse,
 html:not(.theme-bhagwa) table.w-full.border-collapse td,
 html:not(.theme-bhagwa) table.w-full.border-collapse th {
   border-color: #0b3d91 !important;
+}
+
+/* Default Navy Blue Theme text color */
+html:not(.theme-bhagwa) .post-tables-content,
+html:not(.theme-bhagwa) .post-tables-content td,
+html:not(.theme-bhagwa) .post-tables-content th,
+html:not(.theme-bhagwa) .post-tables-content td *:not([style*="color"]),
+html:not(.theme-bhagwa) .post-tables-content th *:not([style*="color"]) {
+  color: #0b3d91;
 }
 
 /* Ensure links are blue in Bhagwa Tables */
@@ -423,6 +434,11 @@ html:not(.theme-bhagwa) table.w-full.border-collapse th {
 
 .excel-cell * {
   max-width: 100%;
+}
+
+.excel-cell ul, .excel-cell ol {
+  padding-left: 1.5rem;
+  margin: 0;
 }
 
 .excel-cell.selected {

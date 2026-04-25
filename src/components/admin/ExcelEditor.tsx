@@ -1200,6 +1200,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     if (isEditing && initialHtml) {
       setGrid(parseHtmlToGrid(initialHtml));
       setGridKey(prev => prev + 1);
+      setTimeout(() => {
+        const rowsToAdjust = Array.from({length: TOTAL_ROWS}, (_, i) => i);
+        const colsToAdjust = Array.from({length: TOTAL_COLS}, (_, i) => i);
+        autoAdjustCols(colsToAdjust);
+        autoAdjustRows(rowsToAdjust);
+      }, 50);
     } else if (!isEditing) {
       resetGrid();
     }
@@ -1603,7 +1609,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                 >
                   {getColLetter(c)}
                   <div 
-                    className={`absolute top-0 right-[-4px] w-[8px] h-full cursor-col-resize z-20 flex items-center justify-center opacity-0 hover:opacity-100 ${selectedColHeader === c ? 'opacity-100' : ''}`} 
+                    className={`absolute top-0 right-[-8px] w-[16px] h-full cursor-col-resize z-20 flex items-center justify-center opacity-0 hover:opacity-100 ${selectedColHeader === c ? 'opacity-100' : ''}`} 
                     onMouseDown={(e) => handleColResize(c, e)}
                     onTouchStart={(e) => handleColResize(c, e)}
                     onDoubleClick={(e) => {
@@ -1634,7 +1640,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                 >
                   {ri + 1}
                   <div 
-                    className={`absolute bottom-[-4px] left-0 w-full h-[8px] cursor-row-resize z-20 flex flex-col items-center justify-center opacity-0 hover:opacity-100 ${selectedRowHeader === ri ? 'opacity-100' : ''}`} 
+                    className={`absolute bottom-[-8px] left-0 w-full h-[16px] cursor-row-resize z-20 flex flex-col items-center justify-center opacity-0 hover:opacity-100 ${selectedRowHeader === ri ? 'opacity-100' : ''}`} 
                     onMouseDown={(e) => handleRowResize(ri, e)}
                     onTouchStart={(e) => handleRowResize(ri, e)}
                     onDoubleClick={(e) => {
@@ -1688,17 +1694,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                           setFormulaValue((e.target as HTMLElement).innerText);
                           updateSelectionRect();
                           
-                          // Auto expand height and width smoothly in the editor
+                          // Use autoAdjustCols so the width is correctly measured (ignoring word-wrap)
                           requestAnimationFrame(() => {
-                            const td = e.target as HTMLElement;
-                            const scrollWidth = td.scrollWidth + 12;
-                            const scrollHeight = td.scrollHeight;
-                            if (scrollWidth > colWidths[ci] && scrollWidth < 600) {
-                              setColWidths(prev => { const next = [...prev]; next[ci] = scrollWidth; return next; });
-                            }
-                            if (scrollHeight > rowHeights[ri]) {
-                              setRowHeights(prev => { const next = [...prev]; next[ri] = scrollHeight; return next; });
-                            }
+                            autoAdjustCols([ci]);
+                            autoAdjustRows([ri]);
                           });
                         }
                       }}
@@ -1737,35 +1736,27 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                           });
 
                           setTimeout(() => {
-                             let changed = false;
-                             const newColWidths = [...colWidths];
-                             const newRowHeights = [...rowHeights];
+                             const colsToAdjust = [];
+                             const rowsToAdjust = [];
                              for(let pr=0; pr<=pMaxR; pr++) {
                                for(let pc=0; pc<=pMaxC; pc++) {
                                   const targetRow = ri + pr;
                                   const targetCol = ci + pc;
                                   if(targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
-                                    const tdElement = gridRef.current?.querySelector(`td[data-row="${targetRow}"][data-col="${targetCol}"]`) as HTMLElement;
-                                    if (tdElement) {
-                                       const scrollWidth = tdElement.scrollWidth + 12;
-                                       const scrollHeight = tdElement.scrollHeight;
-                                       if (scrollWidth > newColWidths[targetCol] && scrollWidth < 600) {
-                                           newColWidths[targetCol] = scrollWidth;
-                                           changed = true;
-                                       }
-                                       if (scrollHeight > newRowHeights[targetRow]) {
-                                           newRowHeights[targetRow] = scrollHeight;
-                                           changed = true;
-                                       }
-                                    }
+                                     if (!colsToAdjust.includes(targetCol)) colsToAdjust.push(targetCol);
+                                     if (!rowsToAdjust.includes(targetRow)) rowsToAdjust.push(targetRow);
                                   }
                                }
                              }
-                             if(changed) {
-                                setColWidths(newColWidths);
-                                setRowHeights(newRowHeights);
-                             }
+                             autoAdjustCols(colsToAdjust);
+                             autoAdjustRows(rowsToAdjust);
                           }, 100);
+                        } else {
+                           // Regular text paste
+                           setTimeout(() => {
+                             autoAdjustCols([ci]);
+                             autoAdjustRows([ri]);
+                           }, 50);
                         }
                       }}
                       {...((skipHtmlUpdateForCell.current?.row === ri && skipHtmlUpdateForCell.current?.col === ci) 
@@ -1839,7 +1830,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Zoom controls */}
         <div className="flex items-center gap-2 border border-border rounded-md px-2 py-1 bg-muted">
           <button onClick={() => setZoom(z => Math.max(50, z - 10))} className="px-2 hover:bg-background rounded" title="Zoom Out">➖</button>
-          <span className="text-sm font-medium w-12 text-center">{zoom}%</span>
+          <input 
+            type="number" 
+            className="w-12 text-center bg-transparent outline-none text-sm font-medium" 
+            value={zoom} 
+            onChange={e => setZoom(Number(e.target.value))} 
+            title="Type zoom percentage (e.g., 100)"
+          />
+          <span className="-ml-2 text-sm font-medium">%</span>
           <button onClick={() => setZoom(z => Math.min(200, z + 10))} className="px-2 hover:bg-background rounded" title="Zoom In">➕</button>
         </div>
       </div>
