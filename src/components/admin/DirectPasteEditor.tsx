@@ -19,10 +19,14 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       // Remove fixed widths from columns and cells to allow full fluid width
       const cells = el.querySelectorAll('td, th');
       cells.forEach(cell => {
-         // only remove width if we want it to auto-distribute
-         // actually removing explicit width helps it be fluid
-         (cell as HTMLElement).style.width = '';
+         const htmlCell = cell as HTMLElement;
+         htmlCell.style.width = '';
          cell.removeAttribute('width');
+         
+         // Remove white-space: nowrap from Excel so it doesn't overflow horizontally
+         if (htmlCell.style.whiteSpace === 'nowrap') {
+            htmlCell.style.whiteSpace = 'normal';
+         }
       });
       
       const cols = el.querySelectorAll('col');

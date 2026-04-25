@@ -1001,12 +1001,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     setColWidths(prev => {
       const next = [...prev];
       colIndices.forEach(c => {
-        let maxContentWidth = 80;
+        let maxContentWidth = 80; // Minimum width
         grid.forEach((row, ri) => {
           const cell = row[c];
-          if (!cell.hidden && cell.text.trim() !== '') {
+          if (!cell.hidden) {
             const tdElement = gridRef.current?.querySelector(`td[data-row="${ri}"][data-col="${c}"]`) as HTMLElement;
-            if (tdElement) {
+            if (tdElement && tdElement.innerText.trim() !== '') {
               const clone = tdElement.cloneNode(true) as HTMLElement;
               clone.style.width = 'auto';
               clone.style.position = 'absolute';
@@ -1033,13 +1033,15 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       rowIndices.forEach(r => {
         let maxContentHeight = 24;
         grid[r].forEach((cell, ci) => {
-          if (!cell.hidden && cell.text.trim() !== '') {
+          if (!cell.hidden) {
             const tdElement = gridRef.current?.querySelector(`td[data-row="${r}"][data-col="${ci}"]`) as HTMLElement;
-            if (tdElement) {
+            if (tdElement && tdElement.innerText.trim() !== '') {
               const clone = tdElement.cloneNode(true) as HTMLElement;
               clone.style.height = 'auto';
               clone.style.position = 'absolute';
               clone.style.visibility = 'hidden';
+              clone.style.whiteSpace = 'normal';
+              clone.style.width = colWidths[ci] + 'px'; // Lock width to correctly measure height
               document.body.appendChild(clone);
               const contentHeight = clone.scrollHeight + 4;
               document.body.removeChild(clone);
@@ -1614,7 +1616,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                     onTouchStart={(e) => handleColResize(c, e)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      const isSelectedCurrent = selectedCells.some(c => c.col === c);
+                      const isSelectedCurrent = selectedCells.some(cell => cell.col === c);
                       let colsToAdjust = [c];
                       if (isSelectedCurrent && selectedCells.length > 1) {
                          const cols = new Set(selectedCells.map(cell => cell.col));
@@ -1645,7 +1647,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                     onTouchStart={(e) => handleRowResize(ri, e)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      const isSelectedCurrent = selectedCells.some(c => c.row === ri);
+                      const isSelectedCurrent = selectedCells.some(cell => cell.row === ri);
                       let rowsToAdjust = [ri];
                       if (isSelectedCurrent && selectedCells.length > 1) {
                          const rows = new Set(selectedCells.map(cell => cell.row));
