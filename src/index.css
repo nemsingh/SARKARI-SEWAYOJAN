@@ -415,8 +415,14 @@ html:not(.theme-bhagwa) table.w-full.border-collapse th {
 .excel-cell {
   @apply border border-border outline-none px-1 text-sm cursor-text;
   word-wrap: break-word;
+  word-break: break-word;
   white-space: pre-wrap;
   min-height: 24px;
+  overflow: hidden;
+}
+
+.excel-cell * {
+  max-width: 100%;
 }
 
 .excel-cell.selected {

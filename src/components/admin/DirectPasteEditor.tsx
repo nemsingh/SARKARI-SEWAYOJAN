@@ -6,7 +6,18 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
 
   const handleAdd = () => {
     if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
+      const el = document.createElement('div');
+      el.innerHTML = editorRef.current.innerHTML;
+      
+      const tables = el.querySelectorAll('table');
+      tables.forEach(table => {
+        table.classList.add('w-full', 'border-collapse');
+        // Remove fixed widths so it expands fully
+        table.style.width = '100%';
+        table.removeAttribute('width');
+      });
+
+      const html = el.innerHTML;
       if (html.trim() !== '') {
         onAdd(html);
         editorRef.current.innerHTML = '';
