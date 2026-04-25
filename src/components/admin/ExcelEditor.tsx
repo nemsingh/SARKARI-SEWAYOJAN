@@ -114,13 +114,19 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
         if (c === '#0b3d91' || c === 'rgb(11,61,145)') {
           cell.color = 'inherit';
         } else {
-          cell.color = styleObj['color'];
+          cell.color = cssColorToHex(styleObj['color']);
         }
       } else {
         cell.color = 'inherit';
       }
 
-      if (styleObj['background-color']) cell.backgroundColor = styleObj['background-color'];
+      if (styleObj['background-color']) cell.backgroundColor = cssColorToHex(styleObj['background-color']);
+      
+      const bgColorAttr = td.getAttribute('bgcolor');
+      if (bgColorAttr && !styleObj['background-color']) {
+         cell.backgroundColor = cssColorToHex(bgColorAttr);
+      }
+
       if (styleObj['font-weight']) cell.fontWeight = styleObj['font-weight'];
       if (styleObj['font-style']) cell.fontStyle = styleObj['font-style'];
       if (styleObj['text-decoration']) cell.textDecoration = styleObj['text-decoration'];
@@ -162,11 +168,19 @@ interface ExcelEditorProps {
   channelId?: string;
 }
 
-const rgbToHex = (color: string) => {
-  if (!color) return '#000000';
-  if (color.startsWith('#')) return color;
-  const rgb = color.match(/\d+/g);
-  if (!rgb || rgb.length < 3) return '#000000';
+const cssColorToHex = (colorString: string) => {
+  if (!colorString) return '#ffffff';
+  if (colorString === 'transparent') return 'transparent';
+  if (colorString.startsWith('#')) return colorString;
+  
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (ctx) {
+     ctx.fillStyle = colorString;
+     return ctx.fillStyle;
+  }
+  
+  const rgb = colorString.match(/\d+/g);
+  if (!rgb || rgb.length < 3) return colorString;
   return '#' + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
 };
 
@@ -573,6 +587,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       }
       
       // Update cell content
+      skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
       updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
       if (activeCell) {
         setFormulaValue(td.innerText);
@@ -1011,7 +1026,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               clone.style.width = 'auto';
               clone.style.position = 'absolute';
               clone.style.visibility = 'hidden';
-              clone.style.whiteSpace = 'nowrap';
+              clone.style.whiteSpace = 'pre';
+              clone.style.wordBreak = 'normal';
               document.body.appendChild(clone);
               const contentWidth = clone.scrollWidth + 16;
               document.body.removeChild(clone);
@@ -1021,7 +1037,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             }
           }
         });
-        next[c] = Math.min(maxContentWidth, 600);
+        next[c] = Math.min(maxContentWidth, 2000); // Increased max width limit from 600
       });
       return next;
     });
@@ -1040,7 +1056,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               clone.style.height = 'auto';
               clone.style.position = 'absolute';
               clone.style.visibility = 'hidden';
-              clone.style.whiteSpace = 'normal';
+              clone.style.whiteSpace = 'pre';
+              clone.style.wordBreak = 'normal';
               clone.style.width = colWidths[ci] + 'px'; // Lock width to correctly measure height
               document.body.appendChild(clone);
               const contentHeight = clone.scrollHeight + 4;
@@ -1059,7 +1076,6 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   // Column resize
   const handleColResize = (colIndex: number, e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const startWidth = colWidths[colIndex];
@@ -1087,7 +1103,6 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   // Row resize
   const handleRowResize = (rowIndex: number, e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const startHeight = rowHeights[rowIndex];
@@ -1153,7 +1168,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     if (minRow === TOTAL_ROWS) minRow = 0;
     if (minCol === TOTAL_COLS) minCol = 0;
 
-    let html = '<table class="data-table" style="width:100%;border-collapse:collapse;margin-top:15px;">\n';
+    let html = '<div style="overflow-x:auto;width:100%;"><table class="data-table" style="width:100%;border-collapse:collapse;margin-top:15px;table-layout:auto;word-break:break-word;">\n';
     for (let r = minRow; r <= maxRow; r++) {
       html += '  <tr>\n';
       for (let c = minCol; c <= maxCol; c++) {
@@ -1192,7 +1207,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       }
       html += '  </tr>\n';
     }
-    html += '</table>';
+    html += '</table></div>';
     return html;
   };
 

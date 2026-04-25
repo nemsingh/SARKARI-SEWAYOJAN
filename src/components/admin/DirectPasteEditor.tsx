@@ -13,31 +13,44 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       tables.forEach(table => {
         table.classList.add('w-full', 'border-collapse', 'data-table');
         table.style.width = '100%';
+        table.style.maxWidth = '100%';
+        table.style.margin = '0 auto';
+        table.style.tableLayout = 'auto'; // allow columns to adjust, but might cause overflow if not wrapped
+        table.style.wordBreak = 'break-word';
         table.removeAttribute('width');
       });
 
-      // Remove fixed widths from columns and cells to allow full fluid width
-      const cells = el.querySelectorAll('td, th');
+      // Remove fixed widths and styles from columns and cells to allow full fluid width
+      const cells = el.querySelectorAll('td, th, col, colgroup');
       cells.forEach(cell => {
          const htmlCell = cell as HTMLElement;
-         htmlCell.style.width = '';
-         cell.removeAttribute('width');
-         
-         // Remove white-space: nowrap from Excel so it doesn't overflow horizontally
-         if (htmlCell.style.whiteSpace === 'nowrap') {
-            htmlCell.style.whiteSpace = 'normal';
+         if (htmlCell.style) {
+             htmlCell.style.width = '';
+             htmlCell.style.minWidth = '';
+             htmlCell.style.maxWidth = '';
+             htmlCell.style.height = ''; 
+             
+             // Remove white-space limits from Excel so it doesn't overflow horizontally
+             if (htmlCell.style.whiteSpace === 'nowrap' || htmlCell.style.whiteSpace === 'pre') {
+                htmlCell.style.whiteSpace = 'normal';
+             }
+             htmlCell.style.wordBreak = 'break-word';
          }
+         cell.removeAttribute('width');
+         cell.removeAttribute('height');
       });
       
-      const cols = el.querySelectorAll('col');
-      cols.forEach(col => {
-         (col as HTMLElement).style.width = '';
-         col.removeAttribute('width');
+      // Clear out weird MS Word indents inside paragraphs that push text off-screen
+      const paragraphs = el.querySelectorAll('p');
+      paragraphs.forEach(p => {
+          const htmlP = p as HTMLElement;
+          htmlP.style.margin = '0';
+          htmlP.style.textIndent = '0';
       });
 
       const html = el.innerHTML;
       if (html.trim() !== '') {
-        onAdd(html);
+        onAdd(`<div style="overflow-x:auto;width:100%;">${html}</div>`);
         editorRef.current.innerHTML = '';
       }
     }

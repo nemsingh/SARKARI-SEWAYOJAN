@@ -425,9 +425,8 @@ html:not(.theme-bhagwa) .post-tables-content th *:not([style*="color"]) {
 /* Excel editor styles */
 .excel-cell {
   @apply border border-border outline-none px-1 text-sm cursor-text;
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: pre-wrap;
+  word-break: normal;
+  white-space: pre;
   min-height: 24px;
   overflow: hidden;
 }
