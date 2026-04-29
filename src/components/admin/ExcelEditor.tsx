@@ -77,7 +77,9 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
       if (c >= TOTAL_COLS) return;
 
       const cell = rows[r][c];
-      cell.text = td.innerHTML;
+      const tdClone = td.cloneNode(true) as HTMLElement;
+      tdClone.querySelectorAll('style, meta, link, script').forEach(el => el.remove());
+      cell.text = tdClone.innerHTML;
       if (td.tagName.toLowerCase() === 'th') {
         cell.isHeader = true;
       }
@@ -1021,15 +1023,16 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           const cell = row[c];
           if (!cell.hidden) {
             const tdElement = gridRef.current?.querySelector(`td[data-row="${ri}"][data-col="${c}"]`) as HTMLElement;
-            if (tdElement && tdElement.innerText.trim() !== '') {
+            if (tdElement && tdElement.textContent && tdElement.textContent.trim() !== '') {
               const clone = tdElement.cloneNode(true) as HTMLElement;
-              clone.style.width = 'auto';
+              clone.style.width = 'max-content';
               clone.style.position = 'absolute';
               clone.style.visibility = 'hidden';
-              clone.style.whiteSpace = 'pre';
+              clone.style.whiteSpace = 'nowrap';
               clone.style.wordBreak = 'normal';
+              clone.style.display = 'inline-block';
               document.body.appendChild(clone);
-              const contentWidth = clone.scrollWidth + 16;
+              const contentWidth = clone.getBoundingClientRect().width + 16;
               document.body.removeChild(clone);
               if (contentWidth > maxContentWidth) {
                 maxContentWidth = contentWidth;
@@ -1051,16 +1054,17 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         grid[r].forEach((cell, ci) => {
           if (!cell.hidden) {
             const tdElement = gridRef.current?.querySelector(`td[data-row="${r}"][data-col="${ci}"]`) as HTMLElement;
-            if (tdElement && tdElement.innerText.trim() !== '') {
+            if (tdElement && tdElement.textContent && tdElement.textContent.trim() !== '') {
               const clone = tdElement.cloneNode(true) as HTMLElement;
               clone.style.height = 'auto';
               clone.style.position = 'absolute';
               clone.style.visibility = 'hidden';
-              clone.style.whiteSpace = 'pre';
-              clone.style.wordBreak = 'normal';
+              clone.style.whiteSpace = 'normal'; // Allow wrapping to correctly measure height
+              clone.style.wordBreak = 'break-word';
               clone.style.width = colWidths[ci] + 'px'; // Lock width to correctly measure height
+              clone.style.display = 'block';
               document.body.appendChild(clone);
-              const contentHeight = clone.scrollHeight + 4;
+              const contentHeight = clone.getBoundingClientRect().height + 4;
               document.body.removeChild(clone);
               if (contentHeight > maxContentHeight) {
                 maxContentHeight = contentHeight;
@@ -1137,7 +1141,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         const r = parseInt(td.getAttribute('data-row') || '0');
         const c = parseInt(td.getAttribute('data-col') || '0');
         if (r < newGrid.length && c < newGrid[0].length) {
-          const html = (td as HTMLElement).innerHTML || '';
+          const tdClone = (td as HTMLElement).cloneNode(true) as HTMLElement;
+          tdClone.querySelectorAll('style, meta, link, script').forEach(el => el.remove());
+          const html = tdClone.innerHTML || '';
           // Always use innerHTML to preserve all rich text formatting (colors, bold, links, lists, etc.)
           newGrid[r][c].text = html;
         }
@@ -1147,15 +1153,16 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const generateTableHtml = (sourceGrid: CellData[][]): string => {
-    let minRow = TOTAL_ROWS, minCol = TOTAL_COLS;
+    const minRow = 0; // Fix: Always start from row 0 to prevent cutting off top padding rows added by user. If table is empty, maxRow will be -1 anyway.
+    let minCol = TOTAL_COLS;
     let maxRow = -1, maxCol = -1;
     sourceGrid.forEach((row, ri) => {
       row.forEach((cell, ci) => {
         const textContent = cell.text.replace(/<[^>]+>/g, '').trim();
         const hasContent = textContent.length > 0 || cell.text.includes('<img') || cell.text.includes('<br');
-        const hasCustomStyle = cell.backgroundColor !== '#ffffff' && cell.backgroundColor !== 'transparent';
-        if (hasContent || hasCustomStyle || cell.rowSpan > 1 || cell.colSpan > 1) {
-          minRow = Math.min(minRow, ri);
+        const hasCustomStyle = cell.backgroundColor !== '#ffffff' && cell.backgroundColor !== 'transparent' && cell.backgroundColor !== '';
+        // Include cells that have content, style, spans, or explicitly set border
+        if (hasContent || hasCustomStyle || cell.rowSpan > 1 || cell.colSpan > 1 || cell.borderOutside) {
           minCol = Math.min(minCol, ci);
           maxRow = Math.max(maxRow, ri + cell.rowSpan - 1);
           maxCol = Math.max(maxCol, ci + cell.colSpan - 1);
@@ -1165,7 +1172,6 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
     if (maxRow === -1) return ''; // blank table
 
-    if (minRow === TOTAL_ROWS) minRow = 0;
     if (minCol === TOTAL_COLS) minCol = 0;
 
     let html = '<div style="overflow-x:auto;width:100%;"><table class="data-table" style="width:100%;border-collapse:collapse;margin-top:15px;table-layout:auto;word-break:break-word;">\n';
@@ -1187,9 +1193,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         if (cell.fontSize && cell.fontSize !== '19px' && cell.fontSize !== '18px') style += `font-size:${cell.fontSize};`;
         
         if (cell.borderAll) {
-          style += 'border:1px solid currentColor;';
+          style += 'border-width:1px;border-style:solid;';
         } else if (cell.borderOutside) {
-          style += 'border:1px solid currentColor;';
+          style += 'border-width:1px;border-style:solid;';
         }
         style += 'padding:12px;';
 
@@ -1226,6 +1232,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     } else if (!isEditing) {
       resetGrid();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, initialHtml, resetGrid]);
 
   // Inject HTML into contentEditable cells when gridKey changes (e.g., on load) or after any render
@@ -1466,11 +1473,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             }} className="px-2 cursor-pointer border border-transparent bg-transparent hover:bg-border" title="Clear Formatting">🆑</button>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">A</label>
-              <input type="color" value={rgbToHex(activeCellData?.color || '#000000')} onChange={e => { if (!applyRichTextFormat('foreColor', e.target.value)) applyToSelection('color', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Text Color" />
+              <input type="color" value={cssColorToHex(activeCellData?.color || '#000000')} onChange={e => { if (!applyRichTextFormat('foreColor', e.target.value)) applyToSelection('color', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Text Color" />
             </div>
             <div className="flex items-center gap-0.5">
               <label className="text-[10px]">🎨</label>
-              <input type="color" value={rgbToHex(activeCellData?.backgroundColor === 'transparent' || !activeCellData?.backgroundColor ? '#ffffff' : activeCellData.backgroundColor)} onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
+              <input type="color" value={cssColorToHex(activeCellData?.backgroundColor === 'transparent' || !activeCellData?.backgroundColor ? '#ffffff' : activeCellData.backgroundColor)} onChange={e => { if (!applyRichTextFormat('hiliteColor', e.target.value)) applyToSelection('backgroundColor', e.target.value); }} className="w-6 h-6 cursor-pointer" title="Fill Color" />
             </div>
             <div className="flex items-center gap-0.5">
               <input type="text" value={textColorHex} onChange={e => setTextColorHex(e.target.value)} placeholder="#hex" className="w-16 px-1 text-xs border border-border bg-background rounded" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = textColorHex.trim(); if (val) { const color = /^[0-9A-Fa-f]{3,6}$/.test(val) ? `#${val}` : val; if (!applyRichTextFormat('foreColor', color)) applyToSelection('color', color); } } }} title="Text Color Code" />
@@ -1693,10 +1700,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         verticalAlign: cell.verticalAlign as any,
                         color: cell.color,
                         backgroundColor: cell.backgroundColor,
-                        border: cell.borderAll ? '1px solid currentColor' : cell.borderOutside ? '1px solid currentColor' : undefined,
+                        border: cell.borderAll ? '1px solid hsl(var(--border))' : cell.borderOutside ? '1px solid hsl(var(--border))' : undefined,
                         minHeight: rowHeights[ri],
                         height: 'auto',
                         width: colWidths[ci],
+                        whiteSpace: 'nowrap',
+                        wordBreak: 'normal',
                       }}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
                       rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
@@ -1726,6 +1735,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         const html = e.clipboardData.getData('text/html');
                         if (html && (html.includes('<table') || html.includes('<tr'))) {
                           e.preventDefault();
+                          (e.target as HTMLElement).blur(); // Fix: prevent useEffect from skipping active cell
                           const pastedGrid = parseHtmlToGrid(html);
                           
                           let pMaxR = 0, pMaxC = 0;
@@ -1765,10 +1775,24 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                                   }
                                }
                              }
+                             // Force manual update of td.innerHTML just in case React batches updates weirdly
+                             if (gridRef.current) {
+                               for(let pr=0; pr<=pMaxR; pr++) {
+                                 for(let pc=0; pc<=pMaxC; pc++) {
+                                   const targetRow = ri + pr;
+                                   const targetCol = ci + pc;
+                                   if(targetRow < TOTAL_ROWS && targetCol < TOTAL_COLS) {
+                                      const td = gridRef.current.querySelector(`td[data-row="${targetRow}"][data-col="${targetCol}"]`) as HTMLElement;
+                                      if (td) td.innerHTML = pastedGrid[pr][pc].text;
+                                   }
+                                 }
+                               }
+                             }
                              autoAdjustCols(colsToAdjust);
                              autoAdjustRows(rowsToAdjust);
                           }, 100);
                         } else {
+
                            // Regular text paste
                            setTimeout(() => {
                              autoAdjustCols([ci]);

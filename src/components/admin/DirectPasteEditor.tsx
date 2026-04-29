@@ -9,38 +9,103 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       const el = document.createElement('div');
       el.innerHTML = editorRef.current.innerHTML;
       
+      // Remove <style> and <meta> tags completely
+      const stylesAndMetas = el.querySelectorAll('style, meta, link');
+      stylesAndMetas.forEach(tag => tag.remove());
+
       const tables = el.querySelectorAll('table');
       tables.forEach(table => {
-        table.classList.add('w-full', 'border-collapse', 'data-table');
-        table.style.width = '100%';
-        table.style.maxWidth = '100%';
+        table.removeAttribute('class');
+        table.classList.add('data-table');
         table.style.margin = '0 auto';
-        table.style.tableLayout = 'auto'; // allow columns to adjust, but might cause overflow if not wrapped
+        table.style.width = '100%';
+        table.style.tableLayout = 'auto';
+        table.style.borderCollapse = 'collapse';
+        table.style.marginTop = '15px';
         table.style.wordBreak = 'break-word';
         table.removeAttribute('width');
+        
+        // Wrap table in overflow div to match ExcelEditor behavior
+        const wrapper = document.createElement('div');
+        wrapper.style.overflowX = 'auto';
+        wrapper.style.width = '100%';
+        if (table.parentNode) {
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        }
       });
 
-      // Remove fixed widths and styles from columns and cells to allow full fluid width
-      const cells = el.querySelectorAll('td, th, col, colgroup');
+      const cells = el.querySelectorAll('td, th');
       cells.forEach(cell => {
-         const htmlCell = cell as HTMLElement;
-         if (htmlCell.style) {
-             htmlCell.style.width = '';
-             htmlCell.style.minWidth = '';
-             htmlCell.style.maxWidth = '';
-             htmlCell.style.height = ''; 
-             
-             // Remove white-space limits from Excel so it doesn't overflow horizontally
-             if (htmlCell.style.whiteSpace === 'nowrap' || htmlCell.style.whiteSpace === 'pre') {
-                htmlCell.style.whiteSpace = 'normal';
-             }
-             htmlCell.style.wordBreak = 'break-word';
-         }
-         cell.removeAttribute('width');
-         cell.removeAttribute('height');
+          const htmlCell = cell as HTMLElement;
+          htmlCell.removeAttribute('width');
+          htmlCell.removeAttribute('height');
+          htmlCell.removeAttribute('valign');
+
+          const style = htmlCell.style;
+          
+          style.border = '';
+          style.borderTop = '';
+          style.borderBottom = '';
+          style.borderLeft = '';
+          style.borderRight = '';
+          style.borderColor = '';
+          
+          style.padding = '12px';
       });
       
-      // Clear out weird MS Word indents inside paragraphs that push text off-screen
+      const allElements = el.querySelectorAll('*');
+      allElements.forEach(element => {
+          const htmlEl = element as HTMLElement;
+          const tagName = htmlEl.tagName.toLowerCase();
+          
+          if (tagName !== 'table') {
+              htmlEl.removeAttribute('class');
+          }
+          
+          const style = htmlEl.style;
+          if (!style) return;
+          
+          // Remove default styling so it inherits from UI theme
+          const colorStyles = [style.color.replace(/\s+/g, ''), style.backgroundColor.replace(/\s+/g, ''), style.background.replace(/\s+/g, '')];
+
+          if (colorStyles[0] === 'windowtext' || colorStyles[0] === 'black' || colorStyles[0] === '#000000' || colorStyles[0] === 'rgb(0,0,0)' || colorStyles[0] === 'initial' || colorStyles[0] === '#0b3d91' || colorStyles[0] === 'rgb(11,61,145)' || colorStyles[0] === 'rgba(11,61,145,1)') {
+               style.color = '';
+          }
+          if (colorStyles[1] === 'transparent' || colorStyles[1] === 'white' || colorStyles[1] === '#ffffff' || colorStyles[1] === 'rgb(255,255,255)' || colorStyles[1] === 'initial') {
+               style.backgroundColor = '';
+          }
+          if (colorStyles[2] === 'transparent' || colorStyles[2] === 'white' || colorStyles[2] === '#ffffff' || colorStyles[2] === 'rgb(255,255,255)' || colorStyles[2] === 'initial') {
+               style.background = '';
+          }
+          
+          if (style.fontFamily) {
+              const font = style.fontFamily.toLowerCase();
+              if (font.includes('calibri') || font.includes('arial') || font.includes('times new roman') || font.includes('segoe ui') || font.includes('helvetica') || font.includes('sans-serif')) {
+                  style.fontFamily = '';
+              }
+          }
+          if (style.fontSize) {
+               if (style.fontSize === '11pt' || style.fontSize === '14.6667px' || style.fontSize === '10pt' || style.fontSize === '10.5pt' || style.fontSize === '12pt' || style.fontSize === '16px') {
+                    style.fontSize = '';
+               }
+          }
+          
+          // Clean legacy HTML attributes too
+          const attrColor = htmlEl.getAttribute('color');
+          if (attrColor && (attrColor.toLowerCase() === '#000000' || attrColor.toLowerCase() === 'black' || attrColor.toLowerCase() === 'windowtext' || attrColor.toLowerCase() === '#0b3d91')) {
+              htmlEl.removeAttribute('color');
+          }
+          const attrFace = htmlEl.getAttribute('face');
+          if (attrFace && (attrFace.toLowerCase().includes('calibri') || attrFace.toLowerCase().includes('arial') || attrFace.toLowerCase().includes('times new roman') || attrFace.toLowerCase().includes('segoe ui') || attrFace.toLowerCase().includes('sans-serif'))) {
+              htmlEl.removeAttribute('face');
+          }
+          const attrBgColor = htmlEl.getAttribute('bgcolor');
+          if (attrBgColor && (attrBgColor.toLowerCase() === '#ffffff' || attrBgColor.toLowerCase() === 'white' || attrBgColor.toLowerCase() === 'transparent')) {
+              htmlEl.removeAttribute('bgcolor');
+          }
+      });
+      
       const paragraphs = el.querySelectorAll('p');
       paragraphs.forEach(p => {
           const htmlP = p as HTMLElement;
@@ -69,8 +134,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        className="paste-box w-full min-h-[150px] bg-white border border-input rounded-md p-4 overflow-auto focus:outline-none focus:ring-2 focus:ring-ring text-black post-tables-content"
-        style={{ color: 'black' }}
+        className="paste-box w-full min-h-[150px] bg-white border border-input rounded-md p-4 overflow-auto focus:outline-none focus:ring-2 focus:ring-ring post-tables-content"
       ></div>
 
       <div className="mt-3 flex justify-end">

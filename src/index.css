@@ -330,24 +330,54 @@
 }
 
 /* Force standard text to be black and use appropriate fonts in Bhagwa theme ONLY if they were default */
-/* We target the explicitly generated #0b3d91 (default Navy Blue) from Excel Editor and make it Black */
-.theme-bhagwa .post-tables-content *[style*="color:#0b3d91"],
-.theme-bhagwa .post-tables-content *[style*="color: #0b3d91"],
-.theme-bhagwa .post-tables-content *[style*="color: rgb(11, 61, 145)"] {
-  color: #000000 !important; 
+
+/* BHAGWA THEME Default fonts and colors */
+.theme-bhagwa .post-tables-content,
+.theme-bhagwa table.w-full.border-collapse,
+.theme-bhagwa table.post-summary-table {
+  color: #000;
+  font-family: 'Times New Roman', Times, serif;
 }
 
-/* We target the default Arial from Excel Editor and replace it with Sarkari Result's typical font stack (Tahoma/Verdana) */
-.theme-bhagwa .post-tables-content *[style*="font-family:Arial"],
-.theme-bhagwa .post-tables-content *[style*="font-family: Arial"],
-.theme-bhagwa .post-tables-content,
-.theme-bhagwa .post-tables-content *,
-.theme-bhagwa table.w-full.border-collapse,
+/* Base (Navy Blue) Theme default fonts and colors */
+html:not(.theme-bhagwa) .post-tables-content,
+html:not(.theme-bhagwa) table.w-full.border-collapse,
+html:not(.theme-bhagwa) table.post-summary-table {
+  color: #0b3d91;
+  font-family: Arial, sans-serif;
+}
+
+/* Apply inherited styles to table elements if they don't have inline styles */
+.post-tables-content table,
+table.w-full.border-collapse {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+.post-tables-content td,
+.post-tables-content th,
+table.w-full.border-collapse td,
+table.w-full.border-collapse th {
+  border: 1px solid;
+  padding: 12px;
+}
+
+.theme-bhagwa .post-tables-content table,
+.theme-bhagwa .post-tables-content td,
+.theme-bhagwa .post-tables-content th,
 .theme-bhagwa table.w-full.border-collapse td,
-.theme-bhagwa table.w-full.border-collapse th,
-.theme-bhagwa table.w-full.border-collapse td *,
-.theme-bhagwa table.w-full.border-collapse th * {
-  font-family: Tahoma, Verdana, 'Segoe UI', Arial, sans-serif !important;
+.theme-bhagwa table.w-full.border-collapse th {
+  color: inherit;
+  font-family: inherit;
+}
+
+html:not(.theme-bhagwa) .post-tables-content table,
+html:not(.theme-bhagwa) .post-tables-content td,
+html:not(.theme-bhagwa) .post-tables-content th,
+html:not(.theme-bhagwa) table.w-full.border-collapse td,
+html:not(.theme-bhagwa) table.w-full.border-collapse th {
+  color: inherit;
+  font-family: inherit;
 }
 
 /* Generic table text fix for Bhagwa theme */
@@ -362,21 +392,14 @@
   color: #000;
 }
 
-/* Default (Navy Blue) Theme Table Border & Text Colors: Ensure generic borders get adapted to Navy Blue */
+/* Default (Navy Blue) Theme Table Borders: Force generic borders to Navy Blue */
 html:not(.theme-bhagwa) .post-tables-content table,
+html:not(.theme-bhagwa) .post-tables-content td,
+html:not(.theme-bhagwa) .post-tables-content th,
 html:not(.theme-bhagwa) table.w-full.border-collapse,
 html:not(.theme-bhagwa) table.w-full.border-collapse td,
 html:not(.theme-bhagwa) table.w-full.border-collapse th {
   border-color: #0b3d91 !important;
-}
-
-/* Default Navy Blue Theme text color */
-html:not(.theme-bhagwa) .post-tables-content,
-html:not(.theme-bhagwa) .post-tables-content td,
-html:not(.theme-bhagwa) .post-tables-content th,
-html:not(.theme-bhagwa) .post-tables-content td *:not([style*="color"]),
-html:not(.theme-bhagwa) .post-tables-content th *:not([style*="color"]) {
-  color: #0b3d91;
 }
 
 /* Ensure links are blue in Bhagwa Tables */
@@ -388,10 +411,20 @@ html:not(.theme-bhagwa) .post-tables-content th *:not([style*="color"]) {
 
 /* BHAGWA THEME Table Borders: Force generic borders to Black */
 .theme-bhagwa .post-tables-content table,
+.theme-bhagwa .post-tables-content td,
+.theme-bhagwa .post-tables-content th,
 .theme-bhagwa table.w-full.border-collapse,
 .theme-bhagwa table.w-full.border-collapse td,
 .theme-bhagwa table.w-full.border-collapse th {
   border-color: #000 !important;
+}
+
+/* Post Summary Table: Light Borders */
+table.post-summary-table,
+table.post-summary-table td,
+table.post-summary-table th {
+  border-width: 1px !important;
+  border-color: #e5e7eb !important; /* very light border */
 }
 
 /* Navigation & Button overrides for Bhagwa */
