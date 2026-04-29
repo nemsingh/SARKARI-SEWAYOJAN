@@ -304,7 +304,7 @@ const PostDetail = () => {
                 </tr>
                 <tr>
                   <td className="p-3 align-top font-bold text-[19px] border border-black/10" style={{ color: '#FF0033' }}>{labels.info}</td>
-                  <td className="p-3 align-top text-primary text-[19px] border border-black/10" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') || '' }} />
+                  <td className="p-3 align-top text-primary text-[19px] border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: getField('short_info', 'short_info_hi') || '' }} />
                 </tr>
               </tbody>
             </table>

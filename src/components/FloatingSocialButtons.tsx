@@ -72,7 +72,7 @@ export default function FloatingSocialButtons() {
       networks.forEach(network => {
         const url = settingsData[`social_${network}_url`];
         const rawEnabled = settingsData[`social_${network}_enabled`];
-        const enabled = rawEnabled === 'true' || rawEnabled === '1' || rawEnabled === true;
+        const enabled = rawEnabled === 'true' || rawEnabled === '1';
         if (url && enabled) {
           compiledLinks[network] = { url, enabled: true };
         }

@@ -103,6 +103,19 @@
   max-width: 100%;
   display: block;
 }
+
+/* Hide links inherently in Short Info */
+.short-info-cell a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+.short-info-cell a:hover {
+  text-decoration: underline !important;
+  text-decoration-color: blue !important;
+}
+.short-info-cell a:visited:hover {
+  text-decoration-color: darkblue !important;
+}
 .post-tables-content *[style*="font-size:10px"] { font-size: 15px !important; }
 .post-tables-content *[style*="font-size:11px"] { font-size: 16px !important; }
 .post-tables-content *[style*="font-size:12px"] { font-size: 17px !important; }
@@ -381,14 +394,12 @@ html:not(.theme-bhagwa) table.w-full.border-collapse th {
 }
 
 /* Generic table text fix for Bhagwa theme */
-.theme-bhagwa table.w-full.border-collapse td.text-primary:not([style*="color"]),
-.theme-bhagwa table.w-full.border-collapse td.text-primary *:not([style*="color"]):not(font) {
+.theme-bhagwa table.w-full.border-collapse td.text-primary:not([style*="color"]) {
   color: #000;
 }
 
 /* Let the 'text-primary' class strictly be black in Bhagwa */
-.theme-bhagwa .text-primary:not([style*="color"]),
-.theme-bhagwa .text-primary *:not([style*="color"]):not(font) {
+.theme-bhagwa .text-primary:not([style*="color"]) {
   color: #000;
 }
 
@@ -432,12 +443,6 @@ table.post-summary-table th {
   background-color: var(--bhagwa-color) !important;
   color: white !important;
 }
-
-.theme-bhagwa .text-primary,
-.theme-bhagwa .text-primary *:not([style*="color"]):not(font) {
-  color: black;
-}
-
 
 .theme-bhagwa .border-primary {
   border-color: var(--bhagwa-color) !important;

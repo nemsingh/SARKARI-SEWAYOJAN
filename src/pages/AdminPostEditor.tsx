@@ -532,6 +532,9 @@ const AdminPostEditor = () => {
     .job-detail-box { background: #ffffff; border-radius: 15px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); border-top: 5px solid #0b3d91; }
     table { border-collapse: collapse; margin: 0 auto; }
     td { padding: 10px; border-bottom: 1px solid #eee; font-size: 19px; }
+    .short-info-cell a { color: inherit; text-decoration: none; }
+    .short-info-cell a:hover { text-decoration: underline; text-decoration-color: blue; }
+    .short-info-cell a:visited:hover { text-decoration-color: darkblue; }
   </style>
 </head>
 <body>
@@ -541,7 +544,7 @@ const AdminPostEditor = () => {
     <table class="post-summary-table" style="width:100%; border-collapse:collapse; margin-bottom: 20px;">
       <tr><td style="color:#FF0033;font-weight:bold;width:150px;border-bottom:1px solid #e5e7eb;padding:10px;">Name of Post:</td><td style="color:#0b3d91;font-weight:bold;border-bottom:1px solid #e5e7eb;padding:10px;">${nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
       <tr><td style="color:#FF0033;font-weight:bold;border-bottom:1px solid #e5e7eb;padding:10px;">Post Date / Update:</td><td style="color:#0b3d91;font-weight:bold;border-bottom:1px solid #e5e7eb;padding:10px;">${postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
-      <tr><td style="color:#FF0033;font-weight:bold;border-bottom:1px solid #e5e7eb;padding:10px;">Short Info:</td><td style="color:#0b3d91;border-bottom:1px solid #e5e7eb;padding:10px;">${shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
+      <tr><td style="color:#FF0033;font-weight:bold;border-bottom:1px solid #e5e7eb;padding:10px;">Short Info:</td><td class="short-info-cell" style="color:#0b3d91;border-bottom:1px solid #e5e7eb;padding:10px;">${shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}</td></tr>
     </table>
     ${tablesHtml ? tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : ''}
   </div>
@@ -784,7 +787,7 @@ const AdminPostEditor = () => {
                 </tr>
                 <tr>
                   <td className="p-2.5 font-bold border border-black/10" style={{ color: '#FF0033' }}>Short Info:</td>
-                  <td className="p-2.5 text-primary border border-black/10" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} />
+                  <td className="p-2.5 text-primary border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} />
                 </tr>
               </tbody>
             </table>

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -6,6 +8,21 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
   const menuItems = ['Home', 'Latest Jobs', 'Admit Card', 'Result', 'Answer Key', 'Syllabus', 'Contact Us'];
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 150) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Run once on mount in case already scrolled
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleClick = (item: string) => {
     onFilter(item);
@@ -15,7 +32,10 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
   return (
     <>
       {/* Hamburger */}
-      <div className={`hamburger-menu fixed top-8 left-5 cursor-pointer z-[3000] ${isOpen ? 'is-open' : ''}`} onClick={onToggle}>
+      <div 
+        className={`hamburger-menu fixed top-8 left-5 cursor-pointer z-[3000] transition-all duration-300 ${isOpen ? 'is-open' : ''} ${isScrolled && !isOpen ? '-translate-x-[150%] opacity-0' : 'translate-x-0 opacity-100'}`} 
+        onClick={onToggle}
+      >
         <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
         <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
         <div className="hamburger-line w-7 h-[3px] bg-primary my-1.5 rounded-sm transition-colors" />
