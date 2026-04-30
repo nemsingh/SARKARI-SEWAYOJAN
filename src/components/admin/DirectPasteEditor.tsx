@@ -6,6 +6,27 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
 
   const handleAdd = () => {
     if (editorRef.current) {
+      // Inline styles from <style> blocks to ensure Excel/Word styling (colors, fonts, etc.) is preserved
+      const originalStyles = editorRef.current.querySelectorAll('style');
+      originalStyles.forEach(styleBlock => {
+          const styleText = styleBlock.innerHTML || styleBlock.innerText;
+          const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+          let match;
+          while ((match = cssRegex.exec(styleText)) !== null) {
+              const selectors = match[1].split(',').map(s => s.trim());
+              const cssRulesText = match[2].trim();
+              selectors.forEach(selector => {
+                  if (!selector || selector.includes(':') || selector.includes('@')) return;
+                  try {
+                      editorRef.current!.querySelectorAll(selector).forEach(node => {
+                          const htmlNode = node as HTMLElement;
+                          htmlNode.style.cssText += ';' + cssRulesText;
+                      });
+                  } catch (e) { /* ignore invalid selectors */ }
+              });
+          }
+      });
+
       const el = document.createElement('div');
       el.innerHTML = editorRef.current.innerHTML;
       
@@ -44,14 +65,10 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
 
           const style = htmlCell.style;
           
-          style.border = '';
-          style.borderTop = '';
-          style.borderBottom = '';
-          style.borderLeft = '';
-          style.borderRight = '';
-          style.borderColor = '';
-          
-          style.padding = '12px';
+          if (!style.border && !style.borderTop && !style.borderBottom && !style.borderLeft && !style.borderRight) {
+              style.border = '1px solid #e5e7eb'; // Add default border ONLY if none exists
+          }
+          style.padding = '8px 12px'; // A more Excel-like padding instead of standard 12px
       });
       
       const allElements = el.querySelectorAll('*');
@@ -61,48 +78,6 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
           
           if (tagName !== 'table') {
               htmlEl.removeAttribute('class');
-          }
-          
-          const style = htmlEl.style;
-          if (!style) return;
-          
-          // Remove default styling so it inherits from UI theme
-          const colorStyles = [style.color.replace(/\s+/g, ''), style.backgroundColor.replace(/\s+/g, ''), style.background.replace(/\s+/g, '')];
-
-          if (colorStyles[0] === 'windowtext' || colorStyles[0] === 'black' || colorStyles[0] === '#000000' || colorStyles[0] === 'rgb(0,0,0)' || colorStyles[0] === 'initial' || colorStyles[0] === '#0b3d91' || colorStyles[0] === 'rgb(11,61,145)' || colorStyles[0] === 'rgba(11,61,145,1)') {
-               style.color = '';
-          }
-          if (colorStyles[1] === 'transparent' || colorStyles[1] === 'white' || colorStyles[1] === '#ffffff' || colorStyles[1] === 'rgb(255,255,255)' || colorStyles[1] === 'initial') {
-               style.backgroundColor = '';
-          }
-          if (colorStyles[2] === 'transparent' || colorStyles[2] === 'white' || colorStyles[2] === '#ffffff' || colorStyles[2] === 'rgb(255,255,255)' || colorStyles[2] === 'initial') {
-               style.background = '';
-          }
-          
-          if (style.fontFamily) {
-              const font = style.fontFamily.toLowerCase();
-              if (font.includes('calibri') || font.includes('arial') || font.includes('times new roman') || font.includes('segoe ui') || font.includes('helvetica') || font.includes('sans-serif')) {
-                  style.fontFamily = '';
-              }
-          }
-          if (style.fontSize) {
-               if (style.fontSize === '11pt' || style.fontSize === '14.6667px' || style.fontSize === '10pt' || style.fontSize === '10.5pt' || style.fontSize === '12pt' || style.fontSize === '16px') {
-                    style.fontSize = '';
-               }
-          }
-          
-          // Clean legacy HTML attributes too
-          const attrColor = htmlEl.getAttribute('color');
-          if (attrColor && (attrColor.toLowerCase() === '#000000' || attrColor.toLowerCase() === 'black' || attrColor.toLowerCase() === 'windowtext' || attrColor.toLowerCase() === '#0b3d91')) {
-              htmlEl.removeAttribute('color');
-          }
-          const attrFace = htmlEl.getAttribute('face');
-          if (attrFace && (attrFace.toLowerCase().includes('calibri') || attrFace.toLowerCase().includes('arial') || attrFace.toLowerCase().includes('times new roman') || attrFace.toLowerCase().includes('segoe ui') || attrFace.toLowerCase().includes('sans-serif'))) {
-              htmlEl.removeAttribute('face');
-          }
-          const attrBgColor = htmlEl.getAttribute('bgcolor');
-          if (attrBgColor && (attrBgColor.toLowerCase() === '#ffffff' || attrBgColor.toLowerCase() === 'white' || attrBgColor.toLowerCase() === 'transparent')) {
-              htmlEl.removeAttribute('bgcolor');
           }
       });
       
@@ -134,6 +109,18 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
+        onPaste={(e) => {
+          e.preventDefault();
+          let pasteHtml = e.clipboardData.getData('text/html');
+          const text = e.clipboardData.getData('text/plain');
+          
+          if (pasteHtml) {
+              // Direct insertion without browser mutating/stripping the style blocks yet
+              document.execCommand('insertHTML', false, pasteHtml);
+          } else {
+              document.execCommand('insertText', false, text);
+          }
+        }}
         className="paste-box w-full min-h-[150px] bg-white border border-input rounded-md p-4 overflow-auto focus:outline-none focus:ring-2 focus:ring-ring post-tables-content"
       ></div>
 

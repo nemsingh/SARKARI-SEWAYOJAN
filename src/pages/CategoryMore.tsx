@@ -184,18 +184,30 @@ const CategoryMore = () => {
         </>
       ) : (
         <div className="mx-auto my-8 px-3">
-          <h2 className="text-3xl font-bold text-primary mb-6">{categoryName} - All Links</h2>
-          <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <ul className="list-none p-0">
+          <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+            <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+              {categoryName} - All Links
+            </div>
+            <ul className="list-none p-0 mt-2.5">
               {links.map(link => (
-                <li key={link.id} className="flex items-center mb-3 text-primary font-medium text-[19px]">
-                  <span className="w-2 h-2 rounded-full bg-primary mr-3 flex-shrink-0" />
-                  {link.url ? (
-                    <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline">
-                      {link.title}
-                    </a>
-                  ) : (
-                    link.title
+                <li key={link.id} className="category-link-item mb-2.5">
+                  <div className="flex items-center text-primary font-medium text-[19px] group">
+                    <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
+                    {link.url ? (
+                      <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
+                        {link.title}
+                      </a>
+                    ) : (
+                      link.title
+                    )}
+                    {link.is_new && (
+                      <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
+                    )}
+                  </div>
+                  {link.last_date_text && (
+                    <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5">
+                      {link.last_date_text}
+                    </div>
                   )}
                 </li>
               ))}

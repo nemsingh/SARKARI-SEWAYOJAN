@@ -148,7 +148,7 @@ export const getPosts = async () => {
   const q = query(collection(db, 'posts'));
   const snap = await getDocs(q);
   const posts = snap.docs.map(d => {
-    const data = d.data();
+    const data = d.data() as Record<string, any>;
     return {
       id: d.id,
       ...data,
@@ -156,7 +156,7 @@ export const getPosts = async () => {
       tables_html_hi: decompressHtml(data.tables_html_hi),
       created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
       updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
-    };
+    } as Record<string, any>;
   });
   return posts.sort((a, b) => {
     const dateA = new Date(a.updated_at || a.created_at || 0).getTime();

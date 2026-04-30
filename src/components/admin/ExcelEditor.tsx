@@ -58,6 +58,29 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
+  
+  // Try to parse <style> blocks manually for better MS Excel support
+  doc.querySelectorAll('style').forEach(styleBlock => {
+    const styleText = styleBlock.innerHTML || styleBlock.innerText;
+    const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+    let match;
+    while ((match = cssRegex.exec(styleText)) !== null) {
+      const selectors = match[1].split(',').map(s => s.trim());
+      const cssRulesText = match[2].trim();
+      selectors.forEach(selector => {
+        if (!selector || selector.includes(':') || selector.includes('@')) return;
+        try {
+          doc.querySelectorAll(selector).forEach(node => {
+            const htmlNode = node as HTMLElement;
+            if (htmlNode.style) {
+              htmlNode.style.cssText += ';' + cssRulesText;
+            }
+          });
+        } catch (e) { /* ignore invalid selectors */ }
+      });
+    }
+  });
+
   const table = doc.querySelector('table');
   if (!table) return rows;
 
@@ -70,7 +93,8 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
     const tds = tr.querySelectorAll('td, th');
     let c = 0;
 
-    tds.forEach((td) => {
+    tds.forEach((tdCell) => {
+      const td = tdCell as HTMLElement;
       while (c < TOTAL_COLS && occupied[r][c]) {
         c++;
       }
@@ -100,55 +124,55 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
         }
       }
 
-      const style = td.getAttribute('style') || '';
-      const styleObj: Record<string, string> = {};
-      style.split(';').forEach(s => {
-        const colonIdx = s.indexOf(':');
-        if (colonIdx > -1) {
-          const key = s.substring(0, colonIdx).trim();
-          const val = s.substring(colonIdx + 1).trim();
-          if (key && val) styleObj[key] = val;
-        }
-      });
+      // Read computed properties from td.style instead of parsing string
+      const st = td.style;
 
-      if (styleObj['color']) {
-        const c = styleObj['color'].replace(/\s/g, '').toLowerCase();
+      if (st.color) {
+        const c = st.color.replace(/\s/g, '').toLowerCase();
         if (c === '#0b3d91' || c === 'rgb(11,61,145)') {
           cell.color = 'inherit';
         } else {
-          cell.color = cssColorToHex(styleObj['color']);
+          cell.color = cssColorToHex(st.color);
         }
       } else {
         cell.color = 'inherit';
       }
 
-      if (styleObj['background-color']) cell.backgroundColor = cssColorToHex(styleObj['background-color']);
+      if (st.backgroundColor) cell.backgroundColor = cssColorToHex(st.backgroundColor);
+      if (st.background) {
+         // handle shorthand background that might contain color
+         const bg = st.background;
+         if (bg.includes('rgb') || bg.includes('#')) {
+            const match = bg.match(/(rgb\([^\)]+\)|#[0-9a-fA-F]{3,6})/);
+            if (match) cell.backgroundColor = cssColorToHex(match[0]);
+         }
+      }
       
       const bgColorAttr = td.getAttribute('bgcolor');
-      if (bgColorAttr && !styleObj['background-color']) {
+      if (bgColorAttr && !st.backgroundColor && !st.background) {
          cell.backgroundColor = cssColorToHex(bgColorAttr);
       }
 
-      if (styleObj['font-weight']) cell.fontWeight = styleObj['font-weight'];
-      if (styleObj['font-style']) cell.fontStyle = styleObj['font-style'];
-      if (styleObj['text-decoration']) cell.textDecoration = styleObj['text-decoration'];
-      if (styleObj['text-align']) cell.textAlign = styleObj['text-align'];
-      if (styleObj['vertical-align']) cell.verticalAlign = styleObj['vertical-align'];
+      if (st.fontWeight) cell.fontWeight = st.fontWeight;
+      if (st.fontStyle) cell.fontStyle = st.fontStyle;
+      if (st.textDecoration) cell.textDecoration = st.textDecoration;
+      if (st.textAlign) cell.textAlign = st.textAlign;
+      if (st.verticalAlign) cell.verticalAlign = st.verticalAlign;
       
-      if (styleObj['font-family']) {
-        const ff = styleObj['font-family'].replace(/['"]/g, '').toLowerCase();
+      if (st.fontFamily) {
+        const ff = st.fontFamily.replace(/['"]/g, '').toLowerCase();
         if (ff.includes('arial') || ff.includes('tahoma') || ff.includes('inherit')) {
           cell.fontFamily = 'inherit';
         } else {
-          cell.fontFamily = styleObj['font-family'];
+          cell.fontFamily = st.fontFamily;
         }
       } else {
         cell.fontFamily = 'inherit';
       }
       
-      if (styleObj['font-size']) cell.fontSize = styleObj['font-size'];
+      if (st.fontSize) cell.fontSize = st.fontSize;
       
-      if (styleObj['border']) {
+      if (st.border || st.borderTop || st.borderBottom || st.borderLeft || st.borderRight) {
         cell.borderAll = true;
       }
 
@@ -545,6 +569,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         }
       }
       
+      // If the selection is basically the entire text of the cell, 
+      // let's prefer cell-level formatting (applyToSelection)
+      const selectedText = range.toString().trim();
+      const cellText = td.innerText.trim();
+      if (selectedText.length > 0 && selectedText === cellText && command !== 'createLink') {
+         return false; // return false to trigger applyToSelection
+      }
+
       try {
         document.execCommand('styleWithCSS', false, 'true');
       } catch (e) {
@@ -565,14 +597,14 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
          document.execCommand('fontSize', false, '7');
          document.execCommand('styleWithCSS', false, 'true');
          
-         const fonts = td.querySelectorAll('font[size="7"]');
+         const fonts = td.querySelectorAll('font[size="7"]') as NodeListOf<HTMLElement>;
          fonts.forEach(f => {
            f.removeAttribute('size');
            f.style.fontSize = value || '18px';
          });
          
          // Fallback for browsers that create spans instead of fonts even with styleWithCSS=false
-         const spans = td.querySelectorAll('span');
+         const spans = td.querySelectorAll('span') as NodeListOf<HTMLElement>;
          spans.forEach(s => {
            if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
              s.style.fontSize = value || '18px';
@@ -662,6 +694,25 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           (cell as any)[prop] = value;
         }
         newGrid[row][col] = cell;
+
+        // Clear inline conflicting spans when an entire cell format changes
+        if (prop === 'fontSize' || prop === 'fontFamily' || prop === 'color') {
+          const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+          if (td) {
+            const spans = td.querySelectorAll('span, font, div, p');
+            let modified = false;
+            spans.forEach(el => {
+              const htmlEl = el as HTMLElement;
+              if (prop === 'fontSize') { htmlEl.style.fontSize = ''; htmlEl.removeAttribute('size'); modified = true; }
+              if (prop === 'fontFamily') { htmlEl.style.fontFamily = ''; htmlEl.removeAttribute('face'); modified = true; }
+              if (prop === 'color') { htmlEl.style.color = ''; htmlEl.removeAttribute('color'); modified = true; }
+            });
+            if (modified) {
+              skipHtmlUpdateForCell.current = { row, col };
+              newGrid[row][col].text = td.innerHTML;
+            }
+          }
+        }
       });
       return newGrid;
     });
@@ -1184,9 +1235,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         let style = '';
         if (cell.color && cell.color !== 'inherit') style += `color:${cell.color};`;
         if (cell.backgroundColor && cell.backgroundColor !== '#ffffff' && cell.backgroundColor !== 'transparent') style += `background-color:${cell.backgroundColor};`;
-        if (cell.fontWeight === 'bold') style += 'font-weight:bold;';
-        if (cell.fontStyle === 'italic') style += 'font-style:italic;';
-        if (cell.textDecoration === 'underline') style += 'text-decoration:underline;';
+        if (cell.fontWeight && cell.fontWeight !== 'normal') style += `font-weight:${cell.fontWeight};`;
+        if (cell.fontStyle && cell.fontStyle !== 'normal') style += `font-style:${cell.fontStyle};`;
+        if (cell.textDecoration && cell.textDecoration !== 'none') style += `text-decoration:${cell.textDecoration};`;
         if (cell.textAlign && cell.textAlign !== 'left') style += `text-align:${cell.textAlign};`;
         if (cell.verticalAlign && cell.verticalAlign !== 'middle') style += `vertical-align:${cell.verticalAlign};`;
         if (cell.fontFamily && cell.fontFamily !== 'inherit') style += `font-family:${cell.fontFamily};`;
@@ -1438,7 +1489,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               <option value="Times New Roman">Times New Roman</option>
               <option value="Georgia">Georgia</option>
             </select>
-            <input type="number" value={currentFontSize} onChange={e => setCurrentFontSize(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); } }} className="w-11 px-1 text-sm border border-border bg-background" />
+            <input type="number" value={currentFontSize} onChange={e => setCurrentFontSize(e.target.value)} onBlur={() => { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); }} onKeyDown={e => { if (e.key === 'Enter') { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); } }} className="w-11 px-1 text-sm border border-border bg-background" />
             <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = (parseInt(currentFontSize) || 18) + 1; setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-sm font-bold" title="Increase Font Size">A&#8593;</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = Math.max(1, (parseInt(currentFontSize) || 18) - 1); setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-xs font-bold" title="Decrease Font Size">A&#8595;</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className={`px-2 cursor-pointer border border-transparent font-bold hover:bg-border ${activeFormats.bold || activeCellData?.fontWeight === 'bold' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>B</button>
@@ -1736,7 +1787,34 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         if (html && (html.includes('<table') || html.includes('<tr'))) {
                           e.preventDefault();
                           (e.target as HTMLElement).blur(); // Fix: prevent useEffect from skipping active cell
-                          const pastedGrid = parseHtmlToGrid(html);
+                          
+                          // pre-process HTML to inline class-based CSS (from MS Excel/Word)
+                          const tempDiv = document.createElement('div');
+                          tempDiv.style.display = 'none';
+                          tempDiv.innerHTML = html;
+                          document.body.appendChild(tempDiv);
+                          
+                          tempDiv.querySelectorAll('style').forEach(styleBlock => {
+                              const styleText = styleBlock.innerHTML || styleBlock.innerText;
+                              const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+                              let match;
+                              while ((match = cssRegex.exec(styleText)) !== null) {
+                                  const selectors = match[1].split(',').map(s => s.trim());
+                                  const cssRulesText = match[2].trim();
+                                  selectors.forEach(selector => {
+                                      if (!selector || selector.includes(':') || selector.includes('@')) return;
+                                      try {
+                                          tempDiv.querySelectorAll(selector).forEach(node => {
+                                              (node as HTMLElement).style.cssText += ';' + cssRulesText;
+                                          });
+                                      } catch (err) { /* ignore invalid selectors */ }
+                                  });
+                              }
+                          });
+                          const processedHtml = tempDiv.innerHTML;
+                          document.body.removeChild(tempDiv);
+                          
+                          const pastedGrid = parseHtmlToGrid(processedHtml);
                           
                           let pMaxR = 0, pMaxC = 0;
                           for(let pr=0; pr<TOTAL_ROWS; pr++) {
@@ -1763,8 +1841,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                           });
 
                           setTimeout(() => {
-                             const colsToAdjust = [];
-                             const rowsToAdjust = [];
+                             const colsToAdjust: number[] = [];
+                             const rowsToAdjust: number[] = [];
                              for(let pr=0; pr<=pMaxR; pr++) {
                                for(let pc=0; pc<=pMaxC; pc++) {
                                   const targetRow = ri + pr;
@@ -1791,8 +1869,43 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                              autoAdjustCols(colsToAdjust);
                              autoAdjustRows(rowsToAdjust);
                           }, 100);
-                        } else {
+                        } else if (html) {
+                          e.preventDefault();
+                          const tempDiv = document.createElement('div');
+                          tempDiv.style.display = 'none';
+                          tempDiv.innerHTML = html;
+                          document.body.appendChild(tempDiv);
+                          
+                          tempDiv.querySelectorAll('style').forEach(styleBlock => {
+                              const styleText = styleBlock.innerHTML || styleBlock.innerText;
+                              const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+                              let match;
+                              while ((match = cssRegex.exec(styleText)) !== null) {
+                                  const selectors = match[1].split(',').map(s => s.trim());
+                                  const cssRulesText = match[2].trim();
+                                  selectors.forEach(selector => {
+                                      if (!selector || selector.includes(':') || selector.includes('@')) return;
+                                      try {
+                                          tempDiv.querySelectorAll(selector).forEach(node => {
+                                              (node as HTMLElement).style.cssText += ';' + cssRulesText;
+                                          });
+                                      } catch (err) { /* ignore invalid selectors */ }
+                                  });
+                              }
+                          });
+                          
+                          tempDiv.querySelectorAll('p').forEach(p => {
+                             p.style.margin = '0';
+                          });
 
+                          document.execCommand('insertHTML', false, tempDiv.innerHTML);
+                          document.body.removeChild(tempDiv);
+                          
+                          setTimeout(() => {
+                            autoAdjustCols([ci]);
+                            autoAdjustRows([ri]);
+                          }, 50);
+                        } else {
                            // Regular text paste
                            setTimeout(() => {
                              autoAdjustCols([ci]);
