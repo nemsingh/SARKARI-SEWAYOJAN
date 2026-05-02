@@ -438,20 +438,9 @@ table.post-summary-table th {
   padding: 12px;
 }
 
-.theme-bhagwa .text-primary:not(:hover) {
-  color: #000 !important;
-}
-
-.theme-bhagwa .hover\:text-primary-foreground:hover {
-  color: #fff !important;
-}
-
+/* Ensure Navy theme doesn't allow black text by default classes */
 html:not(.theme-bhagwa) .text-primary:not(:hover) {
   color: #0b3d91 !important;
-}
-
-html:not(.theme-bhagwa) .hover\:text-primary-foreground:hover {
-  color: #fff !important;
 }
 
 /* Link colors in tables */
