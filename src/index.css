@@ -210,7 +210,7 @@
   --bhagwa-color: #F18D1B;
   --chocolaty-color: #5C3E26;
   --bhagwa-blue: #0B3D91;
-  --foreground: 0 0% 0%;
+  --primary: 0 0% 0%;
 }
 
 .theme-bhagwa .site-header {
@@ -391,11 +391,7 @@ html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="color: black"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="color:black"],
-html:not(.theme-bhagwa) .post-tables-content *[color="#000000"],
-html:not(.theme-bhagwa) .post-tables-content *[color="#000"],
-html:not(.theme-bhagwa) .post-tables-content *[color="black"] {
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: black"] {
   color: #0b3d91 !important;
 }
 
@@ -406,15 +402,7 @@ html:not(.theme-bhagwa) .post-tables-content *[color="black"] {
 .theme-bhagwa .post-tables-content *[style*="color: #0b3d91"],
 .theme-bhagwa .post-tables-content *[style*="color:#0b3d91"],
 .theme-bhagwa .post-tables-content *[style*="color: #0B3D91"],
-.theme-bhagwa .post-tables-content *[style*="color:#0B3D91"],
-.theme-bhagwa .post-tables-content *[color="#0b3d91"],
-.theme-bhagwa .post-tables-content *[color="#0B3D91"],
-.theme-bhagwa .post-tables-content *[style*="color: blue"],
-.theme-bhagwa .post-tables-content *[style*="color:blue"],
-.theme-bhagwa .post-tables-content *[color="blue"],
-.theme-bhagwa .post-tables-content *[style*="color: #0000ff"],
-.theme-bhagwa .post-tables-content *[style*="color:#0000ff"],
-.theme-bhagwa .post-tables-content *[color="#0000ff"] {
+.theme-bhagwa .post-tables-content *[style*="color:#0B3D91"] {
   color: #000000 !important;
 }
 
@@ -450,14 +438,21 @@ table.post-summary-table th {
   padding: 12px;
 }
 
-.theme-bhagwa table.post-summary-table td.text-primary,
-.theme-bhagwa table.w-full.border-collapse td.text-primary,
-.theme-bhagwa .post-tables-content .text-primary,
-.theme-bhagwa .post-summary-table .text-primary {
-  color: #000;
+.theme-bhagwa .text-primary:not(:hover) {
+  color: #000 !important;
 }
 
+.theme-bhagwa .hover\:text-primary-foreground:hover {
+  color: #fff !important;
+}
 
+html:not(.theme-bhagwa) .text-primary:not(:hover) {
+  color: #0b3d91 !important;
+}
+
+html:not(.theme-bhagwa) .hover\:text-primary-foreground:hover {
+  color: #fff !important;
+}
 
 /* Link colors in tables */
 .theme-bhagwa .post-tables-content a,
