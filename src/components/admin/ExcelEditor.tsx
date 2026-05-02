@@ -558,75 +558,85 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       range = savedSelectionRange.current;
     }
 
-    // Only apply rich text format if there is a text selection inside the cell
-    // Otherwise, return false to let applyToSelection handle the whole cell
-    if (range && !range.collapsed) {
-      if (activeElem !== td) {
-        td.focus({ preventScroll: true });
-        if (selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-      
-      // If the selection is basically the entire text of the cell, 
-      // let's prefer cell-level formatting (applyToSelection)
-      const selectedText = range.toString().trim();
-      const cellText = td.innerText.trim();
-      if (selectedText.length > 0 && selectedText === cellText && command !== 'createLink') {
-         return false; // return false to trigger applyToSelection
-      }
+    // Only apply rich text format if we have an active cell
+    // handle 'whole cell' formatting when nothing is selected, and ensure selection is preserved/restored
+    const isCollapsed = !range || range.collapsed;
+    
+    if (activeElem !== td) {
+      td.focus({ preventScroll: true });
+    }
 
+    if (isCollapsed) {
+       // If nothing is selected, select the whole content first
+       const newRange = document.createRange();
+       newRange.selectNodeContents(td);
+       if (selection) {
+         selection.removeAllRanges();
+         selection.addRange(newRange);
+         range = newRange;
+       }
+    } else if (range && selection) {
+       // Ensure the correct range is focused/selected
+       selection.removeAllRanges();
+       selection.addRange(range);
+    }
+
+    if (range) {
       try {
         document.execCommand('styleWithCSS', false, 'true');
-      } catch (e) {
-        // Ignore error if not supported
-      }
+        
+        if (command === 'createLink') {
+           document.execCommand(command, false, value);
+           const links = td.querySelectorAll('a');
+           links.forEach(a => {
+             if (!a.getAttribute('target')) {
+               a.setAttribute('target', '_blank');
+               a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
+             }
+           });
+        } else if (command === 'fontSizePx') {
+           document.execCommand('styleWithCSS', false, 'false');
+           document.execCommand('fontSize', false, '7');
+           document.execCommand('styleWithCSS', false, 'true');
+           
+           const fonts = td.querySelectorAll('font[size="7"]') as NodeListOf<HTMLElement>;
+           fonts.forEach(f => {
+             f.removeAttribute('size');
+             f.style.fontSize = value || '18px';
+           });
+           
+           const spans = td.querySelectorAll('span') as NodeListOf<HTMLElement>;
+           spans.forEach(s => {
+             if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
+               s.style.fontSize = value || '18px';
+             }
+           });
+        } else if (command === 'fontNameCustom') {
+           document.execCommand('fontName', false, value);
+        } else if (command === 'removeFormat') {
+           document.execCommand('removeFormat', false, value);
+        } else if (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight' || command === 'justifyFull') {
+           document.execCommand(command, false, value);
+        } else {
+           document.execCommand(command, false, value);
+        }
 
-      if (command === 'createLink') {
-         document.execCommand(command, false, value);
-         const links = td.querySelectorAll('a');
-         links.forEach(a => {
-           if (!a.getAttribute('target')) {
-             a.setAttribute('target', '_blank');
-             a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
-           }
-         });
-      } else if (command === 'fontSizePx') {
-         document.execCommand('styleWithCSS', false, 'false');
-         document.execCommand('fontSize', false, '7');
-         document.execCommand('styleWithCSS', false, 'true');
-         
-         const fonts = td.querySelectorAll('font[size="7"]') as NodeListOf<HTMLElement>;
-         fonts.forEach(f => {
-           f.removeAttribute('size');
-           f.style.fontSize = value || '18px';
-         });
-         
-         // Fallback for browsers that create spans instead of fonts even with styleWithCSS=false
-         const spans = td.querySelectorAll('span') as NodeListOf<HTMLElement>;
-         spans.forEach(s => {
-           if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
-             s.style.fontSize = value || '18px';
-           }
-         });
-      } else if (command === 'fontNameCustom') {
-         document.execCommand('fontName', false, value);
-      } else if (command === 'removeFormat') {
-         document.execCommand('removeFormat', false, value);
-      } else if (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight' || command === 'justifyFull') {
-         document.execCommand(command, false, value);
-      } else {
-         document.execCommand(command, false, value);
+        // Update our saved selection to the newly updated live selection maintained by the browser
+        if (selection && selection.rangeCount > 0) {
+           savedSelectionRange.current = selection.getRangeAt(0).cloneRange();
+        }
+        
+        // Update cell content
+        skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
+        updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
+        if (activeCell) {
+          setFormulaValue(td.innerText);
+        }
+        return true;
+      } catch (e) {
+        console.error('Rich text formatting error:', e);
+        return false;
       }
-      
-      // Update cell content
-      skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
-      updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
-      if (activeCell) {
-        setFormulaValue(td.innerText);
-      }
-      return true;
     }
     return false;
   };

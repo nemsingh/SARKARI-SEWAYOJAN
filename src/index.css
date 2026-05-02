@@ -352,17 +352,64 @@
   font-family: 'Times New Roman', Times, serif;
 }
 
-/* Base (Navy Blue) Theme default fonts and colors */
+/* Force Default Black Borders in Bhagwa */
+.theme-bhagwa .post-tables-content table,
+.theme-bhagwa .post-tables-content td,
+.theme-bhagwa .post-tables-content th,
+.theme-bhagwa table.w-full.border-collapse,
+.theme-bhagwa table.w-full.border-collapse td,
+.theme-bhagwa table.w-full.border-collapse th,
+.theme-bhagwa table.post-summary-table,
+.theme-bhagwa table.post-summary-table td,
+.theme-bhagwa table.post-summary-table th {
+  border-color: #000 !important;
+}
+
+/* Base (Navy Blue) Theme FIXED Rules */
+html:not(.theme-bhagwa) .post-tables-content,
+html:not(.theme-bhagwa) .post-tables-content *,
+html:not(.theme-bhagwa) table.w-full.border-collapse,
+html:not(.theme-bhagwa) table.w-full.border-collapse *,
+html:not(.theme-bhagwa) table.post-summary-table,
+html:not(.theme-bhagwa) table.post-summary-table * {
+  /* Rule 1: Font Style must ALWAYS be simple (sans-serif) in Navy UI */
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
 html:not(.theme-bhagwa) .post-tables-content,
 html:not(.theme-bhagwa) table.w-full.border-collapse,
 html:not(.theme-bhagwa) table.post-summary-table {
   color: #0b3d91;
-  font-family: Arial, sans-serif;
 }
 
-/* Apply inherited styles to table elements if they don't have inline styles */
+/* Rule 2: Any black text must be Navy Blue in Navy UI (capturing all variations) */
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: rgb(0, 0, 0)"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color:rgb(0,0,0)"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: black"] {
+  color: #0b3d91 !important;
+}
+
+/* Rule 3: Table Borders must ALWAYS be Navy Blue in Navy UI */
+html:not(.theme-bhagwa) .post-tables-content table,
+html:not(.theme-bhagwa) .post-tables-content td,
+html:not(.theme-bhagwa) .post-tables-content th,
+html:not(.theme-bhagwa) table.w-full.border-collapse,
+html:not(.theme-bhagwa) table.w-full.border-collapse td,
+html:not(.theme-bhagwa) table.w-full.border-collapse th,
+html:not(.theme-bhagwa) table.post-summary-table,
+html:not(.theme-bhagwa) table.post-summary-table td,
+html:not(.theme-bhagwa) table.post-summary-table th {
+  border-color: #0b3d91 !important;
+}
+
+/* Restore Base Table Layout (Essential for all themes) */
 .post-tables-content table,
-table.w-full.border-collapse {
+table.w-full.border-collapse,
+table.post-summary-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 15px;
@@ -370,72 +417,31 @@ table.w-full.border-collapse {
 .post-tables-content td,
 .post-tables-content th,
 table.w-full.border-collapse td,
-table.w-full.border-collapse th {
-  border: 1px solid;
+table.w-full.border-collapse th,
+table.post-summary-table td,
+table.post-summary-table th {
+  border-width: 1px;
+  border-style: solid;
   padding: 12px;
 }
 
-.theme-bhagwa .post-tables-content table,
-.theme-bhagwa .post-tables-content td,
-.theme-bhagwa .post-tables-content th,
-.theme-bhagwa table.w-full.border-collapse td,
-.theme-bhagwa table.w-full.border-collapse th {
-  color: inherit;
-  font-family: inherit;
+/* Ensure Navy theme doesn't allow black text by default classes */
+html:not(.theme-bhagwa) .text-primary {
+  color: #0b3d91 !important;
 }
 
-html:not(.theme-bhagwa) .post-tables-content table,
-html:not(.theme-bhagwa) .post-tables-content td,
-html:not(.theme-bhagwa) .post-tables-content th,
-html:not(.theme-bhagwa) table.w-full.border-collapse td,
-html:not(.theme-bhagwa) table.w-full.border-collapse th {
-  color: inherit;
-  font-family: inherit;
-}
-
-/* Generic table text fix for Bhagwa theme */
-.theme-bhagwa table.w-full.border-collapse td.text-primary:not([style*="color"]) {
-  color: #000;
-}
-
-/* Let the 'text-primary' class strictly be black in Bhagwa */
-.theme-bhagwa .text-primary:not([style*="color"]) {
-  color: #000;
-}
-
-/* Default (Navy Blue) Theme Table Borders: Force generic borders to Navy Blue */
-html:not(.theme-bhagwa) .post-tables-content table,
-html:not(.theme-bhagwa) .post-tables-content td,
-html:not(.theme-bhagwa) .post-tables-content th,
-html:not(.theme-bhagwa) table.w-full.border-collapse,
-html:not(.theme-bhagwa) table.w-full.border-collapse td,
-html:not(.theme-bhagwa) table.w-full.border-collapse th {
-  border-color: #0b3d91 !important;
-}
-
-/* Ensure links are blue in Bhagwa Tables */
+/* Link colors in tables */
 .theme-bhagwa .post-tables-content a,
 .theme-bhagwa table.w-full.border-collapse a {
   color: blue !important;
   text-decoration: underline !important;
 }
 
-/* BHAGWA THEME Table Borders: Force generic borders to Black */
-.theme-bhagwa .post-tables-content table,
-.theme-bhagwa .post-tables-content td,
-.theme-bhagwa .post-tables-content th,
-.theme-bhagwa table.w-full.border-collapse,
-.theme-bhagwa table.w-full.border-collapse td,
-.theme-bhagwa table.w-full.border-collapse th {
-  border-color: #000 !important;
-}
-
-/* Post Summary Table: Light Borders */
+/* Override summary table default border for theme matching */
 table.post-summary-table,
 table.post-summary-table td,
 table.post-summary-table th {
   border-width: 1px !important;
-  border-color: #e5e7eb !important; /* very light border */
 }
 
 /* Navigation & Button overrides for Bhagwa */
