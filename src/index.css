@@ -210,6 +210,7 @@
   --bhagwa-color: #F18D1B;
   --chocolaty-color: #5C3E26;
   --bhagwa-blue: #0B3D91;
+  --foreground: 0 0% 0%;
 }
 
 .theme-bhagwa .site-header {
@@ -385,12 +386,36 @@ html:not(.theme-bhagwa) table.post-summary-table {
 /* Rule 2: Any black text must be Navy Blue in Navy UI (capturing all variations) */
 html:not(.theme-bhagwa) .post-tables-content *[style*="color: rgb(0, 0, 0)"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color:rgb(0,0,0)"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: rgb(0,0,0)"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color: #000"],
 html:not(.theme-bhagwa) .post-tables-content *[style*="color:#000"],
-html:not(.theme-bhagwa) .post-tables-content *[style*="color: black"] {
+html:not(.theme-bhagwa) .post-tables-content *[style*="color: black"],
+html:not(.theme-bhagwa) .post-tables-content *[style*="color:black"],
+html:not(.theme-bhagwa) .post-tables-content *[color="#000000"],
+html:not(.theme-bhagwa) .post-tables-content *[color="#000"],
+html:not(.theme-bhagwa) .post-tables-content *[color="black"] {
   color: #0b3d91 !important;
+}
+
+/* Rule 4 for Bhagwa UI: Any Navy Blue text must be Black */
+.theme-bhagwa .post-tables-content *[style*="color: rgb(11, 61, 145)"],
+.theme-bhagwa .post-tables-content *[style*="color:rgb(11,61,145)"],
+.theme-bhagwa .post-tables-content *[style*="color: rgb(11,61,145)"],
+.theme-bhagwa .post-tables-content *[style*="color: #0b3d91"],
+.theme-bhagwa .post-tables-content *[style*="color:#0b3d91"],
+.theme-bhagwa .post-tables-content *[style*="color: #0B3D91"],
+.theme-bhagwa .post-tables-content *[style*="color:#0B3D91"],
+.theme-bhagwa .post-tables-content *[color="#0b3d91"],
+.theme-bhagwa .post-tables-content *[color="#0B3D91"],
+.theme-bhagwa .post-tables-content *[style*="color: blue"],
+.theme-bhagwa .post-tables-content *[style*="color:blue"],
+.theme-bhagwa .post-tables-content *[color="blue"],
+.theme-bhagwa .post-tables-content *[style*="color: #0000ff"],
+.theme-bhagwa .post-tables-content *[style*="color:#0000ff"],
+.theme-bhagwa .post-tables-content *[color="#0000ff"] {
+  color: #000000 !important;
 }
 
 /* Rule 3: Table Borders must ALWAYS be Navy Blue in Navy UI */
@@ -425,10 +450,14 @@ table.post-summary-table th {
   padding: 12px;
 }
 
-/* Ensure Navy theme doesn't allow black text by default classes */
-html:not(.theme-bhagwa) .text-primary {
-  color: #0b3d91 !important;
+.theme-bhagwa table.post-summary-table td.text-primary,
+.theme-bhagwa table.w-full.border-collapse td.text-primary,
+.theme-bhagwa .post-tables-content .text-primary,
+.theme-bhagwa .post-summary-table .text-primary {
+  color: #000;
 }
+
+
 
 /* Link colors in tables */
 .theme-bhagwa .post-tables-content a,

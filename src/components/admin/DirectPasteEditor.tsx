@@ -10,7 +10,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       const originalStyles = editorRef.current.querySelectorAll('style');
       originalStyles.forEach(styleBlock => {
           const styleText = styleBlock.innerHTML || styleBlock.innerText;
-          const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+          const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
           let match;
           while ((match = cssRegex.exec(styleText)) !== null) {
               const selectors = match[1].split(',').map(s => s.trim());
@@ -111,7 +111,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
         suppressContentEditableWarning
         onPaste={(e) => {
           e.preventDefault();
-          let pasteHtml = e.clipboardData.getData('text/html');
+          const pasteHtml = e.clipboardData.getData('text/html');
           const text = e.clipboardData.getData('text/plain');
           
           if (pasteHtml) {

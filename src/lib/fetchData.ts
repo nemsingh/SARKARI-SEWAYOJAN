@@ -1,3 +1,5 @@
+import * as firebaseService from './firebaseService';
+
 export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Promise<any>) {
   // In development, directly hit Firebase to ensure live preview works after Admin edits.
   if (import.meta.env.DEV) {
@@ -24,7 +26,7 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
 
 export async function fetchHomeData() {
   return fetchStaticOrFirebase('/data.json', async () => {
-    const { getCategories, getCategoryLinks, getTabletItems, getPosts, getSiteSettingsFlat } = await import('./firebaseService');
+    const { getCategories, getCategoryLinks, getTabletItems, getPosts, getSiteSettingsFlat } = firebaseService;
     const [categories, category_links, tablet_items, posts, settings_flat] = await Promise.all([
       getCategories(),
       getCategoryLinks(),
@@ -38,7 +40,7 @@ export async function fetchHomeData() {
 
 export async function fetchPostData(slug: string) {
   return fetchStaticOrFirebase(`/data/post_${slug}.json`, async () => {
-    const { getPostBySlug } = await import('./firebaseService');
+    const { getPostBySlug } = firebaseService;
     const post = await getPostBySlug(slug);
     return post;
   });

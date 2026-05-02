@@ -22,6 +22,7 @@ import {
   deletePost as deletePostFn,
   getPostBySlug,
   updatePost,
+  updateSiteLastUpdated,
 } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,7 +150,6 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      const { updateSiteLastUpdated } = await import('@/lib/firebaseService');
       await updateSiteLastUpdated();
       
       const res = await fetch(webhookUrl, { method: 'POST' });

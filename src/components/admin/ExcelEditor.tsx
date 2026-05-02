@@ -62,7 +62,7 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
   // Try to parse <style> blocks manually for better MS Excel support
   doc.querySelectorAll('style').forEach(styleBlock => {
     const styleText = styleBlock.innerHTML || styleBlock.innerText;
-    const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+    const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
     let match;
     while ((match = cssRegex.exec(styleText)) !== null) {
       const selectors = match[1].split(',').map(s => s.trim());
@@ -143,7 +143,7 @@ const parseHtmlToGrid = (html: string): CellData[][] => {
          // handle shorthand background that might contain color
          const bg = st.background;
          if (bg.includes('rgb') || bg.includes('#')) {
-            const match = bg.match(/(rgb\([^\)]+\)|#[0-9a-fA-F]{3,6})/);
+            const match = bg.match(/(rgb\([^)]+\)|#[0-9a-fA-F]{3,6})/);
             if (match) cell.backgroundColor = cssColorToHex(match[0]);
          }
       }
@@ -1806,7 +1806,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                           
                           tempDiv.querySelectorAll('style').forEach(styleBlock => {
                               const styleText = styleBlock.innerHTML || styleBlock.innerText;
-                              const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+                              const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
                               let match;
                               while ((match = cssRegex.exec(styleText)) !== null) {
                                   const selectors = match[1].split(',').map(s => s.trim());
@@ -1888,7 +1888,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                           
                           tempDiv.querySelectorAll('style').forEach(styleBlock => {
                               const styleText = styleBlock.innerHTML || styleBlock.innerText;
-                              const cssRegex = /([a-zA-Z0-9_\-\.\s#,:]+)\s*\{([^}]+)\}/g;
+                              const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
                               let match;
                               while ((match = cssRegex.exec(styleText)) !== null) {
                                   const selectors = match[1].split(',').map(s => s.trim());

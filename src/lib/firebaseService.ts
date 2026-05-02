@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { db, handleFirestoreError, OperationType } from './firebase';
 import LZString from 'lz-string';
 import { clearCache } from './cache';
 import {
@@ -33,20 +33,30 @@ const compressHtml = (html: string | null | undefined) => {
 
 // ============ CATEGORIES ============
 export const getCategories = async () => {
-  const q = query(collection(db, 'categories'));
-  const snap = await getDocs(q);
-  const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-  return cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  try {
+    const q = query(collection(db, 'categories'));
+    const snap = await getDocs(q);
+    const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    return cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'categories');
+    return [];
+  }
 };
 
 export const addCategory = async (name: string, displayOrder: number) => {
-  const res = await addDoc(collection(db, 'categories'), {
-    name,
-    display_order: displayOrder,
-    created_at: serverTimestamp(),
-  });
-  clearCache();
-  return res;
+  try {
+    const res = await addDoc(collection(db, 'categories'), {
+      name,
+      display_order: displayOrder,
+      created_at: serverTimestamp(),
+    });
+    clearCache();
+    return res;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'categories');
+    throw error;
+  }
 };
 
 export const updateCategory = async (id: string, data: Record<string, any>) => {
@@ -145,51 +155,61 @@ export const deleteTabletItem = async (id: string) => {
 
 // ============ POSTS ============
 export const getPosts = async () => {
-  const q = query(collection(db, 'posts'));
-  const snap = await getDocs(q);
-  const posts = snap.docs.map(d => {
-    const data = d.data() as Record<string, any>;
-    return {
-      id: d.id,
-      ...data,
-      tables_html: decompressHtml(data.tables_html),
-      tables_html_hi: decompressHtml(data.tables_html_hi),
-      created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
-      updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
-    } as Record<string, any>;
-  });
-  return posts.sort((a, b) => {
-    const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
-    const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
-    return dateB - dateA;
-  });
+  try {
+    const q = query(collection(db, 'posts'));
+    const snap = await getDocs(q);
+    const posts = snap.docs.map(d => {
+      const data = d.data() as Record<string, any>;
+      return {
+        id: d.id,
+        ...data,
+        tables_html: decompressHtml(data.tables_html),
+        tables_html_hi: decompressHtml(data.tables_html_hi),
+        created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
+        updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
+      } as Record<string, any>;
+    });
+    return posts.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'posts');
+    return [];
+  }
 };
 
 export const getPostBySlug = async (slug: string): Promise<Record<string, any> | null> => {
-  const q = query(collection(db, 'posts'), where('slug', '==', slug));
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    const d = snap.docs[0];
-    const data = d.data();
-    return { 
-      id: d.id, 
-      ...data,
-      tables_html: decompressHtml(data.tables_html),
-      tables_html_hi: decompressHtml(data.tables_html_hi),
-    };
+  try {
+    const q = query(collection(db, 'posts'), where('slug', '==', slug));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      const data = d.data();
+      return { 
+        id: d.id, 
+        ...data,
+        tables_html: decompressHtml(data.tables_html),
+        tables_html_hi: decompressHtml(data.tables_html_hi),
+      };
+    }
+    const docRef = doc(db, 'posts', slug);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return { 
+        id: docSnap.id, 
+        ...data,
+        tables_html: decompressHtml(data.tables_html),
+        tables_html_hi: decompressHtml(data.tables_html_hi),
+      };
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `posts/${slug}`);
+    return null;
   }
-  const docRef = doc(db, 'posts', slug);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    return { 
-      id: docSnap.id, 
-      ...data,
-      tables_html: decompressHtml(data.tables_html),
-      tables_html_hi: decompressHtml(data.tables_html_hi),
-    };
-  }
-  return null;
 };
 
 export const getPostById = async (id: string): Promise<Record<string, any> | null> => {
