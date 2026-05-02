@@ -121,7 +121,7 @@ const SeoContentBox = () => {
                 {item.text}
               </h2>
             ) : (
-              <div key={idx} className="bg-background text-primary py-3 px-5 text-[16px] leading-relaxed whitespace-pre-line">
+              <div key={idx} className="bg-background text-primary py-3 px-5 text-[16px] leading-relaxed whitespace-pre-line theme-box-text">
                 {item.text}
               </div>
             )

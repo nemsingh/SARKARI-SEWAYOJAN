@@ -64,7 +64,7 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
             {sections.map(section => (
               <div key={section.title} className="rounded-2xl overflow-hidden" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
                 <h3 className="bg-primary text-primary-foreground text-[20px] font-bold py-2.5 px-4">{section.title}</h3>
-                <div className="bg-background py-2 px-4">
+                <div className="bg-background py-2 px-4 theme-box-text">
                   {section.items.map((item, i) => (
                     <div key={i} className="py-1.5">
                       {item.url ? (
@@ -82,7 +82,7 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
             {moreSection && (
               <div className="rounded-2xl overflow-hidden" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
                 <h3 className="bg-primary text-primary-foreground text-[20px] font-bold py-2.5 px-4">{moreSection.title}</h3>
-                <div className="bg-background py-2 px-4">
+                <div className="bg-background py-2 px-4 theme-box-text">
                   <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
                     {moreSection.items.map((item, i) => (
                       <a
@@ -107,10 +107,10 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
           <h2 className="bg-primary text-primary-foreground text-[20px] font-bold py-3 px-5">
             Welcome to the Official Website of Sarkari Sewayojan
           </h2>
-          <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed">
+          <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed theme-box-text">
             Thank you for visiting the official portal of Sarkari Sewayojan. Through this website, you can easily access the latest updates related to Government Jobs, Recruitment Notifications, Admissions, Results, Admit Cards, Answer Keys, Syllabus, and other important announcements. For your convenience, our official mobile application is also available free of charge on the Google Play Store and Apple App Store. You can also stay connected with Sarkari Sewayojan through our official social media platforms including X (Twitter), Facebook, Instagram, Threads, Telegram, WhatsApp, and YouTube for regular updates.
           </div>
-          <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed border-t border-border">
+          <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed border-t border-border theme-box-text">
             © 2026–2027 Sarkari Sewayojan. All Rights Reserved. For advertisement and business inquiries, please contact: helpdesk@sarkarisewayojan.com
           </div>
         </div>
@@ -121,7 +121,7 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
             <h2 className="bg-primary text-primary-foreground text-[20px] font-bold py-3 px-5">
               Disclaimer
             </h2>
-            <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed">
+            <div className="bg-background text-primary py-3 px-5 text-[18px] leading-relaxed theme-box-text">
               The examination results, marks, notifications, short information, and other content published on this website are provided solely for the purpose of immediate reference and information to candidates. This information should not be considered as a legal or official document. Although every reasonable effort is made to ensure that the information available on this website is accurate and up to date, Sarkari Sewayojan does not guarantee the completeness, reliability, or absolute accuracy of the content. We shall not be held responsible for any unintentional errors, omissions, or inaccuracies that may appear in the published results, marks, notifications, or other materials. Furthermore, we are not liable for any loss, damage, or inconvenience caused to any individual or entity due to any shortcomings, defects, or inaccuracies in the information provided on this website. Users are advised to verify details from the official website of the concerned department or authority before taking any action.
             </div>
           </div>

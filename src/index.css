@@ -343,6 +343,12 @@
   color: white !important;
 }
 
+/* Specific instruction to change the text color to black in specific boxes */
+.theme-bhagwa .theme-box-text,
+.theme-bhagwa .theme-box-text * {
+  color: #000000 !important;
+}
+
 /* Force standard text to be black and use appropriate fonts in Bhagwa theme ONLY if they were default */
 
 /* BHAGWA THEME Default fonts and colors */
