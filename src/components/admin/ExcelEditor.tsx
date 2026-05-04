@@ -737,15 +737,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   }, []);
 
   const clearSelection = () => {
-    if (selectedCells.length === 0) return;
-    updateGrid(prev => {
-      const newGrid = [...prev];
-      selectedCells.forEach(({ row, col }) => {
-        newGrid[row] = [...newGrid[row]];
-        newGrid[row][col] = { ...newGrid[row][col], value: '', rawValue: '' };
-      });
-      return newGrid;
-    });
+    resetGrid();
   };
 
   const mergeCells = () => {

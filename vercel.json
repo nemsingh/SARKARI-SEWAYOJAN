@@ -3,6 +3,6 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/admin-vikaskumar", "destination": "/admin.html" },
-    { "source": "/admin/(.*)", "destination": "/admin.html" }
+    { "source": "/admin(.*)", "destination": "/admin.html" }
   ]
 }

@@ -1,11 +1,9 @@
 import * as firebaseService from './firebaseService';
 
 export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Promise<any>) {
-  // In development OR if preview=true is passed via URL, directly hit Firebase to ensure live preview works after Admin edits.
-  const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'true';
-  
-  if (import.meta.env.DEV || isPreview) {
-    console.log(`[LIVE MODE] Fetching live data from Firebase for ${url}`);
+  // In development, directly hit Firebase to ensure live preview works after Admin edits.
+  if (import.meta.env.DEV) {
+    console.log(`[DEV MODE] Fetching live data from Firebase for ${url}`);
     return await fallbackFetch();
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useDeferredValue, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarIcon } from 'lucide-react';
 import ExcelEditor from '@/components/admin/ExcelEditor';
 import DirectPasteEditor from '@/components/admin/DirectPasteEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { Sun, Moon } from 'lucide-react';
 
 const generateSlug = (text: string) => {
   return text
@@ -89,9 +89,7 @@ const parseDateTime = (dateString: string, lang: 'en' | 'hi' = 'en'): Date | und
     if (ampm === 'PM' && hours < 12) hours += 12;
     if (ampm === 'AM' && hours === 12) hours = 0;
     
-    const result = new Date(year, monthIndex, day, hours, minutes);
-    if (isNaN(result.getTime())) return undefined;
-    return result;
+    return new Date(year, monthIndex, day, hours, minutes);
   } catch (e) {
     return undefined;
   }
@@ -118,21 +116,6 @@ const AdminPostEditor = () => {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
-
-  // Pre-calculate preview HTML to avoid hanging the browser with regex parsing on every keystroke
-  const deferredNameOfPost = useDeferredValue(nameOfPost);
-  const deferredPostDate = useDeferredValue(postDate);
-  const deferredShortInfo = useDeferredValue(shortInfo);
-  const deferredTablesHtml = useDeferredValue(tablesHtml);
-
-  // Use memoization so we only run heavy regex when deferred values update
-  const makeBoldHtml = (text: string) => text ? text.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
-  
-  const previewNameHtml = useMemo(() => makeBoldHtml(deferredNameOfPost), [deferredNameOfPost]);
-  const previewDateHtml = useMemo(() => makeBoldHtml(deferredPostDate), [deferredPostDate]);
-  const previewShortInfoHtml = useMemo(() => makeBoldHtml(deferredShortInfo), [deferredShortInfo]);
-  const previewTablesHtml = useMemo(() => makeBoldHtml(deferredTablesHtml), [deferredTablesHtml]);
-
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
@@ -517,16 +500,9 @@ const AdminPostEditor = () => {
 
         toast({ title: 'Post updated!' });
       }
-      
     } catch (error: any) {
       console.error('Save error:', error);
-      const isSizeError = error.message?.toLowerCase().includes('resource_exhausted') || error.message?.toLowerCase().includes('payload too large') || error.message?.toLowerCase().includes('exceeds the maximum');
-      toast({ 
-        title: isSizeError ? 'Post Too Large!' : 'Error saving post', 
-        description: isSizeError ? 'Aapne post me bahut saara data (tables/text) daal diya hai. Firebase/Database ki 1MB ki limit cross ho gayi hai. Kripya kuchh tables kam karein aur wapas save karein.' : (error.message || 'An unexpected error occurred.'), 
-        variant: 'destructive',
-        duration: isSizeError ? 10000 : 5000
-      });
+      toast({ title: 'Error saving post', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
     }
   };
 
@@ -584,23 +560,13 @@ const AdminPostEditor = () => {
       <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
         <h1 className="text-2xl font-black text-primary">{isNew ? 'Create New Post' : 'Edit Post'}</h1>
         <div className="flex gap-3 items-center">
-          <div className="flex flex-col items-center mr-2">
-            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 shadow-sm px-1 py-0.5 bg-black/5 rounded">
-              Switch Interface
-            </span>
-            <button 
-              onClick={toggleTheme}
-              className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none shadow-inner ${isThemeBhagwa ? 'bg-[#FF9933]' : 'bg-[#0B3D91]'}`}
-              role="switch"
-              aria-checked={isThemeBhagwa}
-              aria-label="Toggle Theme"
-            >
-              <span className="sr-only">Toggle Theme</span>
-              <span 
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-300 ease-in-out ${isThemeBhagwa ? 'translate-x-5' : 'translate-x-0'}`} 
-              />
-            </button>
-          </div>
+          <button 
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-black/10 transition-colors mr-2"
+            title="Switch Theme"
+          >
+            {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
+          </button>
           <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
           <Button onClick={handleSave}>Save Post</Button>
           <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
@@ -656,8 +622,8 @@ const AdminPostEditor = () => {
                       if (d) setPostDate(formatDateTime(d.toISOString(), 'en'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center bg-muted/20 hover:bg-muted/50 border-border/60">
-                        <CalendarIcon className="w-5 h-5 text-primary opacity-80" />
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                        📅
                       </Button>
                     }
                   />
@@ -740,8 +706,8 @@ const AdminPostEditor = () => {
                       if (d) setPostDateHi(formatDateTime(d.toISOString(), 'hi'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center bg-muted/20 hover:bg-muted/50 border-border/60">
-                        <CalendarIcon className="w-5 h-5 text-primary opacity-80" />
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                        📅
                       </Button>
                     }
                   />
@@ -813,19 +779,19 @@ const AdminPostEditor = () => {
               <tbody>
                 <tr>
                   <td className="p-2.5 font-bold w-[150px] border border-black/10" style={{ color: '#FF0033' }}>Name of Post:</td>
-                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: previewNameHtml }}></td>
+                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td>
                 </tr>
                 <tr>
                   <td className="p-2.5 font-bold border border-black/10" style={{ color: '#FF0033' }}>Post Date / Update:</td>
-                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: previewDateHtml }}></td>
+                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td>
                 </tr>
                 <tr>
                   <td className="p-2.5 font-bold border border-black/10" style={{ color: '#FF0033' }}>Short Info:</td>
-                  <td className="p-2.5 text-primary border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: previewShortInfoHtml }} />
+                  <td className="p-2.5 text-primary border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} />
                 </tr>
               </tbody>
             </table>
-            {previewTablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: previewTablesHtml }} />}
+            {tablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
           </div>
         </div>
 
