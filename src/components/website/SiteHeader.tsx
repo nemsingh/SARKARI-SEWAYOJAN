@@ -54,25 +54,21 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
       </div>
 
       {/* Theme Switcher Button */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
-        <div className="flex bg-background border border-border rounded-lg p-0.5" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)' }}>
-          <button 
-            onClick={() => {
-              if (isThemeBhagwa) toggleTheme();
-            }}
-            className={`px-3 py-1.5 text-[11px] font-bold uppercase rounded-md transition-all duration-200 ${!isThemeBhagwa ? 'bg-[#0B3D91] text-white shadow-sm' : 'text-primary/70 hover:bg-primary/10'}`}
-          >
-            Navy
-          </button>
-          <button 
-            onClick={() => {
-              if (!isThemeBhagwa) toggleTheme();
-            }}
-            className={`px-3 py-1.5 text-[11px] font-bold uppercase rounded-md transition-all duration-200 ${isThemeBhagwa ? 'bg-[#F18D1B] text-white shadow-sm' : 'text-primary/70 hover:bg-primary/10'}`}
-          >
-            Bhagwa
-          </button>
-        </div>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+        <span className={`text-[9px] font-medium mb-1 tracking-wider ${isThemeBhagwa ? 'text-white/90' : 'text-primary/90'}`}>
+          Switch Interface
+        </span>
+        <button 
+          onClick={toggleTheme}
+          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${isThemeBhagwa ? 'bg-white/30' : 'bg-primary/20'}`}
+          role="switch"
+          aria-checked={isThemeBhagwa}
+          aria-label="Toggle Theme"
+        >
+          <span 
+            className={`pointer-events-none inline-block h-[14px] w-[14px] transform rounded-full shadow-sm transition-transform duration-200 ease-in-out ${isThemeBhagwa ? 'translate-x-[16px] bg-white' : 'translate-x-[2px] bg-primary'}`} 
+          />
+        </button>
       </div>
     </div>
   );
