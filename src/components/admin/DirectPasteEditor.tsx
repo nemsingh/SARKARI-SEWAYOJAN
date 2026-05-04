@@ -82,8 +82,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       // Inline styles from <style> blocks to ensure Excel/Word styling (colors, fonts, etc.) is preserved
       const originalStyles = editorRef.current.querySelectorAll('style');
       originalStyles.forEach(styleBlock => {
-          // Remove HTML comments that Excel embeds in style tags
-          const styleText = (styleBlock.innerHTML || styleBlock.innerText).replace(/<!--/g, '').replace(/-->/g, '');
+          const styleText = styleBlock.innerHTML || styleBlock.innerText;
           const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
           let match;
           while ((match = cssRegex.exec(styleText)) !== null) {
@@ -112,12 +111,11 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       tables.forEach(table => {
         table.removeAttribute('class');
         table.classList.add('data-table');
-        
-        // Exact styling as make table excel editor while keeping other styles
+        table.style.margin = '0 auto';
         table.style.width = '100%';
+        table.style.tableLayout = 'auto';
         table.style.borderCollapse = 'collapse';
         table.style.marginTop = '15px';
-        table.style.tableLayout = 'auto';
         table.style.wordBreak = 'break-word';
         table.removeAttribute('width');
         
@@ -137,19 +135,13 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
           htmlCell.removeAttribute('width');
           htmlCell.removeAttribute('height');
           htmlCell.removeAttribute('valign');
-          htmlCell.removeAttribute('nowrap');
 
           const style = htmlCell.style;
-          style.removeProperty('width');
-          style.removeProperty('height');
-          style.whiteSpace = 'normal';
           
           if (!style.border && !style.borderTop && !style.borderBottom && !style.borderLeft && !style.borderRight) {
               style.border = '1px solid #e5e7eb'; // Add default border ONLY if none exists
           }
-          if (!style.padding) {
-              style.padding = '12px'; // Default Excel-like padding if none specified
-          }
+          style.padding = '8px 12px'; // A more Excel-like padding instead of standard 12px
       });
       
       const allElements = el.querySelectorAll('*');
@@ -179,7 +171,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
             a.rel = 'noopener noreferrer';
         });
         
-        onAdd(tempDiv.innerHTML);
+        onAdd(`<div style="overflow-x:auto;width:100%;">${tempDiv.innerHTML}</div>`);
         editorRef.current.innerHTML = '';
       }
     }
