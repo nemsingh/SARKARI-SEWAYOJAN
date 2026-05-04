@@ -82,27 +82,14 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       // Inline styles from <style> blocks to ensure Excel/Word styling (colors, fonts, etc.) is preserved
       const originalStyles = editorRef.current.querySelectorAll('style');
       originalStyles.forEach(styleBlock => {
-          let styleText = styleBlock.innerHTML || styleBlock.innerText;
-          // Clean up MS Word/Excel HTML comments surrounding CSS
-          styleText = styleText.replace(/<!--/g, '').replace(/-->/g, '');
-          
-          const cssRegex = /([^{]+)\{([^}]+)\}/g;
+          const styleText = styleBlock.innerHTML || styleBlock.innerText;
+          const cssRegex = /([a-zA-Z0-9_\-.\s#,:]+)\s*\{([^}]+)\}/g;
           let match;
           while ((match = cssRegex.exec(styleText)) !== null) {
-              const selectorStr = match[1].trim();
+              const selectors = match[1].split(',').map(s => s.trim());
               const cssRulesText = match[2].trim();
-              
-              if (selectorStr.startsWith('@')) continue;
-              
-              const selectors = selectorStr.split(',').map(s => {
-                  let str = s.trim();
-                  // Remove pseudo-elements safely
-                  str = str.replace(/:?:[a-zA-Z\-]+/g, '');
-                  return str.trim();
-              });
-
               selectors.forEach(selector => {
-                  if (!selector) return;
+                  if (!selector || selector.includes(':') || selector.includes('@')) return;
                   try {
                       editorRef.current!.querySelectorAll(selector).forEach(node => {
                           const htmlNode = node as HTMLElement;
@@ -116,36 +103,62 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
       const el = document.createElement('div');
       el.innerHTML = editorRef.current.innerHTML;
       
-      // Remove <style>, <meta>, <link>, and <title> tags to prevent polluting the site
-      const tagsToRemove = el.querySelectorAll('style, meta, link, title');
-      tagsToRemove.forEach(tag => tag.remove());
+      // Remove <style> and <meta> tags completely
+      const stylesAndMetas = el.querySelectorAll('style, meta, link');
+      stylesAndMetas.forEach(tag => tag.remove());
 
-      // Ensure that tables are wrapped in overflow so they don't break the layout,
-      // but retain their original MS Word/Excel widths, paddings, borders, and classes!
       const tables = el.querySelectorAll('table');
       tables.forEach(table => {
+        table.removeAttribute('class');
         table.classList.add('data-table');
+        table.style.margin = '0 auto';
+        table.style.width = '100%';
+        table.style.tableLayout = 'auto';
+        table.style.borderCollapse = 'collapse';
+        table.style.marginTop = '15px';
+        table.style.wordBreak = 'break-word';
+        table.removeAttribute('width');
         
-        // Wrap table in overflow div
+        // Wrap table in overflow div to match ExcelEditor behavior
         const wrapper = document.createElement('div');
         wrapper.style.overflowX = 'auto';
         wrapper.style.width = '100%';
-        wrapper.style.marginBottom = '15px';
         if (table.parentNode) {
             table.parentNode.insertBefore(wrapper, table);
             wrapper.appendChild(table);
         }
       });
 
-      // Provide a tiny baseline sanity check for cells ONLY if they lack any border in CSS and inline style
       const cells = el.querySelectorAll('td, th');
       cells.forEach(cell => {
           const htmlCell = cell as HTMLElement;
+          htmlCell.removeAttribute('width');
+          htmlCell.removeAttribute('height');
+          htmlCell.removeAttribute('valign');
+
           const style = htmlCell.style;
           
           if (!style.border && !style.borderTop && !style.borderBottom && !style.borderLeft && !style.borderRight) {
-              style.border = '1px solid #d1d5db'; // Add a faint default border if entirely missing
+              style.border = '1px solid #e5e7eb'; // Add default border ONLY if none exists
           }
+          style.padding = '8px 12px'; // A more Excel-like padding instead of standard 12px
+      });
+      
+      const allElements = el.querySelectorAll('*');
+      allElements.forEach(element => {
+          const htmlEl = element as HTMLElement;
+          const tagName = htmlEl.tagName.toLowerCase();
+          
+          if (tagName !== 'table') {
+              htmlEl.removeAttribute('class');
+          }
+      });
+      
+      const paragraphs = el.querySelectorAll('p');
+      paragraphs.forEach(p => {
+          const htmlP = p as HTMLElement;
+          htmlP.style.margin = '0';
+          htmlP.style.textIndent = '0';
       });
 
       const html = el.innerHTML;
@@ -158,8 +171,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
             a.rel = 'noopener noreferrer';
         });
         
-        // Provide the generated HTML exactly as it was pasted, but properly styled
-        onAdd(tempDiv.innerHTML);
+        onAdd(`<div style="overflow-x:auto;width:100%;">${tempDiv.innerHTML}</div>`);
         editorRef.current.innerHTML = '';
       }
     }
