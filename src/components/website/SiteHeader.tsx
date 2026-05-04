@@ -1,3 +1,4 @@
+import { Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface SiteHeaderProps {
@@ -54,19 +55,13 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
       </div>
 
       {/* Theme Switcher Button */}
-      <div className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity">
-        <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-primary">
-          UI Switch
-        </span>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
         <button 
           onClick={toggleTheme}
-          className={`w-11 h-5 md:w-12 md:h-6 rounded-full transition-colors duration-300 ease-in-out relative flex items-center shadow-inner ${isThemeBhagwa ? 'bg-primary border border-primary' : 'bg-slate-200 border border-slate-300'}`}
-          title="Switch UI Theme"
-          aria-label="Toggle UI Theme"
+          className="p-2 rounded-full hover:bg-black/10 transition-colors"
+          title="Switch Theme"
         >
-          <div 
-            className={`w-[14px] h-[14px] md:w-[18px] md:h-[18px] rounded-full shadow-md transition-transform duration-300 ease-in-out absolute left-[2px] ${isThemeBhagwa ? 'translate-x-[24px] md:translate-x-[26px] bg-white' : 'translate-x-0 bg-primary'}`}
-          />
+          {isThemeBhagwa ? <Sun className="w-6 h-6 text-white" /> : <Moon className="w-6 h-6 text-primary" />}
         </button>
       </div>
     </div>
