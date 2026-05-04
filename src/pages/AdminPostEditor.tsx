@@ -88,7 +88,9 @@ const parseDateTime = (dateString: string, lang: 'en' | 'hi' = 'en'): Date | und
     if (ampm === 'PM' && hours < 12) hours += 12;
     if (ampm === 'AM' && hours === 12) hours = 0;
     
-    return new Date(year, monthIndex, day, hours, minutes);
+    const result = new Date(year, monthIndex, day, hours, minutes);
+    if (isNaN(result.getTime())) return undefined;
+    return result;
   } catch (e) {
     return undefined;
   }
@@ -499,9 +501,24 @@ const AdminPostEditor = () => {
 
         toast({ title: 'Post updated!' });
       }
+      
+      // Auto-trigger publish webhook if available
+      try {
+        const { getSiteSettingsFlat } = await import('@/lib/firebaseService');
+        const s = await getSiteSettingsFlat();
+        const hook = s['build_webhook_url'];
+        if (hook) fetch(hook, { method: 'POST' }).catch(()=>null);
+      } catch(e) {}
+      
     } catch (error: any) {
       console.error('Save error:', error);
-      toast({ title: 'Error saving post', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
+      const isSizeError = error.message?.toLowerCase().includes('resource_exhausted') || error.message?.toLowerCase().includes('payload too large') || error.message?.toLowerCase().includes('exceeds the maximum');
+      toast({ 
+        title: isSizeError ? 'Post Too Large!' : 'Error saving post', 
+        description: isSizeError ? 'Aapne post me bahut saara data (tables/text) daal diya hai. Firebase/Database ki 1MB ki limit cross ho gayi hai. Kripya kuchh tables kam karein aur wapas save karein.' : (error.message || 'An unexpected error occurred.'), 
+        variant: 'destructive',
+        duration: isSizeError ? 10000 : 5000
+      });
     }
   };
 
