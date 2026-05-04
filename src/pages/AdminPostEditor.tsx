@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useDeferredValue, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { CalendarIcon } from 'lucide-react';
 import ExcelEditor from '@/components/admin/ExcelEditor';
 import DirectPasteEditor from '@/components/admin/DirectPasteEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
@@ -117,6 +118,21 @@ const AdminPostEditor = () => {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+
+  // Pre-calculate preview HTML to avoid hanging the browser with regex parsing on every keystroke
+  const deferredNameOfPost = useDeferredValue(nameOfPost);
+  const deferredPostDate = useDeferredValue(postDate);
+  const deferredShortInfo = useDeferredValue(shortInfo);
+  const deferredTablesHtml = useDeferredValue(tablesHtml);
+
+  // Use memoization so we only run heavy regex when deferred values update
+  const makeBoldHtml = (text: string) => text ? text.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
+  
+  const previewNameHtml = useMemo(() => makeBoldHtml(deferredNameOfPost), [deferredNameOfPost]);
+  const previewDateHtml = useMemo(() => makeBoldHtml(deferredPostDate), [deferredPostDate]);
+  const previewShortInfoHtml = useMemo(() => makeBoldHtml(deferredShortInfo), [deferredShortInfo]);
+  const previewTablesHtml = useMemo(() => makeBoldHtml(deferredTablesHtml), [deferredTablesHtml]);
+
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
@@ -502,14 +518,6 @@ const AdminPostEditor = () => {
         toast({ title: 'Post updated!' });
       }
       
-      // Auto-trigger publish webhook if available
-      try {
-        const { getSiteSettingsFlat } = await import('@/lib/firebaseService');
-        const s = await getSiteSettingsFlat();
-        const hook = s['build_webhook_url'];
-        if (hook) fetch(hook, { method: 'POST' }).catch(()=>null);
-      } catch(e) {}
-      
     } catch (error: any) {
       console.error('Save error:', error);
       const isSizeError = error.message?.toLowerCase().includes('resource_exhausted') || error.message?.toLowerCase().includes('payload too large') || error.message?.toLowerCase().includes('exceeds the maximum');
@@ -648,8 +656,8 @@ const AdminPostEditor = () => {
                       if (d) setPostDate(formatDateTime(d.toISOString(), 'en'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
-                        📅
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center bg-muted/20 hover:bg-muted/50 border-border/60">
+                        <CalendarIcon className="w-5 h-5 text-primary opacity-80" />
                       </Button>
                     }
                   />
@@ -732,8 +740,8 @@ const AdminPostEditor = () => {
                       if (d) setPostDateHi(formatDateTime(d.toISOString(), 'hi'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
-                        📅
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center bg-muted/20 hover:bg-muted/50 border-border/60">
+                        <CalendarIcon className="w-5 h-5 text-primary opacity-80" />
                       </Button>
                     }
                   />
@@ -805,19 +813,19 @@ const AdminPostEditor = () => {
               <tbody>
                 <tr>
                   <td className="p-2.5 font-bold w-[150px] border border-black/10" style={{ color: '#FF0033' }}>Name of Post:</td>
-                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: nameOfPost ? nameOfPost.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td>
+                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: previewNameHtml }}></td>
                 </tr>
                 <tr>
                   <td className="p-2.5 font-bold border border-black/10" style={{ color: '#FF0033' }}>Post Date / Update:</td>
-                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: postDate ? postDate.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }}></td>
+                  <td className="p-2.5 text-primary font-bold border border-black/10" dangerouslySetInnerHTML={{ __html: previewDateHtml }}></td>
                 </tr>
                 <tr>
                   <td className="p-2.5 font-bold border border-black/10" style={{ color: '#FF0033' }}>Short Info:</td>
-                  <td className="p-2.5 text-primary border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: shortInfo ? shortInfo.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '' }} />
+                  <td className="p-2.5 text-primary border border-black/10 short-info-cell" dangerouslySetInnerHTML={{ __html: previewShortInfoHtml }} />
                 </tr>
               </tbody>
             </table>
-            {tablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: tablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') }} />}
+            {previewTablesHtml && <div className="post-tables-content" dangerouslySetInnerHTML={{ __html: previewTablesHtml }} />}
           </div>
         </div>
 

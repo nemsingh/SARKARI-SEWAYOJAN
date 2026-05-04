@@ -20,10 +20,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore with robust settings for sandboxed environments
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-});
+export const db = getFirestore(app);
 
 export enum OperationType {
   CREATE = 'create',
