@@ -39,7 +39,7 @@ const defaultCell = (): CellData => ({
   isHeader: false,
 });
 
-const TOTAL_ROWS = 100;
+const TOTAL_ROWS = 500;
 const TOTAL_COLS = 26;
 
 const createEmptyGrid = (): CellData[][] => {
