@@ -54,19 +54,20 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
       </div>
 
       {/* Theme Switcher Button */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
-        <span className={`text-[9px] font-medium mb-1 tracking-wider ${isThemeBhagwa ? 'text-white/90' : 'text-primary/90'}`}>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+        <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-widest mb-1 shadow-sm px-1 py-0.5 bg-white/50 backdrop-blur-sm rounded">
           Switch Interface
         </span>
         <button 
           onClick={toggleTheme}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${isThemeBhagwa ? 'bg-white/30' : 'bg-primary/20'}`}
+          className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none shadow-inner ${isThemeBhagwa ? 'bg-[#FF9933]' : 'bg-[#0B3D91]'}`}
           role="switch"
           aria-checked={isThemeBhagwa}
           aria-label="Toggle Theme"
         >
+          <span className="sr-only">Toggle Theme</span>
           <span 
-            className={`pointer-events-none inline-block h-[14px] w-[14px] transform rounded-full shadow-sm transition-transform duration-200 ease-in-out ${isThemeBhagwa ? 'translate-x-[16px] bg-white' : 'translate-x-[2px] bg-primary'}`} 
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-300 ease-in-out ${isThemeBhagwa ? 'translate-x-5' : 'translate-x-0'}`} 
           />
         </button>
       </div>

@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import ExcelEditor from '@/components/admin/ExcelEditor';
 import DirectPasteEditor from '@/components/admin/DirectPasteEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { Sun, Moon } from 'lucide-react';
 
 const generateSlug = (text: string) => {
   return text
@@ -560,13 +559,23 @@ const AdminPostEditor = () => {
       <div className="bg-background py-4 px-6 flex justify-between items-center" style={{ boxShadow: 'var(--box-shadow-light)' }}>
         <h1 className="text-2xl font-black text-primary">{isNew ? 'Create New Post' : 'Edit Post'}</h1>
         <div className="flex gap-3 items-center">
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-black/10 transition-colors mr-2"
-            title="Switch Theme"
-          >
-            {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
-          </button>
+          <div className="flex flex-col items-center mr-2">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 shadow-sm px-1 py-0.5 bg-black/5 rounded">
+              Switch Interface
+            </span>
+            <button 
+              onClick={toggleTheme}
+              className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none shadow-inner ${isThemeBhagwa ? 'bg-[#FF9933]' : 'bg-[#0B3D91]'}`}
+              role="switch"
+              aria-checked={isThemeBhagwa}
+              aria-label="Toggle Theme"
+            >
+              <span className="sr-only">Toggle Theme</span>
+              <span 
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-300 ease-in-out ${isThemeBhagwa ? 'translate-x-5' : 'translate-x-0'}`} 
+              />
+            </button>
+          </div>
           <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
           <Button onClick={handleSave}>Save Post</Button>
           <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
