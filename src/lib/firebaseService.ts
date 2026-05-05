@@ -154,6 +154,30 @@ export const deleteTabletItem = async (id: string) => {
 };
 
 // ============ POSTS ============
+const loadChunksForPost = async (id: string, postData: any) => {
+  if (postData.is_chunked) {
+    try {
+      const chunksSnap = await getDocs(query(collection(db, `posts/${id}/chunks`), orderBy('index')));
+      let full_html = '';
+      let full_html_hi = '';
+      chunksSnap.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.html) full_html += data.html;
+        if (data.html_hi) full_html_hi += data.html_hi;
+      });
+      postData.tables_html = full_html ? decompressHtml(full_html) : '';
+      postData.tables_html_hi = full_html_hi ? decompressHtml(full_html_hi) : '';
+    } catch(e) {
+      console.error("Error loading chunks for post", id, e);
+      postData.tables_html = '';
+      postData.tables_html_hi = '';
+    }
+  } else {
+    postData.tables_html = decompressHtml(postData.tables_html);
+    postData.tables_html_hi = decompressHtml(postData.tables_html_hi);
+  }
+};
+
 export const getPosts = async () => {
   try {
     const q = query(collection(db, 'posts'));
@@ -163,12 +187,14 @@ export const getPosts = async () => {
       return {
         id: d.id,
         ...data,
-        tables_html: decompressHtml(data.tables_html),
-        tables_html_hi: decompressHtml(data.tables_html_hi),
         created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
         updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
       } as Record<string, any>;
     });
+    
+    // Process chunking sequentially or concurrently
+    await Promise.all(posts.map(post => loadChunksForPost(post.id, post)));
+
     return posts.sort((a, b) => {
       const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
       const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
@@ -186,24 +212,16 @@ export const getPostBySlug = async (slug: string): Promise<Record<string, any> |
     const snap = await getDocs(q);
     if (!snap.empty) {
       const d = snap.docs[0];
-      const data = d.data();
-      return { 
-        id: d.id, 
-        ...data,
-        tables_html: decompressHtml(data.tables_html),
-        tables_html_hi: decompressHtml(data.tables_html_hi),
-      };
+      const data = { id: d.id, ...d.data() };
+      await loadChunksForPost(d.id, data);
+      return data;
     }
     const docRef = doc(db, 'posts', slug);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      const data = docSnap.data();
-      return { 
-        id: docSnap.id, 
-        ...data,
-        tables_html: decompressHtml(data.tables_html),
-        tables_html_hi: decompressHtml(data.tables_html_hi),
-      };
+      const data = { id: docSnap.id, ...docSnap.data() };
+      await loadChunksForPost(docSnap.id, data);
+      return data;
     }
     return null;
   } catch (error) {
@@ -216,26 +234,31 @@ export const getPostById = async (id: string): Promise<Record<string, any> | nul
   const docRef = doc(db, 'posts', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    const data = docSnap.data();
-    return { 
-      id: docSnap.id, 
-      ...data,
-      tables_html: decompressHtml(data.tables_html),
-      tables_html_hi: decompressHtml(data.tables_html_hi),
-    };
+    const data = { id: docSnap.id, ...docSnap.data() };
+    await loadChunksForPost(docSnap.id, data);
+    return data;
   }
   return null;
 };
 
+const CHUNK_SIZE = 400000;
+
 export const createPost = async (data: Record<string, any>) => {
   const postData = { ...data };
-  if (postData.tables_html) postData.tables_html = compressHtml(postData.tables_html);
-  if (postData.tables_html_hi) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
-
-  // Check size after compression to prevent Firebase 1MB limit error (approx 500,000 UTF-16 chars)
-  const totalCompressedChars = (postData.tables_html?.length || 0) + (postData.tables_html_hi?.length || 0);
-  if (totalCompressedChars > 480000) {
-    throw new Error('Post content is too large even after compression. Please reduce the number of tables or text.');
+  
+  let html = postData.tables_html ? compressHtml(postData.tables_html) : '';
+  let html_hi = postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '';
+  
+  const isChunked = (html.length + html_hi.length) > CHUNK_SIZE;
+  
+  if (isChunked) {
+    postData.tables_html = '';
+    postData.tables_html_hi = '';
+    postData.is_chunked = true;
+  } else {
+    postData.tables_html = html;
+    postData.tables_html_hi = html_hi;
+    postData.is_chunked = false;
   }
 
   const docRef = await addDoc(collection(db, 'posts'), {
@@ -243,29 +266,80 @@ export const createPost = async (data: Record<string, any>) => {
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
+  
+  if (isChunked) {
+    const chunkPromises = [];
+    const maxLen = Math.max(html.length, html_hi.length);
+    let index = 0;
+    for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
+      chunkPromises.push(
+        setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
+          index,
+          html: html.substring(i, i + CHUNK_SIZE),
+          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+        })
+      );
+      index++;
+    }
+    await Promise.all(chunkPromises);
+  }
+
   clearCache();
   return { id: docRef.id, ...data };
 };
 
 export const updatePost = async (id: string, data: Record<string, any>) => {
   const postData = { ...data };
-  if (postData.tables_html !== undefined) postData.tables_html = compressHtml(postData.tables_html);
-  if (postData.tables_html_hi !== undefined) postData.tables_html_hi = compressHtml(postData.tables_html_hi);
-
-  // Check size after compression to prevent Firebase 1MB limit error (approx 500,000 UTF-16 chars)
-  const totalCompressedChars = (postData.tables_html?.length || 0) + (postData.tables_html_hi?.length || 0);
-  if (totalCompressedChars > 480000) {
-    throw new Error('Post content is too large even after compression. Please reduce the number of tables or text.');
+  
+  let html = postData.tables_html !== undefined ? compressHtml(postData.tables_html) : undefined;
+  let html_hi = postData.tables_html_hi !== undefined ? compressHtml(postData.tables_html_hi) : undefined;
+  
+  const lenHtml = html ? html.length : 0;
+  const lenHtmlHi = html_hi ? html_hi.length : 0;
+  const isChunked = (lenHtml + lenHtmlHi) > CHUNK_SIZE;
+  
+  if (isChunked) {
+    postData.tables_html = '';
+    postData.tables_html_hi = '';
+    postData.is_chunked = true;
+  } else {
+    if (html !== undefined) postData.tables_html = html;
+    if (html_hi !== undefined) postData.tables_html_hi = html_hi;
+    postData.is_chunked = false;
   }
+
+  // Clear old chunks in any case just to be safe
+  const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
+  await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
 
   await updateDoc(doc(db, 'posts', id), {
     ...postData,
     updated_at: serverTimestamp(),
   });
+  
+  if (isChunked && html !== undefined && html_hi !== undefined) {
+    const chunkPromises = [];
+    const maxLen = Math.max(html.length, html_hi.length);
+    let index = 0;
+    for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
+      chunkPromises.push(
+        setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
+          index,
+          html: html.substring(i, i + CHUNK_SIZE),
+          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+        })
+      );
+      index++;
+    }
+    await Promise.all(chunkPromises);
+  }
+
   clearCache();
 };
 
 export const deletePost = async (id: string) => {
+  const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
+  await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
   await deleteDoc(doc(db, 'posts', id));
   clearCache();
 };

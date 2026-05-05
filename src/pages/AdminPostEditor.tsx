@@ -425,9 +425,8 @@ const AdminPostEditor = () => {
 
     try {
       const payloadSize = new Blob([JSON.stringify(postData)]).size;
-      // Warn when approaching 1 MB limit (1,048,576 bytes)
       if (payloadSize > 850000) {
-         toast({ title: 'Size Warning', description: `This post is extremely large (${(payloadSize/1024/1024).toFixed(2)} MB) and close to the database limit. If saving fails, reduce the number of tables.`, variant: 'destructive' });
+         console.log(`Payload size: ${(payloadSize/1024/1024).toFixed(2)} MB. Chunking will be applied automatically.`);
       }
     } catch(e) {
       console.warn("Could not calculate payload size", e);
@@ -448,9 +447,9 @@ const AdminPostEditor = () => {
             is_new: true,
             last_date_text: null,
           });
-          toast({ title: 'Post created & added to category!' });
+          toast({ title: 'Post created & added to category!', description: 'Please wait up to 3 minutes or click "Publish Website" from the Dashboard to see it live.' });
         } else {
-          toast({ title: 'Post created!' });
+          toast({ title: 'Post created!', description: 'Click "Publish Website" from the Dashboard to make the changes live.' });
         }
         // Clear form for new post creation
         clearForm();
@@ -498,7 +497,7 @@ const AdminPostEditor = () => {
           }
         }
 
-        toast({ title: 'Post updated!' });
+        toast({ title: 'Post updated!', description: 'Click "Publish Website" from the Dashboard to see changes live.' });
       }
     } catch (error: any) {
       console.error('Save error:', error);
