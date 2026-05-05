@@ -342,10 +342,14 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 };
 
 export const deletePost = async (id: string) => {
-  const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
-  await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
-  await deleteDoc(doc(db, 'posts', id));
-  clearCache();
+  try {
+    const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
+    await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
+    await deleteDoc(doc(db, 'posts', id));
+    clearCache();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `posts/${id}`);
+  }
 };
 
 // ============ SITE SETTINGS ============

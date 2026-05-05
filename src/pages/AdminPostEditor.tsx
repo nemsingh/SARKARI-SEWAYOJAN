@@ -116,6 +116,7 @@ const AdminPostEditor = () => {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
@@ -394,6 +395,9 @@ const AdminPostEditor = () => {
       toast({ title: 'Error', description: 'Name of Post is required.', variant: 'destructive' });
       return;
     }
+    
+    if (isSaving) return;
+    setIsSaving(true);
 
     let finalSlug = slug ? generateSlug(slug) : generateShortSlug(nameOfPost);
     if (!finalSlug) {
@@ -502,6 +506,8 @@ const AdminPostEditor = () => {
     } catch (error: any) {
       console.error('Save error:', error);
       toast({ title: 'Error saving post', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -567,7 +573,7 @@ const AdminPostEditor = () => {
             {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
           </button>
           <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
-          <Button onClick={handleSave}>Save Post</Button>
+          <Button onClick={handleSave} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Post'}</Button>
           <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
         </div>
       </div>

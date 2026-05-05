@@ -224,28 +224,33 @@ const AdminDashboard = () => {
   const handleDeletePost = (id: string) => {
     const post = posts.find(p => p.id === id);
     askConfirm('Delete Post', `Kya aap "${post?.name_of_post || 'this post'}" ko delete karna chahte hain? Isse linked category links bhi delete ho jayenge.`, async () => {
-      // Also delete linked category links
-      if (post) {
-        const slug = post.slug || post.id;
-        const linkedLinks = categoryLinks.filter(l => {
-          if (!l.url) return false;
-          const match = l.url.match(/\/post\/(.+)/);
-          const linkSlug = match ? match[1] : (!l.url.startsWith('http') && !l.url.startsWith('/') ? l.url : null);
-          return linkSlug === slug || linkSlug === post.id;
-        });
-        await Promise.all(linkedLinks.map(l => deleteCategoryLink(l.id)));
+      try {
+        // Also delete linked category links
+        if (post) {
+          const slug = post.slug || post.id;
+          const linkedLinks = categoryLinks.filter(l => {
+            if (!l.url) return false;
+            const match = l.url.match(/\/post\/(.+)/);
+            const linkSlug = match ? match[1] : (!l.url.startsWith('http') && !l.url.startsWith('/') ? l.url : null);
+            return linkSlug === slug || linkSlug === post.id;
+          });
+          await Promise.all(linkedLinks.map(l => deleteCategoryLink(l.id)));
 
-        const linkedTabletItems = tabletItems.filter(t => {
-          if (!t.url) return false;
-          const match = t.url.match(/\/post\/(.+)/);
-          const linkSlug = match ? match[1] : (!t.url.startsWith('http') && !t.url.startsWith('/') ? t.url : null);
-          return linkSlug === slug || linkSlug === post.id;
-        });
-        await Promise.all(linkedTabletItems.map(t => deleteTabletItemFn(t.id)));
+          const linkedTabletItems = tabletItems.filter(t => {
+            if (!t.url) return false;
+            const match = t.url.match(/\/post\/(.+)/);
+            const linkSlug = match ? match[1] : (!t.url.startsWith('http') && !t.url.startsWith('/') ? t.url : null);
+            return linkSlug === slug || linkSlug === post.id;
+          });
+          await Promise.all(linkedTabletItems.map(t => deleteTabletItemFn(t.id)));
+        }
+        await deletePostFn(id);
+        await fetchAll();
+        toast({ title: 'Post & linked items deleted!' });
+      } catch (err: any) {
+        console.error("Delete POST error:", err);
+        toast({ title: 'Error deleting post', description: err.message || 'An unexpected error occurred', variant: 'destructive' });
       }
-      await deletePostFn(id);
-      await fetchAll();
-      toast({ title: 'Post & linked items deleted!' });
     });
   };
 
@@ -898,49 +903,52 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
 };
 
 // ============ FORMS ============
-const AddLinkForm = ({ categoryId, onAdd }: { categoryId: string; onAdd: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => void }) => {
+const AddLinkForm = ({ categoryId, onAdd }: { categoryId: string; onAdd: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => Promise<void> }) => {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [isNew, setIsNew] = useState(false);
   const [lastDate, setLastDate] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   return (
     <div className="space-y-2">
       <div className="flex gap-2 flex-wrap">
-        <Input placeholder="Link Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1 min-w-[200px]" />
-        <Input placeholder="URL (e.g. /post/id)" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[200px]" />
+        <Input placeholder="Link Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1 min-w-[200px]" disabled={isSaving} />
+        <Input placeholder="URL (e.g. /post/id)" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[200px]" disabled={isSaving} />
       </div>
       <div className="flex gap-2 flex-wrap items-center">
         <label className="flex items-center gap-1 text-base text-primary cursor-pointer">
-          <input type="checkbox" checked={isNew} onChange={e => setIsNew(e.target.checked)} />
+          <input type="checkbox" checked={isNew} onChange={e => setIsNew(e.target.checked)} disabled={isSaving} />
           Mark as New
         </label>
-        <Input placeholder="Last Date / Extended (optional)" value={lastDate} onChange={e => setLastDate(e.target.value)} className="flex-1 min-w-[200px]" />
-        <Button onClick={() => { if (title) { onAdd(categoryId, title, url, isNew, lastDate); setTitle(''); setUrl(''); setIsNew(false); setLastDate(''); } }}>Add</Button>
+        <Input placeholder="Last Date / Extended (optional)" value={lastDate} onChange={e => setLastDate(e.target.value)} className="flex-1 min-w-[200px]" disabled={isSaving} />
+        <Button disabled={isSaving} onClick={async () => { if (title && !isSaving) { setIsSaving(true); try { await onAdd(categoryId, title, url, isNew, lastDate); setTitle(''); setUrl(''); setIsNew(false); setLastDate(''); } finally { setIsSaving(false); } } }}>{isSaving ? 'Adding...' : 'Add'}</Button>
       </div>
     </div>
   );
 };
 
-const AddCategoryForm = ({ onAdd }: { onAdd: (name: string) => void }) => {
+const AddCategoryForm = ({ onAdd }: { onAdd: (name: string) => Promise<void> }) => {
   const [name, setName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   return (
     <div className="flex gap-2 mb-4">
-      <Input placeholder="New Category Name (e.g. Scholarship)" value={name} onChange={e => setName(e.target.value)} className="flex-1" />
-      <Button onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(''); } }}>+ Add Category</Button>
+      <Input placeholder="New Category Name (e.g. Scholarship)" value={name} onChange={e => setName(e.target.value)} className="flex-1" disabled={isSaving} />
+      <Button disabled={isSaving} onClick={async () => { if (name.trim() && !isSaving) { setIsSaving(true); try { await onAdd(name.trim()); setName(''); } finally { setIsSaving(false); } } }}>{isSaving ? 'Adding...' : '+ Add Category'}</Button>
     </div>
   );
 };
 
-const AddTabletForm = ({ onAdd }: { onAdd: (title: string, subtitle: string, url: string) => void }) => {
+const AddTabletForm = ({ onAdd }: { onAdd: (title: string, subtitle: string, url: string) => Promise<void> }) => {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [url, setUrl] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   return (
     <div className="flex gap-2 flex-wrap">
-      <Input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1 min-w-[150px]" />
-      <Input placeholder="Subtitle" value={subtitle} onChange={e => setSubtitle(e.target.value)} className="flex-1 min-w-[150px]" />
-      <Input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[150px]" />
-      <Button onClick={() => { if (title) { onAdd(title, subtitle, url); setTitle(''); setSubtitle(''); setUrl(''); } }}>Add</Button>
+      <Input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1 min-w-[150px]" disabled={isSaving} />
+      <Input placeholder="Subtitle" value={subtitle} onChange={e => setSubtitle(e.target.value)} className="flex-1 min-w-[150px]" disabled={isSaving} />
+      <Input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[150px]" disabled={isSaving} />
+      <Button disabled={isSaving} onClick={async () => { if (title && !isSaving) { setIsSaving(true); try { await onAdd(title, subtitle, url); setTitle(''); setSubtitle(''); setUrl(''); } finally { setIsSaving(false); } } }}>{isSaving ? 'Adding...' : 'Add'}</Button>
     </div>
   );
 };
