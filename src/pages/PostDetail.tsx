@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
 import { fetchHomeData, fetchPostData } from '@/lib/fetchData';
+import { getPostBySlug } from '@/lib/firebaseService';
 import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
@@ -116,6 +117,15 @@ const PostDetail = () => {
             console.error("Error fetching static post JSON:", err);
           }
         }
+        
+        // If still no postData and we are in preview mode, try Firebase
+        if ((!postData || postData.tables_html === undefined) && window.location.search.includes('preview=true')) {
+          try {
+            postData = await getPostBySlug(slug!);
+          } catch(err) {
+            console.error("Firebase preview fetch failed:", err);
+          }
+        }
 
         if (postData) {
           setPost(postData);
@@ -133,7 +143,10 @@ const PostDetail = () => {
       } else {
         // If data.json fails, try fetching individual post JSON
         try {
-          const postData = await fetchPostData(slug!);
+          let postData = await fetchPostData(slug!);
+          if (!postData && window.location.search.includes('preview=true')) {
+            postData = await getPostBySlug(slug!);
+          }
           if (postData) {
             setPost(postData);
             setNotFound(false);
@@ -141,6 +154,16 @@ const PostDetail = () => {
             setNotFound(true);
           }
         } catch (err) {
+          if (window.location.search.includes('preview=true')) {
+            try {
+              const postData = await getPostBySlug(slug!);
+              if (postData) {
+                setPost(postData);
+                setNotFound(false);
+                return;
+              }
+            } catch(e) {}
+          }
           setNotFound(true);
         }
       }

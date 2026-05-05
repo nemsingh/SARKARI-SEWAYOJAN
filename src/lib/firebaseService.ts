@@ -192,8 +192,12 @@ export const getPosts = async () => {
       } as Record<string, any>;
     });
     
-    // Process chunking sequentially or concurrently
-    await Promise.all(posts.map(post => loadChunksForPost(post.id, post)));
+    // Process chunking in batches to prevent Firebase rate limit / memory issues on Vercel
+    const batchSize = 10;
+    for (let i = 0; i < posts.length; i += batchSize) {
+      const batch = posts.slice(i, i + batchSize);
+      await Promise.all(batch.map(post => loadChunksForPost(post.id, post)));
+    }
 
     return posts.sort((a, b) => {
       const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
@@ -246,8 +250,8 @@ const CHUNK_SIZE = 400000;
 export const createPost = async (data: Record<string, any>) => {
   const postData = { ...data };
   
-  let html = postData.tables_html ? compressHtml(postData.tables_html) : '';
-  let html_hi = postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '';
+  let html = (postData.tables_html ? compressHtml(postData.tables_html) : '') as string;
+  let html_hi = (postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '') as string;
   
   const isChunked = (html.length + html_hi.length) > CHUNK_SIZE;
   
@@ -291,8 +295,8 @@ export const createPost = async (data: Record<string, any>) => {
 export const updatePost = async (id: string, data: Record<string, any>) => {
   const postData = { ...data };
   
-  let html = postData.tables_html !== undefined ? compressHtml(postData.tables_html) : undefined;
-  let html_hi = postData.tables_html_hi !== undefined ? compressHtml(postData.tables_html_hi) : undefined;
+  let html: string | undefined = postData.tables_html !== undefined ? (compressHtml(postData.tables_html) as string) || '' : undefined;
+  let html_hi: string | undefined = postData.tables_html_hi !== undefined ? (compressHtml(postData.tables_html_hi) as string) || '' : undefined;
   
   const lenHtml = html ? html.length : 0;
   const lenHtmlHi = html_hi ? html_hi.length : 0;

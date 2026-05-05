@@ -152,7 +152,7 @@ async function generate() {
       [`post_${post.slug || post.id}`]: post,
     };
     const cleanDesc = (post.short_info || '').replace(/\*\*(.*?)\*\*/gs, '$1').replace(/<[^>]*>?/gm, '').substring(0, 160);
-    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}/index.html`, `${post.name_of_post} - Sarkari Sewayojan`, cleanDesc || post.name_of_post);
+    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}.html`, `${post.name_of_post} - Sarkari Sewayojan`, cleanDesc || post.name_of_post);
     
     // Generate individual JSON file for client-side navigation
     fs.writeFileSync(path.resolve(dataDir, `post_${post.slug || post.id}.json`), JSON.stringify(post));
@@ -164,15 +164,15 @@ async function generate() {
       ...homeData,
     };
     // Use the raw category name for the file path, but encode it for the URL
-    const catPath = `category/${cat.name}/index.html`;
+    const catPath = `category/${encodeURIComponent(cat.name)}.html`;
     generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, catPath, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
   }
 
   // 4. Generate Static Policy Pages
-  generatePage('/privacy-policy', homeData, 'privacy-policy/index.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
-  generatePage('/dmca-policy', homeData, 'dmca-policy/index.html', 'DMCA Policy - Sarkari Sewayojan', 'DMCA Policy');
-  generatePage('/terms-and-conditions', homeData, 'terms-and-conditions/index.html', 'Terms and Conditions - Sarkari Sewayojan', 'Terms and Conditions');
-  generatePage('/contact-us', homeData, 'contact-us/index.html', 'Contact Us - Sarkari Sewayojan', 'Contact Us');
+  generatePage('/privacy-policy', homeData, 'privacy-policy.html', 'Privacy Policy - Sarkari Sewayojan', 'Privacy Policy');
+  generatePage('/dmca-policy', homeData, 'dmca-policy.html', 'DMCA Policy - Sarkari Sewayojan', 'DMCA Policy');
+  generatePage('/terms-and-conditions', homeData, 'terms-and-conditions.html', 'Terms and Conditions - Sarkari Sewayojan', 'Terms and Conditions');
+  generatePage('/contact-us', homeData, 'contact-us.html', 'Contact Us - Sarkari Sewayojan', 'Contact Us');
 
   // 5. Generate Admin Shell
   const adminHtml = template.replace(`<!--ssr-outlet-->`, '')

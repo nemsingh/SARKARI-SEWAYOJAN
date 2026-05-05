@@ -22,7 +22,6 @@ export const auth = getAuth(app);
 // Initialize Firestore with robust settings for sandboxed environments
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-  useFetchStreams: false,
 });
 
 async function testConnection() {

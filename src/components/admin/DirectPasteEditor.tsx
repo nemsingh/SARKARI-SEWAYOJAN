@@ -105,6 +105,100 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
         Select and copy a table from original Microsoft Office Excel, and paste it directly into this box. It will retain original formatting exactly.
       </p>
       
+      <div className="flex flex-wrap gap-2 mb-2">
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { 
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+              alert("Please select some text first to apply formatting.");
+              return;
+            }
+            document.execCommand('bold', false, undefined); 
+          }}
+          className="font-bold"
+        >
+          B
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { 
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+              alert("Please select some text first to apply formatting.");
+              return;
+            }
+            document.execCommand('italic', false, undefined); 
+          }}
+          className="italic"
+        >
+          I
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { 
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+              alert("Please select some text first to apply formatting.");
+              return;
+            }
+            let currentSize = parseInt(document.queryCommandValue('fontSize') || '3', 10);
+            if (currentSize < 7) currentSize++;
+            document.execCommand('fontSize', false, currentSize.toString()); 
+          }}
+          title="Increase Size"
+        >
+          A+
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { 
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+              alert("Please select some text first to apply formatting.");
+              return;
+            }
+            let currentSize = parseInt(document.queryCommandValue('fontSize') || '3', 10);
+            if (currentSize > 1) currentSize--;
+            document.execCommand('fontSize', false, currentSize.toString()); 
+          }}
+          title="Decrease Size"
+        >
+          A-
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+              alert("Please select some text first to add a link.");
+              return;
+            }
+            const url = prompt('Enter URL:');
+            if (url) {
+              document.execCommand('createLink', false, url);
+            }
+          }}
+        >
+          🔗 Link
+        </Button>
+      </div>
+
       <div 
         ref={editorRef}
         contentEditable
