@@ -757,7 +757,8 @@ const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMo
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url || '');
 
-  const dateStr = link.created_at?.toDate ? formatDate(link.created_at.toDate().toISOString()) : formatDate(link.created_at || '');
+  const dateStr = link.post_date || (link.link_timestamp ? formatDate(new Date(link.link_timestamp).toISOString()) : 
+                  (link.created_at?.toDate ? formatDate(link.created_at.toDate().toISOString()) : formatDate(link.created_at || '')));
 
   if (editing) {
     return (
@@ -802,7 +803,7 @@ const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMo
           <span className="font-medium text-primary text-base">{link.title}</span>
           {link.url && <span className="text-muted-foreground text-sm">{link.url}</span>}
           {link.is_new && <span className="text-sm font-bold text-destructive animate-pulse">New</span>}
-          {link.last_date_text && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{link.last_date_text}</span>}
+          {dateStr && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{dateStr}</span>}
         </div>
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>

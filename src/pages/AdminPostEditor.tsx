@@ -457,6 +457,7 @@ const AdminPostEditor = () => {
             url: `/post/${finalSlug || result.id}`,
             link_timestamp: customTs,
             is_new: true,
+            post_date: postDate,
             last_date_text: null,
           });
           toast({ title: 'Post created & added to category!', description: 'Please wait up to 3 minutes or click "Publish Website" from the Dashboard to see it live.' });
@@ -477,6 +478,7 @@ const AdminPostEditor = () => {
               title: linkTitle.trim(),
               category_id: linkCategoryId,
               url: `/post/${finalSlug}`,
+              post_date: postDate,
               link_timestamp: customTs
             });
           } else {
@@ -486,6 +488,7 @@ const AdminPostEditor = () => {
               url: `/post/${finalSlug}`,
               link_timestamp: customTs,
               is_new: true,
+              post_date: postDate,
               last_date_text: null,
             });
           }

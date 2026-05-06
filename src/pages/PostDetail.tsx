@@ -55,6 +55,7 @@ const PostDetail = () => {
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [translatedContent, setTranslatedContent] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
 
   const [notFound, setNotFound] = useState(() => {
     if (initialData) {
@@ -85,6 +86,10 @@ const PostDetail = () => {
         return;
       }
 
+      if (window.location.search.includes('preview=true')) {
+        setIsFetchingPreview(true);
+      }
+
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
       let data: any;
 
@@ -97,6 +102,21 @@ const PostDetail = () => {
           console.error('Fetch error:', e);
         }
       }
+
+      const fetchPreviewWithRetry = async (slug: string, retries = 3, delay = 1000) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const p = await getPostBySlug(slug);
+            if (p) return p;
+          } catch (e) {
+            console.warn("Preview fetch attempt failed:", e);
+          }
+          if (i < retries - 1) {
+            await new Promise(res => setTimeout(res, delay));
+          }
+        }
+        return null;
+      };
 
       if (data) {
         const allPosts = data.posts || [];
@@ -120,19 +140,30 @@ const PostDetail = () => {
         
         // If still no postData and we are in preview mode, try Firebase
         if ((!postData || postData.tables_html === undefined) && window.location.search.includes('preview=true')) {
-          try {
-            postData = await getPostBySlug(slug!);
-          } catch(err) {
-            console.error("Firebase preview fetch failed:", err);
-          }
+          postData = await fetchPreviewWithRetry(slug!, 10, 2000); // Wait up to 20 seconds!
         }
 
         if (postData) {
           setPost(postData);
           setCache(`post_${slug}`, postData);
           setNotFound(false);
+          setIsFetchingPreview(false);
         } else {
-          setNotFound(true);
+          if (window.location.search.includes('preview=true')) {
+             // Keep retrying endlessly instead of showing 404
+             const endlessRetry = setInterval(async () => {
+               const p = await getPostBySlug(slug!);
+               if (p) {
+                 setPost(p);
+                 setNotFound(false);
+                 setIsFetchingPreview(false);
+                 clearInterval(endlessRetry);
+               }
+             }, 3000);
+          } else {
+            setNotFound(true);
+            setIsFetchingPreview(false);
+          }
         }
         setCategories(cats);
         setCategoryLinks(links);
@@ -145,28 +176,43 @@ const PostDetail = () => {
         try {
           let postData = await fetchPostData(slug!);
           if (!postData && window.location.search.includes('preview=true')) {
-            postData = await getPostBySlug(slug!);
+            postData = await fetchPreviewWithRetry(slug!);
           }
           if (postData) {
             setPost(postData);
             setNotFound(false);
+            setIsFetchingPreview(false);
           } else {
-            setNotFound(true);
+             if (window.location.search.includes('preview=true')) {
+               const endlessRetry = setInterval(async () => {
+                 const p = await getPostBySlug(slug!);
+                 if (p) {
+                   setPost(p);
+                   setNotFound(false);
+                   setIsFetchingPreview(false);
+                   clearInterval(endlessRetry);
+                 }
+               }, 3000);
+             } else {
+               setNotFound(true);
+               setIsFetchingPreview(false);
+             }
           }
         } catch (err) {
           if (window.location.search.includes('preview=true')) {
-            try {
-              const postData = await getPostBySlug(slug!);
-              if (postData) {
-                setPost(postData);
-                setNotFound(false);
-                return;
-              }
-            } catch(e) {
-              console.warn("Failed to fetch preview post by slug", e);
-            }
+            const endlessRetry = setInterval(async () => {
+                 const p = await getPostBySlug(slug!);
+                 if (p) {
+                   setPost(p);
+                   setNotFound(false);
+                   setIsFetchingPreview(false);
+                   clearInterval(endlessRetry);
+                 }
+               }, 3000);
+          } else {
+            setNotFound(true);
+            setIsFetchingPreview(false);
           }
-          setNotFound(true);
         }
       }
     };
@@ -246,6 +292,7 @@ const PostDetail = () => {
     ? categories.filter(c => c.name.includes(activeFilter))
     : [];
 
+  if (isFetchingPreview) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading Preview...</div>;
   if (notFound) return <NotFound />;
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
 
