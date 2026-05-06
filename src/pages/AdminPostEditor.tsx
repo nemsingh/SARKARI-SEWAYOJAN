@@ -56,15 +56,22 @@ const formatDateTime = (dateString: string, lang: 'en' | 'hi' = 'en') => {
 const parseDateTime = (dateString: string, lang: 'en' | 'hi' = 'en'): Date | undefined => {
   if (!dateString) return undefined;
   
-  const d = new Date(dateString);
+  // Try direct parsing first
+  let d = new Date(dateString);
   if (!isNaN(d.getTime())) return d;
   
+  // Try without the pipe character
+  const noPipe = dateString.replace('|', '');
+  d = new Date(noPipe);
+  if (!isNaN(d.getTime())) return d;
+  
+  // Fallback for Hindi or very custom formats
   try {
     const parts = dateString.split('|').map(p => p.trim());
     if (parts.length !== 2) return undefined;
     
     const dateTokens = parts[0].split(' ');
-    if (dateTokens.length !== 3) return undefined;
+    if (dateTokens.length < 3) return undefined;
     
     const day = parseInt(dateTokens[0], 10);
     const monthStr = dateTokens[1];
@@ -414,9 +421,13 @@ const AdminPostEditor = () => {
       console.error("Error checking slug:", e);
     }
 
+    const inputDate = parseDateTime(postDate, 'en');
+    const customTs = inputDate ? inputDate.getTime() : Date.now();
+
     const postData: any = {
       name_of_post: nameOfPost,
       post_date: postDate,
+      post_timestamp: customTs,
       short_info: shortInfo,
       tables_html: tablesHtml,
       slug: finalSlug,
@@ -440,9 +451,6 @@ const AdminPostEditor = () => {
       if (isNew) {
         const result = await createPost(postData);
         if (linkTitle.trim() && linkCategoryId) {
-          const inputDate = parseDateTime(postDate, 'en');
-          const customTs = inputDate ? inputDate.getTime() : Date.now();
-
           await addCategoryLink({
             category_id: linkCategoryId,
             title: linkTitle.trim(),
@@ -462,9 +470,6 @@ const AdminPostEditor = () => {
         const oldSlug = oldPost?.slug || id;
 
         await updatePost(id!, postData);
-
-        const inputDate = parseDateTime(postDate, 'en');
-        const customTs = inputDate ? inputDate.getTime() : Date.now();
 
         if (linkTitle.trim() && linkCategoryId) {
           if (linkId) {

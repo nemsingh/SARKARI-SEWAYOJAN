@@ -162,7 +162,9 @@ const PostDetail = () => {
                 setNotFound(false);
                 return;
               }
-            } catch(e) {}
+            } catch(e) {
+              console.warn("Failed to fetch preview post by slug", e);
+            }
           }
           setNotFound(true);
         }

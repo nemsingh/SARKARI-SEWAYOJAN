@@ -200,8 +200,8 @@ export const getPosts = async () => {
     }
 
     return posts.sort((a, b) => {
-      const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
-      const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+      const dateA = a.post_timestamp || new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = b.post_timestamp || new Date(b.updated_at || b.created_at || 0).getTime();
       return dateB - dateA;
     });
   } catch (error) {
@@ -245,13 +245,13 @@ export const getPostById = async (id: string): Promise<Record<string, any> | nul
   return null;
 };
 
-const CHUNK_SIZE = 400000;
+const CHUNK_SIZE = 200000;
 
 export const createPost = async (data: Record<string, any>) => {
   const postData = { ...data };
   
-  let html = (postData.tables_html ? compressHtml(postData.tables_html) : '') as string;
-  let html_hi = (postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '') as string;
+  const html = (postData.tables_html ? compressHtml(postData.tables_html) : '') as string;
+  const html_hi = (postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '') as string;
   
   const isChunked = (html.length + html_hi.length) > CHUNK_SIZE;
   
@@ -272,20 +272,16 @@ export const createPost = async (data: Record<string, any>) => {
   });
   
   if (isChunked) {
-    const chunkPromises = [];
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      chunkPromises.push(
-        setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
-          index,
-          html: html.substring(i, i + CHUNK_SIZE),
-          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
-        })
-      );
+      await setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
+        index,
+        html: html.substring(i, i + CHUNK_SIZE),
+        html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+      });
       index++;
     }
-    await Promise.all(chunkPromises);
   }
 
   clearCache();
@@ -295,8 +291,8 @@ export const createPost = async (data: Record<string, any>) => {
 export const updatePost = async (id: string, data: Record<string, any>) => {
   const postData = { ...data };
   
-  let html: string | undefined = postData.tables_html !== undefined ? (compressHtml(postData.tables_html) as string) || '' : undefined;
-  let html_hi: string | undefined = postData.tables_html_hi !== undefined ? (compressHtml(postData.tables_html_hi) as string) || '' : undefined;
+  const html: string | undefined = postData.tables_html !== undefined ? (compressHtml(postData.tables_html) as string) || '' : undefined;
+  const html_hi: string | undefined = postData.tables_html_hi !== undefined ? (compressHtml(postData.tables_html_hi) as string) || '' : undefined;
   
   const lenHtml = html ? html.length : 0;
   const lenHtmlHi = html_hi ? html_hi.length : 0;
@@ -313,8 +309,9 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   }
 
   // Clear old chunks in any case just to be safe
-  const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
-  await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
+  for (let i = 0; i < 50; i++) {
+    await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+  }
 
   await updateDoc(doc(db, 'posts', id), {
     ...postData,
@@ -322,20 +319,16 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   });
   
   if (isChunked && html !== undefined && html_hi !== undefined) {
-    const chunkPromises = [];
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      chunkPromises.push(
-        setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
-          index,
-          html: html.substring(i, i + CHUNK_SIZE),
-          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
-        })
-      );
+      await setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
+        index,
+        html: html.substring(i, i + CHUNK_SIZE),
+        html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+      });
       index++;
     }
-    await Promise.all(chunkPromises);
   }
 
   clearCache();
@@ -343,8 +336,9 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 
 export const deletePost = async (id: string) => {
   try {
-    const oldChunks = await getDocs(collection(db, `posts/${id}/chunks`));
-    await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
+    for (let i = 0; i < 50; i++) {
+      await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+    }
     await deleteDoc(doc(db, 'posts', id));
     clearCache();
   } catch (error) {

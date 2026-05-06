@@ -408,6 +408,25 @@ const AdminDashboard = () => {
                 await fetchAll();
                 toast({ title: 'Category updated!' });
               }}
+              onMoveCategory={async (catId: string, direction: 'up' | 'down') => {
+                const idx = categories.findIndex(c => c.id === catId);
+                if (idx < 0) return;
+                const cat = categories[idx];
+                let swapCat = null;
+                if (direction === 'up' && idx > 0) {
+                  swapCat = categories[idx - 1];
+                } else if (direction === 'down' && idx < categories.length - 1) {
+                  swapCat = categories[idx + 1];
+                }
+                if (swapCat) {
+                  const currentOrder = cat.display_order || idx;
+                  const swapOrder = swapCat.display_order || (direction === 'up' ? idx - 1 : idx + 1);
+                  await updateCategoryFn(cat.id, { display_order: swapOrder });
+                  await updateCategoryFn(swapCat.id, { display_order: currentOrder });
+                  await fetchAll();
+                  toast({ title: 'Category moved!' });
+                }
+              }}
               onAddLink={handleAddLink}
               onDeleteLink={handleDeleteLink}
               onToggleLinkNew={handleToggleLinkNew}
@@ -601,13 +620,14 @@ const TabletItemRow = ({ item, onDelete, onUpdate, formatDate }: { item: any; on
 
 // ============ CATEGORY LINKS TAB (with filter dropdown) ============
 const CategoryLinksTab = ({
-  categories, categoryLinks, onAddCategory, onDeleteCategory, onUpdateCategory,
+  categories, categoryLinks, onAddCategory, onDeleteCategory, onUpdateCategory, onMoveCategory,
   onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
   categories: any[]; categoryLinks: any[];
   onAddCategory: (name: string) => void;
   onDeleteCategory: (id: string) => void;
   onUpdateCategory: (id: string, name: string) => void;
+  onMoveCategory: (catId: string, direction: 'up' | 'down') => void;
   onAddLink: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => void;
   onDeleteLink: (id: string) => void;
   onToggleLinkNew: (id: string, current: boolean) => void;
@@ -638,13 +658,16 @@ const CategoryLinksTab = ({
           ))}
         </select>
       </div>
-      {filteredCategories.map(cat => (
+      {filteredCategories.map((cat, index) => (
         <div key={cat.id} className="pb-8 mb-8 border-b-4 border-dashed border-slate-500 last:border-b-0 last:pb-0 last:mb-0">
           <CategoryCard
             cat={cat}
+            index={filterCat === 'all' ? index : undefined}
+            totalCats={categories.length}
             links={categoryLinks.filter(l => l.category_id === cat.id)}
             onDelete={() => onDeleteCategory(cat.id)}
             onUpdateName={(name) => onUpdateCategory(cat.id, name)}
+            onMoveCategory={onMoveCategory}
             onAddLink={onAddLink}
             onDeleteLink={onDeleteLink}
             onToggleLinkNew={onToggleLinkNew}
@@ -661,11 +684,12 @@ const CategoryLinksTab = ({
 
 // ============ CATEGORY CARD (with edit name) ============
 const CategoryCard = ({
-  cat, links, onDelete, onUpdateName, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
+  cat, index, totalCats, links, onDelete, onUpdateName, onMoveCategory, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
-  cat: any; links: any[];
+  cat: any; index?: number; totalCats?: number; links: any[];
   onDelete: () => void;
   onUpdateName: (name: string) => void;
+  onMoveCategory: (catId: string, direction: 'up' | 'down') => void;
   onAddLink: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => void;
   onDeleteLink: (id: string) => void;
   onToggleLinkNew: (id: string, current: boolean) => void;
@@ -695,6 +719,12 @@ const CategoryCard = ({
           </div>
         )}
         <div className="flex gap-1">
+          {index !== undefined && totalCats !== undefined && (
+            <div className="flex bg-slate-100 rounded mr-2 overflow-hidden shadow-sm">
+              <button onClick={() => onMoveCategory(cat.id, 'up')} disabled={index === 0} className={`px-2 py-1 font-bold ${index === 0 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600'}`}>↑</button>
+              <button onClick={() => onMoveCategory(cat.id, 'down')} disabled={index === totalCats - 1} className={`px-2 py-1 font-bold ${index === totalCats - 1 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600'}`}>↓</button>
+            </div>
+          )}
           {!editingName && <Button variant="outline" size="sm" onClick={() => { setNewName(cat.name); setEditingName(true); }}>Edit</Button>}
           <Button variant="destructive" size="sm" onClick={onDelete}>Delete Category</Button>
         </div>
