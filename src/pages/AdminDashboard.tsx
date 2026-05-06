@@ -802,7 +802,7 @@ const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMo
           <span className="font-medium text-primary text-base">{link.title}</span>
           {link.url && <span className="text-muted-foreground text-sm">{link.url}</span>}
           {link.is_new && <span className="text-sm font-bold text-destructive animate-pulse">New</span>}
-          {dateStr && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{dateStr}</span>}
+          {link.last_date_text && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{link.last_date_text}</span>}
         </div>
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
@@ -916,7 +916,6 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
                   <div className="font-bold text-primary text-base">{post.name_of_post}</div>
                   <div className="text-sm text-muted-foreground">{post.post_date}</div>
                 </div>
-                {post.created_at && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{formatDate(post.created_at)}</span>}
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>

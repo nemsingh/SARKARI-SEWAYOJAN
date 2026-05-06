@@ -309,8 +309,12 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   }
 
   // Clear old chunks in any case just to be safe
-  for (let i = 0; i < 50; i++) {
-    await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+  try {
+    for (let i = 0; i < 50; i++) {
+      await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+    }
+  } catch(e) {
+    console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
   }
 
   await updateDoc(doc(db, 'posts', id), {
@@ -336,8 +340,12 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 
 export const deletePost = async (id: string) => {
   try {
-    for (let i = 0; i < 50; i++) {
-      await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+    try {
+      for (let i = 0; i < 50; i++) {
+        await deleteDoc(doc(db, `posts/${id}/chunks`, i.toString()));
+      }
+    } catch(e) {
+      console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
     }
     await deleteDoc(doc(db, 'posts', id));
     clearCache();
