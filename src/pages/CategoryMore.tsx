@@ -39,15 +39,13 @@ const CategoryMore = () => {
       const cat = cats.find((c: any) => c.name === decodedName);
       if (cat) {
         let filtered = initialData.category_links.filter((l: any) => l.category_id === cat.id);
-        if (decodedName.toLowerCase().includes('latest') || decodedName.toLowerCase().includes('letest')) {
-           const allPosts = initialData.posts || [];
-           filtered = filtered.map((l: any) => {
-             const match = l.url?.match(/\/post\/(.+)/);
-             const slug = match ? match[1] : null;
-             const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
-             return { ...l, actual_last_date_text: post?.last_date_text };
-           });
-        }
+        const allPosts = initialData.posts || [];
+        filtered = filtered.map((l: any) => {
+          const match = l.url?.match(/\/post\/(.+)/);
+          const slug = match ? match[1] : null;
+          const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+          return { ...l, actual_last_date_text: post?.last_date_text };
+        });
         return filtered;
       }
     }
@@ -126,15 +124,13 @@ const CategoryMore = () => {
         if (cat) {
           setCategory(cat);
           let filtered = allLinks.filter((l: any) => l.category_id === cat.id);
-          if (decodedName2.toLowerCase().includes('latest') || decodedName2.toLowerCase().includes('letest')) {
-             const allPosts = data.posts || [];
-             filtered = filtered.map((l: any) => {
-               const match = l.url?.match(/\/post\/(.+)/);
-               const slug = match ? match[1] : null;
-               const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
-               return { ...l, actual_last_date_text: post?.last_date_text };
-             });
-          }
+          const allPosts = data.posts || [];
+          filtered = filtered.map((l: any) => {
+            const match = l.url?.match(/\/post\/(.+)/);
+            const slug = match ? match[1] : null;
+            const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+            return { ...l, actual_last_date_text: post?.last_date_text };
+          });
           setLinks(filtered);
         } else {
           setNotFound(true);
@@ -203,36 +199,12 @@ const CategoryMore = () => {
           </div>
         </>
       ) : (
-        <div className="mx-auto my-8 px-3">
-          <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-              {categoryName} - All Links
-            </div>
-            <ul className="list-none p-0 mt-2.5">
-              {links.map(link => (
-                <li key={link.id} className="category-link-item mb-2.5">
-                  <div className="flex items-center text-primary font-medium text-[19px] group">
-                    <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
-                    {link.url ? (
-                      <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
-                        {link.title}
-                      </a>
-                    ) : (
-                      link.title
-                    )}
-                    {link.is_new && (
-                      <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
-                    )}
-                  </div>
-                  {(link.last_date_text || link.actual_last_date_text) && (
-                    <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
-                      {link.last_date_text || link.actual_last_date_text}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="grid gap-5 py-8 px-3 mx-auto grid-cols-1">
+          <CategoryBox
+            name={`${categoryName} - All Links`}
+            links={links}
+            maxVisible={999999}
+          />
         </div>
       )}
       <SiteFooter settings={settings} hideDisclaimer={false} />

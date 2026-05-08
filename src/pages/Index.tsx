@@ -207,33 +207,27 @@ const Index = () => {
       </div>
 
       {filterSource === 'more' && activeFilter !== 'Home' ? (
-        <div className="py-8 px-3 mx-auto">
-          <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-              {activeFilter} Update's
-            </div>
-            {filteredPosts.length > 0 ? (
-              <ul className="list-none p-0 mt-2.5">
-                {filteredPosts.map((post) => (
-                  <li key={post.id} className="category-link-item mb-2.5">
-                    <div className="flex items-center text-primary font-medium text-[19px] group">
-                      <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
-                      <a
-                        href={`/post/${encodeURIComponent(post.slug || post.id)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary no-underline hover:underline hover:text-accent transition-colors"
-                      >
-                        {post.name_of_post}
-                      </a>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
+        <div className="grid gap-5 py-8 px-3 mx-auto grid-cols-1">
+          {filteredPosts.length > 0 ? (
+            <CategoryBox
+              name={`${activeFilter} Update's`}
+              links={filteredPosts.map(post => ({
+                id: post.id,
+                url: `/post/${post.slug || post.id}`,
+                title: post.name_of_post,
+                is_new: false,
+                last_date_text: post.last_date_text
+              }))}
+              maxVisible={999999}
+            />
+          ) : (
+            <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 text-center" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+              <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                {activeFilter} Update's
+              </div>
               <p className="text-primary font-medium mt-2.5 text-[19px]">No updates found for {activeFilter}.</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className={`grid gap-5 py-8 px-3 mx-auto ${activeFilter !== 'Home' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
@@ -252,6 +246,7 @@ const Index = () => {
                 key={cat.id}
                 name={cat.name}
                 links={catLinks}
+                maxVisible={activeFilter === 'Home' ? 25 : 999999}
               />
             );
           })}

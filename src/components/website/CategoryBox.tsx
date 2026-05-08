@@ -47,7 +47,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
               )}
             </div>
             {(link.last_date_text || link.actual_last_date_text) && (
-              <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5">
+              <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
                 {link.last_date_text || link.actual_last_date_text}
               </div>
             )}
