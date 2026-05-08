@@ -88,13 +88,21 @@ const CategoryMore = () => {
       if (cachedLinks) setCategoryLinks(cachedLinks);
       if (cachedSettings) setSettings(cachedSettings);
       
+      const cachedPosts = getCache<any[]>('posts');
       let foundCategory = false;
       const decodedName = decodeURIComponent(name);
-      if (cachedCats && cachedLinks && cachedSettings) {
+      if (cachedCats && cachedLinks && cachedSettings && cachedPosts) {
         const cat = cachedCats.find((c: any) => c.name === decodedName);
         if (cat) {
           setCategory(cat);
-          setLinks(cachedLinks.filter((l: any) => l.category_id === cat.id));
+          let filtered = cachedLinks.filter((l: any) => l.category_id === cat.id);
+          filtered = filtered.map((l: any) => {
+            const match = l.url?.match(/\/post\/(.+)/);
+            const slug = match ? match[1] : null;
+            const post = cachedPosts.find((p: any) => p.slug === slug || p.id === slug);
+            return { ...l, actual_last_date_text: post?.last_date_text };
+          });
+          setLinks(filtered);
           setNotFound(false);
           foundCategory = true;
           return;
