@@ -248,6 +248,21 @@ const PostDetail = () => {
     }
   }, [language, post, translatedContent]);
 
+  useEffect(() => {
+    // Set all links in post content to open in new tab
+    const timer = setTimeout(() => {
+      const contentContainers = document.querySelectorAll('.post-tables-content, .post-summary-table');
+      contentContainers.forEach(container => {
+        const links = container.querySelectorAll('a');
+        links.forEach(link => {
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+        });
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [post, language, translatedContent]);
+
   // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
     let val = '';

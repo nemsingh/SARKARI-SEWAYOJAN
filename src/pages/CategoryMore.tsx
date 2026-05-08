@@ -38,7 +38,17 @@ const CategoryMore = () => {
       const decodedName = decodeURIComponent(name || '');
       const cat = cats.find((c: any) => c.name === decodedName);
       if (cat) {
-        return initialData.category_links.filter((l: any) => l.category_id === cat.id);
+        let filtered = initialData.category_links.filter((l: any) => l.category_id === cat.id);
+        if (decodedName.toLowerCase().includes('latest') || decodedName.toLowerCase().includes('letest')) {
+           const allPosts = initialData.posts || [];
+           filtered = filtered.map((l: any) => {
+             const match = l.url?.match(/\/post\/(.+)/);
+             const slug = match ? match[1] : null;
+             const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+             return { ...l, actual_last_date_text: post?.last_date_text };
+           });
+        }
+        return filtered;
       }
     }
     return [];
@@ -115,7 +125,17 @@ const CategoryMore = () => {
         const cat = allCats.find((c: any) => c.name === decodedName2);
         if (cat) {
           setCategory(cat);
-          setLinks(allLinks.filter((l: any) => l.category_id === cat.id));
+          let filtered = allLinks.filter((l: any) => l.category_id === cat.id);
+          if (decodedName2.toLowerCase().includes('latest') || decodedName2.toLowerCase().includes('letest')) {
+             const allPosts = data.posts || [];
+             filtered = filtered.map((l: any) => {
+               const match = l.url?.match(/\/post\/(.+)/);
+               const slug = match ? match[1] : null;
+               const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
+               return { ...l, actual_last_date_text: post?.last_date_text };
+             });
+          }
+          setLinks(filtered);
         } else {
           setNotFound(true);
         }
@@ -204,9 +224,9 @@ const CategoryMore = () => {
                       <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
                     )}
                   </div>
-                  {link.last_date_text && (
-                    <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5">
-                      {link.last_date_text}
+                  {(link.last_date_text || link.actual_last_date_text) && (
+                    <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
+                      {link.last_date_text || link.actual_last_date_text}
                     </div>
                   )}
                 </li>

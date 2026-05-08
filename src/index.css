@@ -534,3 +534,12 @@ table.post-summary-table th {
   min-width: 80px;
   height: 24px;
 }
+
+/* Post Content Link States (For all themes) */
+.post-tables-content a:visited, table.w-full.border-collapse a:visited, .short-info-cell a:visited {
+  color: darkblue !important;
+}
+
+.post-tables-content a:active, table.w-full.border-collapse a:active, .short-info-cell a:active {
+  color: red !important;
+}

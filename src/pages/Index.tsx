@@ -237,13 +237,24 @@ const Index = () => {
         </div>
       ) : (
         <div className={`grid gap-5 py-8 px-3 mx-auto ${activeFilter !== 'Home' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-          {filteredCategoriesWithSearch.map(cat => (
-            <CategoryBox
-              key={cat.id}
-              name={cat.name}
-              links={categoryLinks.filter(l => l.category_id === cat.id)}
-            />
-          ))}
+          {filteredCategoriesWithSearch.map(cat => {
+            let catLinks = categoryLinks.filter(l => l.category_id === cat.id);
+            if (activeFilter !== 'Home' && filterSource === 'menu' && (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest'))) {
+               catLinks = catLinks.map((l: any) => {
+                 const match = l.url?.match(/\/post\/(.+)/);
+                 const slug = match ? match[1] : null;
+                 const post = posts.find((p: any) => p.slug === slug || p.id === slug);
+                 return { ...l, actual_last_date_text: post?.last_date_text };
+               });
+            }
+            return (
+              <CategoryBox
+                key={cat.id}
+                name={cat.name}
+                links={catLinks}
+              />
+            );
+          })}
         </div>
       )}
 

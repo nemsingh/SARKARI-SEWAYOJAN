@@ -110,11 +110,13 @@ const AdminPostEditor = () => {
 
   const [nameOfPost, setNameOfPost] = useState('');
   const [postDate, setPostDate] = useState('');
+  const [lastDateText, setLastDateText] = useState('');
   const [shortInfo, setShortInfo] = useState('');
   const [tablesHtml, setTablesHtml] = useState('');
   const [slug, setSlug] = useState('');
   const [nameOfPostHi, setNameOfPostHi] = useState('');
   const [postDateHi, setPostDateHi] = useState('');
+  const [lastDateTextHi, setLastDateTextHi] = useState('');
   const [shortInfoHi, setShortInfoHi] = useState('');
   const [tablesHtmlHi, setTablesHtmlHi] = useState('');
   const [tables, setTables] = useState<string[]>([]);
@@ -254,11 +256,13 @@ const AdminPostEditor = () => {
         if (data) {
           setNameOfPost(data.name_of_post || '');
           setPostDate(data.post_date || '');
+          setLastDateText(data.last_date_text || '');
           setShortInfo(data.short_info || '');
           setTablesHtml(data.tables_html || '');
           setSlug(data.slug || '');
           setNameOfPostHi(data.name_of_post_hi || '');
           setPostDateHi(data.post_date_hi || '');
+          setLastDateTextHi(data.last_date_text_hi || '');
           setShortInfoHi(data.short_info_hi || '');
           setTablesHtmlHi(data.tables_html_hi || '');
           setMediaUrls(data.media_urls || []);
@@ -380,11 +384,13 @@ const AdminPostEditor = () => {
   const clearForm = () => {
     setNameOfPost('');
     setPostDate('');
+    setLastDateText('');
     setShortInfo('');
     setTablesHtml('');
     setSlug('');
     setNameOfPostHi('');
     setPostDateHi('');
+    setLastDateTextHi('');
     setShortInfoHi('');
     setTablesHtmlHi('');
     setTables([]);
@@ -427,12 +433,14 @@ const AdminPostEditor = () => {
     const postData: any = {
       name_of_post: nameOfPost,
       post_date: postDate,
+      last_date_text: lastDateText || null,
       post_timestamp: customTs,
       short_info: shortInfo,
       tables_html: tablesHtml,
       slug: finalSlug,
       name_of_post_hi: nameOfPostHi || null,
       post_date_hi: postDateHi || null,
+      last_date_text_hi: lastDateTextHi || null,
       short_info_hi: shortInfoHi || null,
       tables_html_hi: tablesHtmlHi || null,
       media_urls: mediaUrls.length > 0 ? mediaUrls : null,
@@ -644,6 +652,10 @@ const AdminPostEditor = () => {
               </div>
             </div>
             <div>
+              <label className="text-base font-bold text-primary block mb-1">Last Date / Extra Text (Red text below link in Latest Jobs)</label>
+              <Input value={lastDateText} onChange={e => setLastDateText(e.target.value)} placeholder="e.g. Last Date : 11/05/2026 or Extended" />
+            </div>
+            <div>
               <label className="text-base font-bold text-primary block mb-1">Short Info (HTML allowed)</label>
               <div className="flex gap-2 mb-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => applyFormat(shortInfoRef, shortInfo, setShortInfo, '<b>', '</b>')}><b>B</b></Button>
@@ -719,13 +731,17 @@ const AdminPostEditor = () => {
                       if (d) setPostDateHi(formatDateTime(d.toISOString(), 'hi'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                       <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
                         📅
                       </Button>
                     }
                   />
                 </div>
               </div>
+            </div>
+            <div>
+              <label className="text-base font-bold text-primary block mb-1">अंतिम तिथि / अतिरिक्त पाठ (Last Date / Extra Text - Hindi)</label>
+              <Input value={lastDateTextHi} onChange={e => setLastDateTextHi(e.target.value)} placeholder="e.g. अंतिम तिथि : 11/05/2026" />
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">संक्षिप्त जानकारी (Short Info - Hindi, HTML allowed)</label>

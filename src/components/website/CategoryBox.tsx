@@ -4,6 +4,7 @@ interface CategoryLink {
   url: string | null;
   is_new?: boolean;
   last_date_text?: string | null;
+  actual_last_date_text?: string | null;
 }
 
 interface CategoryBoxProps {
@@ -45,9 +46,9 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
                 <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
               )}
             </div>
-            {link.last_date_text && (
+            {(link.last_date_text || link.actual_last_date_text) && (
               <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5">
-                {link.last_date_text}
+                {link.last_date_text || link.actual_last_date_text}
               </div>
             )}
           </li>

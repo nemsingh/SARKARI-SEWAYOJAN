@@ -389,6 +389,7 @@ const AdminDashboard = () => {
             <CategoryLinksTab
               categories={categories}
               categoryLinks={categoryLinks}
+              posts={posts}
               onAddCategory={async (name: string) => {
                 const maxOrder = categories.length;
                 await addCategory(name, maxOrder + 1);
@@ -620,10 +621,10 @@ const TabletItemRow = ({ item, onDelete, onUpdate, formatDate }: { item: any; on
 
 // ============ CATEGORY LINKS TAB (with filter dropdown) ============
 const CategoryLinksTab = ({
-  categories, categoryLinks, onAddCategory, onDeleteCategory, onUpdateCategory, onMoveCategory,
+  categories, categoryLinks, posts, onAddCategory, onDeleteCategory, onUpdateCategory, onMoveCategory,
   onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
-  categories: any[]; categoryLinks: any[];
+  categories: any[]; categoryLinks: any[]; posts: any[];
   onAddCategory: (name: string) => void;
   onDeleteCategory: (id: string) => void;
   onUpdateCategory: (id: string, name: string) => void;
@@ -665,6 +666,7 @@ const CategoryLinksTab = ({
             index={filterCat === 'all' ? index : undefined}
             totalCats={categories.length}
             links={categoryLinks.filter(l => l.category_id === cat.id)}
+            posts={posts}
             onDelete={() => onDeleteCategory(cat.id)}
             onUpdateName={(name) => onUpdateCategory(cat.id, name)}
             onMoveCategory={onMoveCategory}
@@ -684,9 +686,9 @@ const CategoryLinksTab = ({
 
 // ============ CATEGORY CARD (with edit name) ============
 const CategoryCard = ({
-  cat, index, totalCats, links, onDelete, onUpdateName, onMoveCategory, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
+  cat, index, totalCats, links, posts, onDelete, onUpdateName, onMoveCategory, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
-  cat: any; index?: number; totalCats?: number; links: any[];
+  cat: any; index?: number; totalCats?: number; links: any[]; posts: any[];
   onDelete: () => void;
   onUpdateName: (name: string) => void;
   onMoveCategory: (catId: string, direction: 'up' | 'down') => void;
@@ -733,7 +735,7 @@ const CategoryCard = ({
       <div className="space-y-4 mt-5 border-t-2 border-dashed border-slate-300 pt-5">
         {links.map((link, idx) => (
           <div key={link.id} className="border-b border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
-            <LinkRow link={link} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
+            <LinkRow link={link} posts={posts} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
           </div>
         ))}
       </div>
@@ -742,8 +744,9 @@ const CategoryCard = ({
 };
 
 // ============ LINK ROW (with edit + date + reorder) ============
-const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMoveLink, categoryId, isFirst, formatDate }: {
+const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMoveLink, categoryId, isFirst, formatDate }: {
   link: any;
+  posts: any[];
   onDelete: (id: string) => void;
   onToggleNew: (id: string, current: boolean) => void;
   onUpdateLastDate: (id: string, text: string) => void;
@@ -800,12 +803,29 @@ const LinkRow = ({ link, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMo
               <span>Top</span>
             </button>
           </div>
-          <span className="font-medium text-primary text-base">{link.title}</span>
-          {link.url && <span className="text-muted-foreground text-sm">{link.url}</span>}
-          {link.is_new && <span className="text-sm font-bold text-destructive animate-pulse">New</span>}
-          {dateStr && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{dateStr}</span>}
+          <div className="flex flex-col">
+            <span className="font-medium text-primary text-base">{link.title}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {link.url && <span className="text-muted-foreground text-sm">{link.url}</span>}
+              {(() => {
+                if (link.url) {
+                  const match = link.url.match(/\/post\/(.+)/);
+                  const slug = match ? match[1] : null;
+                  if (slug && posts) {
+                    const post = posts.find((p: any) => p.slug === slug || p.id === slug);
+                    if (post) {
+                      return <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">Post: {post.name_of_post}</span>;
+                    }
+                  }
+                }
+                return null;
+              })()}
+              {link.is_new && <span className="text-sm font-bold text-destructive animate-pulse">New</span>}
+              {dateStr && <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{dateStr}</span>}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-start">
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
           <Button variant="outline" size="sm" onClick={() => onToggleNew(link.id, link.is_new)}>
             {link.is_new ? '✕ New' : '✓ New'}
@@ -915,7 +935,31 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
               <div className="flex items-center gap-3">
                 <div>
                   <div className="font-bold text-primary text-base">{post.name_of_post}</div>
-                  <div className="text-sm text-muted-foreground">{post.post_date}</div>
+                  <div className="text-sm text-muted-foreground mb-1">{post.post_date}</div>
+                  {(() => {
+                    const slug = post.slug || post.id;
+                    const links = categoryLinks.filter(l => {
+                      if (!l.url) return false;
+                      const match = l.url.match(/\/post\/(.+)/);
+                      const linkSlug = match ? match[1] : null;
+                      return linkSlug === slug;
+                    });
+                    if (links.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {links.map((link: any, i: number) => {
+                            const cat = categories.find(c => c.id === link.category_id);
+                            return (
+                              <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-bold">
+                                Linked in: {cat ? cat.name : 'Unknown'} ({link.title})
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
               <div className="flex gap-2">
