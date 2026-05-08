@@ -154,7 +154,7 @@ export const deleteTabletItem = async (id: string) => {
 };
 
 // ============ POSTS ============
-const loadChunksForPost = async (id: string, postData: any) => {
+export const loadChunksForPost = async (id: string, postData: any) => {
   if (postData.is_chunked) {
     try {
       const chunksSnap = await getDocs(query(collection(db, `posts/${id}/chunks`), orderBy('index')));
@@ -192,12 +192,8 @@ export const getPosts = async () => {
       } as Record<string, any>;
     });
     
-    // Process chunking in batches to prevent Firebase rate limit / memory issues on Vercel
-    const batchSize = 10;
-    for (let i = 0; i < posts.length; i += batchSize) {
-      const batch = posts.slice(i, i + batchSize);
-      await Promise.all(batch.map(post => loadChunksForPost(post.id, post)));
-    }
+    // We explicitly DO NOT load chunks here to prevent OOM errors on Vercel SSG process
+    // when processing thousands of large posts. Chunks are loaded individually by loaders.
 
     return posts.sort((a, b) => {
       const dateA = a.post_timestamp || new Date(a.updated_at || a.created_at || 0).getTime();

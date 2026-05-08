@@ -126,13 +126,12 @@ async function generate() {
     }
   };
 
-  // Strip huge HTML from posts for homeData to prevent OOM and huge HTML files
+  // Initialize lightweightPosts with empty search_corpus
   const lightweightPosts = posts.map(p => {
     const { tables_html, tables_html_hi, media_urls, ...rest } = p;
-    return rest;
+    return { ...rest, search_corpus: '' };
   });
 
-  // 1. Generate Home Page
   const homeData = {
     categories,
     category_links: categoryLinks,
@@ -140,13 +139,23 @@ async function generate() {
     posts: lightweightPosts,
     settings_flat: settings,
   };
-  generatePage('/', homeData, 'index.html', settings.tagline || 'Sarkari Sewayojan', 'Latest Government Jobs, Results & Notifications');
 
   // 2. Generate Post Detail Pages
   const dataDir = path.resolve(outDir, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
 
-  for (const post of posts) {
+  const { loadChunksForPost } = await import(path.resolve(root, 'src/lib/firebaseService.ts'));
+  const stripHtml = (html: string) => html ? html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ') : '';
+
+  for (let i = 0; i < posts.length; i++) {
+    const post = posts[i];
+    // Load chunks individually, then discard them to prevent OOM
+    await loadChunksForPost(post.id, post);
+    
+    // Populate search_corpus for lightweightPosts and homeData now that we have the full chunk
+    const corpus = `${stripHtml(post.tables_html || '')} ${stripHtml(post.tables_html_hi || '')}`.substring(0, 5000);
+    homeData.posts[i].search_corpus = corpus;
+
     const postData = {
       ...homeData,
       [`post_${post.slug || post.id}`]: post,
@@ -156,7 +165,14 @@ async function generate() {
     
     // Generate individual JSON file for client-side navigation
     fs.writeFileSync(path.resolve(dataDir, `post_${post.slug || post.id}.json`), JSON.stringify(post));
+
+    // Free up string memory
+    post.tables_html = undefined;
+    post.tables_html_hi = undefined;
   }
+
+  // 1. Generate Home Page (moved here so homeData has the populated search_corpus)
+  generatePage('/', homeData, 'index.html', settings.tagline || 'Sarkari Sewayojan', 'Latest Government Jobs, Results & Notifications');
 
   // 3. Generate Category Pages
   for (const cat of categories) {
@@ -164,7 +180,7 @@ async function generate() {
       ...homeData,
     };
     // Use the raw category name for the file path, but encode it for the URL
-    const catPath = `category/${encodeURIComponent(cat.name)}.html`;
+    const catPath = `category/${cat.name}.html`;
     generatePage(`/category/${encodeURIComponent(cat.name)}`, catData, catPath, `${cat.name} - Sarkari Sewayojan`, `All updates for ${cat.name}`);
   }
 

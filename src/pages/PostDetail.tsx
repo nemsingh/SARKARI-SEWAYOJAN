@@ -55,9 +55,17 @@ const PostDetail = () => {
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [translatedContent, setTranslatedContent] = useState<Record<string, string>>({});
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+  const [isFetchingPreview, setIsFetchingPreview] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
+      return true;
+    }
+    return false;
+  });
 
   const [notFound, setNotFound] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
+      return false; // Don't show 404 immediately if we are trying to preview
+    }
     if (initialData) {
       const allPosts = initialData.posts || [];
       const p = allPosts.find((p: any) => p.slug === slug || p.id === slug) ||

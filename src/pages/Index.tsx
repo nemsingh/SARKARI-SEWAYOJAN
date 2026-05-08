@@ -121,8 +121,7 @@ const Index = () => {
           post.name_of_post_hi,
           post.short_info,
           post.short_info_hi,
-          post.tables_html,
-          post.tables_html_hi,
+          post.search_corpus,
         ];
         return searchTargets.some((value) => (value || '').toLowerCase().includes(keyword));
       })
