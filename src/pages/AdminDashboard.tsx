@@ -964,7 +964,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
-                <Button variant="outline" size="sm" onClick={() => window.open(`/post/${post.slug || post.id}?preview=true`, '_blank')}>Preview</Button>
+                <Button variant="outline" size="sm" onClick={() => window.open(`/post/${encodeURIComponent(post.slug || post.id)}?preview=true`, '_blank')}>Preview</Button>
                 <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
               </div>
             </div>
