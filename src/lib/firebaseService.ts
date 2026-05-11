@@ -242,14 +242,19 @@ export const getPostBySlug = async (slug: string): Promise<Record<string, any> |
 };
 
 export const getPostById = async (id: string): Promise<Record<string, any> | null> => {
-  const docRef = doc(db, 'posts', id);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    const data = { id: docSnap.id, ...docSnap.data() };
-    await loadChunksForPost(docSnap.id, data);
-    return data;
+  try {
+    const docRef = doc(db, 'posts', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = { id: docSnap.id, ...docSnap.data() };
+      await loadChunksForPost(docSnap.id, data);
+      return data;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `posts/${id}`);
+    return null;
   }
-  return null;
 };
 
 const CHUNK_SIZE = 200000;
@@ -396,12 +401,17 @@ export const updateSiteSetting = async (key: string, value: string, existingId?:
 };
 
 export const getSiteLastUpdated = async (): Promise<number> => {
-  const docRef = doc(db, 'site_settings', 'last_updated');
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return docSnap.data().timestamp || 0;
+  try {
+    const docRef = doc(db, 'site_settings', 'last_updated');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().timestamp || 0;
+    }
+    return 0;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'site_settings/last_updated');
+    return 0;
   }
-  return 0;
 };
 
 export const updateSiteLastUpdated = async () => {

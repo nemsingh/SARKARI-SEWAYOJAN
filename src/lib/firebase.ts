@@ -19,31 +19,8 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore with robust settings for sandboxed environments
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
-
-async function testConnection() {
-  try {
-    // Attempt to reach the server once to verify connectivity
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firestore connection successful.");
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration: Firestore is operating in offline mode.");
-    } else if (error instanceof Error && (error.message.includes('Missing or insufficient permissions') || error.message.includes('permission-denied'))) {
-      console.log("Firestore connection successful (connectivity test verified).");
-    } else {
-      console.error("Firestore connectivity test failed:", error);
-    }
-  }
-}
-
-// Only run test in development/preview if user is seeing errors
-if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-  testConnection();
-}
+// Initialize Firestore
+export const db = getFirestore(app);
 
 export enum OperationType {
   CREATE = 'create',

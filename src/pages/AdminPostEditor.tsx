@@ -126,6 +126,8 @@ const AdminPostEditor = () => {
   const [newMediaUrl, setNewMediaUrl] = useState('');
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showRawHtml, setShowRawHtml] = useState(false);
+  const [showRawHtmlHi, setShowRawHtmlHi] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
