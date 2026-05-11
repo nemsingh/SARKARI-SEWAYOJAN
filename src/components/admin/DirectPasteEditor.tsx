@@ -79,6 +79,44 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
           if (tagName !== 'table') {
               htmlEl.removeAttribute('class');
           }
+          
+          if (htmlEl.style.fontFamily) {
+             const ff = htmlEl.style.fontFamily.toLowerCase();
+             if (ff.includes('wingdings') || ff.includes('symbol') || ff.includes('webdings')) {
+                const txt = htmlEl.textContent?.trim();
+                if (txt?.length === 1) {
+                   if (ff.includes('wingdings')) {
+                      if (txt === 'w' || txt === 'v') htmlEl.textContent = '❖';
+                      else if (txt === 'Ø') htmlEl.textContent = '➢';
+                      else if (txt === 'ü') htmlEl.textContent = '✓';
+                      else htmlEl.textContent = '•';
+                   } else if (ff.includes('symbol')) {
+                      if (txt === '·') htmlEl.textContent = '•';
+                      else htmlEl.textContent = '•';
+                   }
+                } else if (txt?.length && txt.length > 1) {
+                   htmlEl.textContent = '• ' + htmlEl.textContent?.substring(1);
+                }
+                htmlEl.style.fontFamily = 'inherit';
+             }
+          }
+          
+          if (tagName === 'ul') {
+             if (!htmlEl.style.listStyleType && !htmlEl.style.listStyle) {
+                 htmlEl.style.listStyleType = 'disc';
+             }
+             if (!htmlEl.style.marginLeft && !htmlEl.style.paddingLeft) {
+                 htmlEl.style.marginLeft = '20px';
+             }
+          }
+          if (tagName === 'ol') {
+             if (!htmlEl.style.listStyleType && !htmlEl.style.listStyle) {
+                 htmlEl.style.listStyleType = 'decimal';
+             }
+             if (!htmlEl.style.marginLeft && !htmlEl.style.paddingLeft) {
+                 htmlEl.style.marginLeft = '20px';
+             }
+          }
       });
       
       const paragraphs = el.querySelectorAll('p');
@@ -90,7 +128,7 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
 
       const html = el.innerHTML;
       if (html.trim() !== '') {
-        onAdd(`<div style="overflow-x:auto;width:100%;">${html}</div>`);
+        onAdd(html);
         editorRef.current.innerHTML = '';
       }
     }

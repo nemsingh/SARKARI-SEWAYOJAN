@@ -267,14 +267,10 @@ const AdminPostEditor = () => {
           setTablesHtmlHi(data.tables_html_hi || '');
           setMediaUrls(data.media_urls || []);
           if (data.tables_html) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data.tables_html, 'text/html');
-            setTables(Array.from(doc.querySelectorAll('table')).map(t => t.outerHTML));
+            setTables(Array.from(new DOMParser().parseFromString(data.tables_html, 'text/html').querySelectorAll('table')).map(t => t.outerHTML));
           }
           if (data.tables_html_hi) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data.tables_html_hi, 'text/html');
-            setTablesHi(Array.from(doc.querySelectorAll('table')).map(t => t.outerHTML));
+            setTablesHi(Array.from(new DOMParser().parseFromString(data.tables_html_hi, 'text/html').querySelectorAll('table')).map(t => t.outerHTML));
           }
           
           // Fetch existing category link
@@ -298,75 +294,177 @@ const AdminPostEditor = () => {
     }
   }, [nameOfPost, isNew, slug]);
 
+  const syncTablesFromHtml = (html: string) => {
+    return Array.from(new DOMParser().parseFromString(html, 'text/html').querySelectorAll('table')).map(t => t.outerHTML);
+  };
+
   const handleAddTable = (tableHtml: string) => {
-    const newTables = [...tables, tableHtml];
-    setTables(newTables);
-    setTablesHtml(newTables.join('\n'));
+    const newHtml = tablesHtml ? `${tablesHtml}\n${tableHtml}` : tableHtml;
+    setTablesHtml(newHtml);
+    setTables(syncTablesFromHtml(newHtml));
   };
 
   const handleRemoveTable = (index: number) => {
-    const newTables = tables.filter((_, i) => i !== index);
-    setTables(newTables);
-    setTablesHtml(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtml, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index]) {
+      const table = tableNodes[index];
+      if (table.parentElement?.tagName.toLowerCase() === 'div' && table.parentElement.style.overflowX) {
+          table.parentElement.remove();
+      } else {
+          table.remove();
+      }
+      const newHtml = doc.body.innerHTML;
+      setTablesHtml(newHtml);
+      setTables(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleAddTableHi = (tableHtml: string) => {
-    const newTables = [...tablesHi, tableHtml];
-    setTablesHi(newTables);
-    setTablesHtmlHi(newTables.join('\n'));
+    const newHtml = tablesHtmlHi ? `${tablesHtmlHi}\n${tableHtml}` : tableHtml;
+    setTablesHtmlHi(newHtml);
+    setTablesHi(syncTablesFromHtml(newHtml));
   };
 
   const handleRemoveTableHi = (index: number) => {
-    const newTables = tablesHi.filter((_, i) => i !== index);
-    setTablesHi(newTables);
-    setTablesHtmlHi(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtmlHi, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index]) {
+      const table = tableNodes[index];
+      if (table.parentElement?.tagName.toLowerCase() === 'div' && table.parentElement.style.overflowX) {
+          table.parentElement.remove();
+      } else {
+          table.remove();
+      }
+      const newHtml = doc.body.innerHTML;
+      setTablesHtmlHi(newHtml);
+      setTablesHi(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleMoveTableUp = (index: number) => {
     if (index === 0) return;
-    const newTables = [...tables];
-    [newTables[index - 1], newTables[index]] = [newTables[index], newTables[index - 1]];
-    setTables(newTables);
-    setTablesHtml(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtml, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index] && tableNodes[index - 1]) {
+      const wrapper1 = tableNodes[index - 1].parentElement;
+      const wrapper2 = tableNodes[index].parentElement;
+      const isW1 = wrapper1?.tagName.toLowerCase() === 'div' && !!wrapper1?.style.overflowX;
+      const isW2 = wrapper2?.tagName.toLowerCase() === 'div' && !!wrapper2?.style.overflowX;
+      const node1 = isW1 ? wrapper1 : tableNodes[index - 1];
+      const node2 = isW2 ? wrapper2 : tableNodes[index];
+      const clone1 = node1.cloneNode(true);
+      const clone2 = node2.cloneNode(true);
+      node1.replaceWith(clone2);
+      node2.replaceWith(clone1);
+      const newHtml = doc.body.innerHTML;
+      setTablesHtml(newHtml);
+      setTables(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleMoveTableDown = (index: number) => {
     if (index === tables.length - 1) return;
-    const newTables = [...tables];
-    [newTables[index + 1], newTables[index]] = [newTables[index], newTables[index + 1]];
-    setTables(newTables);
-    setTablesHtml(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtml, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index] && tableNodes[index + 1]) {
+      const wrapper1 = tableNodes[index].parentElement;
+      const wrapper2 = tableNodes[index + 1].parentElement;
+      const isW1 = wrapper1?.tagName.toLowerCase() === 'div' && !!wrapper1?.style.overflowX;
+      const isW2 = wrapper2?.tagName.toLowerCase() === 'div' && !!wrapper2?.style.overflowX;
+      const node1 = isW1 ? wrapper1 : tableNodes[index];
+      const node2 = isW2 ? wrapper2 : tableNodes[index + 1];
+      const clone1 = node1.cloneNode(true);
+      const clone2 = node2.cloneNode(true);
+      node1.replaceWith(clone2);
+      node2.replaceWith(clone1);
+      const newHtml = doc.body.innerHTML;
+      setTablesHtml(newHtml);
+      setTables(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleUpdateTableHtml = (index: number, newHtml: string) => {
-    const newTables = [...tables];
-    newTables[index] = newHtml;
-    setTables(newTables);
-    setTablesHtml(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtml, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index]) {
+      const temp = document.createElement('div');
+      temp.innerHTML = newHtml;
+      const newTable = temp.querySelector('table');
+      if (newTable) {
+        tableNodes[index].replaceWith(newTable);
+      }
+      const updatedHtml = doc.body.innerHTML;
+      setTablesHtml(updatedHtml);
+      setTables(syncTablesFromHtml(updatedHtml));
+    }
     setEditingTableIndex(null);
   };
 
   const handleMoveTableUpHi = (index: number) => {
     if (index === 0) return;
-    const newTables = [...tablesHi];
-    [newTables[index - 1], newTables[index]] = [newTables[index], newTables[index - 1]];
-    setTablesHi(newTables);
-    setTablesHtmlHi(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtmlHi, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index] && tableNodes[index - 1]) {
+      const wrapper1 = tableNodes[index - 1].parentElement;
+      const wrapper2 = tableNodes[index].parentElement;
+      const isW1 = wrapper1?.tagName.toLowerCase() === 'div' && !!wrapper1?.style.overflowX;
+      const isW2 = wrapper2?.tagName.toLowerCase() === 'div' && !!wrapper2?.style.overflowX;
+      const node1 = isW1 ? wrapper1 : tableNodes[index - 1];
+      const node2 = isW2 ? wrapper2 : tableNodes[index];
+      const clone1 = node1.cloneNode(true);
+      const clone2 = node2.cloneNode(true);
+      node1.replaceWith(clone2);
+      node2.replaceWith(clone1);
+      const newHtml = doc.body.innerHTML;
+      setTablesHtmlHi(newHtml);
+      setTablesHi(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleMoveTableDownHi = (index: number) => {
     if (index === tablesHi.length - 1) return;
-    const newTables = [...tablesHi];
-    [newTables[index + 1], newTables[index]] = [newTables[index], newTables[index + 1]];
-    setTablesHi(newTables);
-    setTablesHtmlHi(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtmlHi, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index] && tableNodes[index + 1]) {
+      const wrapper1 = tableNodes[index].parentElement;
+      const wrapper2 = tableNodes[index + 1].parentElement;
+      const isW1 = wrapper1?.tagName.toLowerCase() === 'div' && !!wrapper1?.style.overflowX;
+      const isW2 = wrapper2?.tagName.toLowerCase() === 'div' && !!wrapper2?.style.overflowX;
+      const node1 = isW1 ? wrapper1 : tableNodes[index];
+      const node2 = isW2 ? wrapper2 : tableNodes[index + 1];
+      const clone1 = node1.cloneNode(true);
+      const clone2 = node2.cloneNode(true);
+      node1.replaceWith(clone2);
+      node2.replaceWith(clone1);
+      const newHtml = doc.body.innerHTML;
+      setTablesHtmlHi(newHtml);
+      setTablesHi(syncTablesFromHtml(newHtml));
+    }
   };
 
   const handleUpdateTableHtmlHi = (index: number, newHtml: string) => {
-    const newTables = [...tablesHi];
-    newTables[index] = newHtml;
-    setTablesHi(newTables);
-    setTablesHtmlHi(newTables.join('\n'));
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(tablesHtmlHi, 'text/html');
+    const tableNodes = doc.querySelectorAll('table');
+    if (tableNodes[index]) {
+      const temp = document.createElement('div');
+      temp.innerHTML = newHtml;
+      const newTable = temp.querySelector('table');
+      if (newTable) {
+        tableNodes[index].replaceWith(newTable);
+      }
+      const updatedHtml = doc.body.innerHTML;
+      setTablesHtmlHi(updatedHtml);
+      setTablesHi(syncTablesFromHtml(updatedHtml));
+    }
     setEditingTableIndexHi(null);
   };
 
@@ -684,9 +782,30 @@ const AdminPostEditor = () => {
         </div>
 
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-          <h2 className="text-xl font-bold text-primary mb-4">Added Tables - English ({tables.length})</h2>
-          {tables.length === 0 && <p className="text-muted-foreground">No tables added yet.</p>}
-          {tables.map((tableHtml, index) => {
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-primary">Added Tables & Content - English</h2>
+            <Button variant="outline" size="sm" onClick={() => setShowRawHtml(!showRawHtml)}>
+              {showRawHtml ? 'Hide HTML Source' : 'Edit HTML Source'}
+            </Button>
+          </div>
+          
+          {showRawHtml && (
+            <div className="mb-6 p-4 border border-blue-200 bg-blue-50/50 rounded-lg">
+              <h3 className="text-sm font-bold text-blue-800 mb-2">Raw HTML Source (Advanced)</h3>
+              <p className="text-xs text-blue-600 mb-2">This contains all tables and text. You can manually edit or fix formatting here.</p>
+              <Textarea 
+                value={tablesHtml} 
+                onChange={e => {
+                  setTablesHtml(e.target.value);
+                  setTables(syncTablesFromHtml(e.target.value));
+                }}
+                className="font-mono text-xs w-full min-h-[300px] p-2 bg-white"
+              />
+            </div>
+          )}
+
+          {!showRawHtml && tables.length === 0 && <p className="text-muted-foreground">No tables added yet.</p>}
+          {!showRawHtml && tables.map((tableHtml, index) => {
             if (editingTableIndex === index) return null;
             return (
             <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndex === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
@@ -771,10 +890,31 @@ const AdminPostEditor = () => {
           <DirectPasteEditor onAdd={handleAddTableHi} lang="hi" />
         </div>
 
-        <div className="bg-background rounded-2xl p-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-          <h2 className="text-xl font-bold text-primary mb-4">Added Tables - Hindi ({tablesHi.length})</h2>
-          {tablesHi.length === 0 && <p className="text-muted-foreground">No Hindi tables added yet.</p>}
-          {tablesHi.map((tableHtml, index) => {
+        <div className="bg-background rounded-2xl p-6 mb-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-primary">Added Tables & Content - Hindi</h2>
+            <Button variant="outline" size="sm" onClick={() => setShowRawHtmlHi(!showRawHtmlHi)}>
+              {showRawHtmlHi ? 'Hide HTML Source' : 'Edit HTML Source'}
+            </Button>
+          </div>
+          
+          {showRawHtmlHi && (
+            <div className="mb-6 p-4 border border-blue-200 bg-blue-50/50 rounded-lg">
+              <h3 className="text-sm font-bold text-blue-800 mb-2">Raw HTML Source (Advanced)</h3>
+              <p className="text-xs text-blue-600 mb-2">This contains all tables and text. You can manually edit or fix formatting here.</p>
+              <Textarea 
+                value={tablesHtmlHi} 
+                onChange={e => {
+                  setTablesHtmlHi(e.target.value);
+                  setTablesHi(syncTablesFromHtml(e.target.value));
+                }}
+                className="font-mono text-xs w-full min-h-[300px] p-2 bg-white"
+              />
+            </div>
+          )}
+
+          {!showRawHtmlHi && tablesHi.length === 0 && <p className="text-muted-foreground">No Hindi tables added yet.</p>}
+          {!showRawHtmlHi && tablesHi.map((tableHtml, index) => {
             if (editingTableIndexHi === index) return null;
             return (
             <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndexHi === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
