@@ -12,6 +12,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import DmcaPolicy from './pages/DmcaPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import ContactUs from './pages/ContactUs';
+import FactCheckingPolicy from './pages/FactCheckingPolicy';
 import NotFound from './pages/NotFound';
 
 export function render(url: string, data: any) {
@@ -34,6 +35,7 @@ export function render(url: string, data: any) {
               <Route path="/dmca-policy" element={<DmcaPolicy />} />
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
               <Route path="/contact-us" element={<ContactUs />} />
+              <Route path="/fact-checking-policy" element={<FactCheckingPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </StaticRouter>

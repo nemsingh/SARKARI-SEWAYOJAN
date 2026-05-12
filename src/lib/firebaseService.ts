@@ -286,14 +286,18 @@ export const createPost = async (data: Record<string, any>) => {
   if (isChunked) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
+    const chunkPromises = [];
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      await setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
-        index,
-        html: html.substring(i, i + CHUNK_SIZE),
-        html_hi: html_hi.substring(i, i + CHUNK_SIZE),
-      });
+      chunkPromises.push(
+        setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
+          index,
+          html: html.substring(i, i + CHUNK_SIZE),
+          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+        })
+      );
       index++;
     }
+    await Promise.all(chunkPromises);
   }
 
   clearCache();
@@ -339,14 +343,18 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   if (isChunked && html !== undefined && html_hi !== undefined) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
+    const chunkPromises = [];
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      await setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
-        index,
-        html: html.substring(i, i + CHUNK_SIZE),
-        html_hi: html_hi.substring(i, i + CHUNK_SIZE),
-      });
+      chunkPromises.push(
+        setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
+          index,
+          html: html.substring(i, i + CHUNK_SIZE),
+          html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+        })
+      );
       index++;
     }
+    await Promise.all(chunkPromises);
   }
 
   clearCache();

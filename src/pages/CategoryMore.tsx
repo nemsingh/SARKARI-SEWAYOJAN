@@ -156,10 +156,14 @@ const CategoryMore = () => {
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
     if (option === 'Home') {
-      window.open('/', '_blank');
+      window.open('/', '_self');
       return;
     }
-    window.open(`/?filter=${encodeURIComponent(option)}&source=menu`, '_blank');
+    if (option === 'Contact Us') {
+      window.open('/contact-us', '_self');
+      return;
+    }
+    window.open(`/category/${encodeURIComponent(option)}`, '_self');
   };
 
   const handleSearch = () => {

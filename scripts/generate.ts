@@ -189,6 +189,7 @@ async function generate() {
   generatePage('/dmca-policy', homeData, 'dmca-policy.html', 'DMCA Policy - Sarkari Sewayojan', 'DMCA Policy');
   generatePage('/terms-and-conditions', homeData, 'terms-and-conditions.html', 'Terms and Conditions - Sarkari Sewayojan', 'Terms and Conditions');
   generatePage('/contact-us', homeData, 'contact-us.html', 'Contact Us - Sarkari Sewayojan', 'Contact Us');
+  generatePage('/fact-checking-policy', homeData, 'fact-checking-policy.html', 'Fact Checking Policy - Sarkari Sewayojan', 'Fact Checking Policy');
 
   // 5. Generate Admin Shell
   const adminHtml = template.replace(`<!--ssr-outlet-->`, '')

@@ -26,9 +26,34 @@ const Index = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState('Home');
-  const [filterSource, setFilterSource] = useState<'menu' | 'more'>('menu');
+  
+  const [activeFilter, setActiveFilter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const filter = params.get('filter');
+      if (filter) return filter;
+    }
+    return 'Home';
+  });
+
+  const [filterSource, setFilterSource] = useState<'menu' | 'more'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source');
+      if (source === 'more') return 'more';
+    }
+    return 'menu';
+  });
+
+  const [appliedSearch, setAppliedSearch] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const search = params.get('search');
+      if (search) return search;
+    }
+    return '';
+  });
+
   const [categories, setCategories] = useState<any[]>(() => initialData?.categories || getCache('categories') || []);
   const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
   const [posts, setPosts] = useState<any[]>(() => initialData?.posts || getCache('posts') || []);
@@ -66,26 +91,20 @@ const Index = () => {
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
     if (option === 'Home') {
-      window.open('/', '_blank');
+      window.open('/', '_self');
       return;
     }
-    const url = `/?filter=${encodeURIComponent(option)}&source=menu`;
-    window.open(url, '_blank');
+    if (option === 'Contact Us') {
+      window.open('/contact-us', '_self');
+      return;
+    }
+    const url = `/category/${encodeURIComponent(option)}`;
+    window.open(url, '_self');
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const filter = params.get('filter');
-    const source = params.get('source');
-    const search = params.get('search');
-    
-    if (filter) {
-      setActiveFilter(filter);
-      setFilterSource(source === 'more' ? 'more' : 'menu');
-    }
-    if (search) {
-      setAppliedSearch(search);
-    }
+    // URL params are now parsed synchronously during state initialization
+    // to prevent un-filtered UI flashes.
   }, []);
 
   const handleSearch = () => {

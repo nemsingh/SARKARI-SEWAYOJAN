@@ -34,41 +34,51 @@ const englishPolicy: PolicyContent = {
   title: 'Contact Us',
   sections: [
     {
-      heading: 'Welcome to Sarkari Sewayojan (www.sarkarisewayojan.com)',
+      heading: 'Welcome to Sarkari Sewayojan',
       paragraphs: [
-        'We appreciate your interest in our website. If you have any questions, suggestions, or need any assistance related to job updates, admit cards, results, or government schemes, feel free to contact us. Our team is always ready to help you.',
+        'If you need any assistance regarding recruitment notifications, admit cards, results, government schemes, application procedures, or any information related to the website, you may contact us anytime. Our team is committed to providing accurate and reliable information to users.',
       ],
     },
     {
-      heading: '📩 Contact Information',
+      heading: 'Contact Information',
       paragraphs: [
-        'For general inquiries, support, feedback, or any issue related to the website, you can contact us through the following:',
-        'Email: Helpdesk@sarkarisewayojan.com',
-        'We usually respond within 24–48 hours.',
+        '<strong>Website:</strong><br/>Sarkari Sewayojan',
+        '<strong>Email Support:</strong><br/>Helpdesk@sarkarisewayojan.com',
       ],
     },
     {
-      heading: '👤 About Our Content',
+      heading: 'About Us',
       paragraphs: [
-        'Sarkari Sewayojan provides information related to government jobs, results, admit cards, and various सरकारी योजनाएं.',
-        'All the content published on this website is created after proper research from official websites, notifications, and trusted public sources. Our goal is to provide accurate and easy-to-understand information to our users.',
+        'Sarkari Sewayojan is an independent information portal dedicated to providing updates related to government jobs, admit cards, results, answer keys, admissions, government schemes, and other important notifications in a simple and user-friendly manner.',
+        'Our objective is to deliver fast, accurate, and trustworthy information so that users can access important government-related updates and services from a single platform.',
       ],
     },
     {
-      heading: '⚠️ Important Note',
+      heading: 'Founder & Content Administration',
       paragraphs: [
-        'We are not affiliated with any government organization.',
-        'We only provide information for educational and informational purposes.',
-        'Users are advised to always verify details from official sources before taking any action.',
+        '<strong>Vikas Kumar Suryavanshi</strong><br/>Founder & Content Administrator – Sarkari Sewayojan',
+        'He is actively involved in content management and publishing related to education, government recruitment updates, and digital information services. The quality, clarity, and usefulness of the content published on the website are maintained under his supervision.',
       ],
     },
     {
-      heading: '✉️ Report or Suggest Changes',
+      heading: 'Content Transparency',
       paragraphs: [
-        'If you find any incorrect information or want to suggest updates or improvements, please contact us via email:',
-        'Email: Helpdesk@sarkarisewayojan.com',
-        'We value your feedback and will try to improve our content accordingly.',
-        'Thank you for visiting Sarkari Sewayojan...',
+        'The information available on Sarkari Sewayojan is prepared using various official sources, government websites, public notices, employment news, and press releases.',
+        'We make every possible effort to provide users with accurate and updated information. However, candidates are advised to verify details from the official website of the respective department before making any application or decision.',
+        'If you find any error, outdated information, or require any correction regarding the content published on the website, please inform us through email.',
+      ],
+    },
+    {
+      heading: 'Fact Checking Policy',
+      paragraphs: [
+        'At Sarkari Sewayojan, we follow a proper verification and editorial review process to ensure the accuracy and reliability of the information published on our platform. Users can read our complete Fact Checking Policy to understand how content is reviewed, verified, corrected, and updated before publication.',
+        '<a href="/fact-checking-policy" class="text-blue-600 hover:text-blue-800 underline font-bold" target="_blank" rel="noopener noreferrer">Read Full Fact Checking Policy</a>',
+      ],
+    },
+    {
+      heading: 'Official Helpdesk',
+      paragraphs: [
+        'Helpdesk@sarkarisewayojan.com',
       ],
     },
   ],
@@ -78,41 +88,51 @@ const hindiPolicy: PolicyContent = {
   title: 'संपर्क करें',
   sections: [
     {
-      heading: 'सरकारी सेवायोजन (www.sarkarisewayojan.com) में आपका स्वागत है',
+      heading: 'Welcome to Sarkari Sewayojan',
       paragraphs: [
-        'हम हमारी वेबसाइट में आपकी रुचि की सराहना करते हैं। यदि आपके कोई प्रश्न, सुझाव हैं, या नौकरी अपडेट, एडमिट कार्ड, परिणाम या सरकारी योजनाओं से संबंधित किसी सहायता की आवश्यकता है, तो बेझिझक हमसे संपर्क करें। हमारी टीम आपकी मदद करने के लिए हमेशा तैयार है।',
+        'यदि आपको किसी भर्ती, रिजल्ट, एडमिट कार्ड, सरकारी योजना, आवेदन प्रक्रिया या वेबसाइट से संबंधित किसी भी प्रकार की सहायता चाहिए, तो आप हमसे संपर्क कर सकते हैं। हमारी टीम उपयोगकर्ताओं को सही एवं विश्वसनीय जानकारी उपलब्ध कराने के लिए प्रतिबद्ध है।',
       ],
     },
     {
-      heading: '📩 संपर्क जानकारी',
+      heading: 'Contact Information',
       paragraphs: [
-        'सामान्य पूछताछ, समर्थन, प्रतिक्रिया, या वेबसाइट से संबंधित किसी भी समस्या के लिए, आप निम्नलिखित के माध्यम से हमसे संपर्क कर सकते हैं:',
-        'ईमेल: Helpdesk@sarkarisewayojan.com',
-        'हम आमतौर पर 24-48 घंटों के भीतर जवाब देते हैं।',
+        '<strong>Website:</strong><br/>Sarkari Sewayojan',
+        '<strong>Email Support:</strong><br/>Helpdesk@sarkarisewayojan.com',
       ],
     },
     {
-      heading: '👤 हमारी सामग्री के बारे में',
+      heading: 'About Us',
       paragraphs: [
-        'सरकारी सेवायोजन सरकारी नौकरियों, परिणामों, एडमिट कार्ड और विभिन्न सरकारी योजनाओं से संबंधित जानकारी प्रदान करता है।',
-        'इस वेबसाइट पर प्रकाशित सभी सामग्री आधिकारिक वेबसाइटों, सूचनाओं और विश्वसनीय सार्वजनिक स्रोतों से उचित शोध के बाद बनाई गई है। हमारा लक्ष्य अपने उपयोगकर्ताओं को सटीक और समझने में आसान जानकारी प्रदान करना है।',
+        'Sarkari Sewayojan एक स्वतंत्र सूचना पोर्टल है, जिसका उद्देश्य सरकारी नौकरियों, एडमिट कार्ड, रिजल्ट, उत्तर कुंजी, प्रवेश पत्र, सरकारी योजनाओं तथा अन्य महत्वपूर्ण अपडेट को सरल और स्पष्ट रूप में उपलब्ध कराना है।',
+        'हमारा प्रयास है कि उपयोगकर्ताओं तक तेज, सटीक एवं भरोसेमंद जानकारी पहुंचाई जाए, ताकि उन्हें विभिन्न सरकारी सेवाओं एवं अवसरों से जुड़ी जानकारी एक ही स्थान पर प्राप्त हो सके।',
       ],
     },
     {
-      heading: '⚠️ महत्वपूर्ण नोट',
+      heading: 'Founder & Content Administration',
       paragraphs: [
-        'हम किसी भी सरकारी संगठन से संबद्ध नहीं हैं।',
-        'हम केवल शैक्षिक और सूचनात्मक उद्देश्यों के लिए जानकारी प्रदान करते हैं।',
-        'उपयोगकर्ताओं को सलाह दी जाती है कि वे कोई भी कार्रवाई करने से पहले हमेशा आधिकारिक स्रोतों से विवरण सत्यापित करें।',
+        '<strong>Vikas Kumar</strong><br/>Founder & Content Administrator – Sarkari Sewayojan',
+        'वे शिक्षा, सरकारी भर्ती अपडेट एवं डिजिटल सूचना सेवाओं से संबंधित कंटेंट मैनेजमेंट एवं पब्लिशिंग कार्यों में सक्रिय रूप से जुड़े हुए हैं। वेबसाइट पर प्रकाशित सामग्री की गुणवत्ता, स्पष्टता एवं उपयोगिता सुनिश्चित करने का कार्य उनके निर्देशन में किया जाता है।',
       ],
     },
     {
-      heading: '✉️ रिपोर्ट करें या परिवर्तन का सुझाव दें',
+      heading: 'Content Transparency',
       paragraphs: [
-        'यदि आपको कोई गलत जानकारी मिलती है या आप अपडेट या सुधार का सुझाव देना चाहते हैं, तो कृपया ईमेल के माध्यम से हमसे संपर्क करें:',
-        'ईमेल: Helpdesk@sarkarisewayojan.com',
-        'हम आपकी प्रतिक्रिया को महत्व देते हैं और तदनुसार हमारी सामग्री को बेहतर बनाने का प्रयास करेंगे।',
-        'सरकारी सेवायोजन पर आने के लिए धन्यवाद...',
+        'Sarkari Sewayojan पर उपलब्ध जानकारी विभिन्न आधिकारिक स्रोतों, सरकारी वेबसाइटों, सार्वजनिक नोटिस, रोजगार समाचार एवं प्रेस विज्ञप्तियों के आधार पर तैयार की जाती है।',
+        'हम उपयोगकर्ताओं तक यथासंभव सटीक एवं अद्यतन जानकारी पहुंचाने का प्रयास करते हैं। हालांकि, अभ्यर्थियों को किसी भी आवेदन या निर्णय से पहले संबंधित विभाग की आधिकारिक वेबसाइट पर उपलब्ध सूचना अवश्य सत्यापित करनी चाहिए।',
+        'यदि आपको वेबसाइट पर प्रकाशित किसी जानकारी में त्रुटि, संशोधन या अपडेट की आवश्यकता प्रतीत होती है, तो कृपया हमें ईमेल के माध्यम से सूचित करें।',
+      ],
+    },
+    {
+      heading: 'Fact Checking Policy',
+      paragraphs: [
+        'Sarkari Sewayojan पर प्रकाशित जानकारी की सटीकता और विश्वसनीयता सुनिश्चित करने के लिए हमारी टीम एक उचित सत्यापन एवं संपादकीय समीक्षा प्रक्रिया का पालन करती है। उपयोगकर्ता यह जानने के लिए हमारी पूरी Fact Checking Policy पढ़ सकते हैं कि वेबसाइट पर प्रकाशित सामग्री को किस प्रकार जांचा, सत्यापित, संशोधित और अपडेट किया जाता है।',
+        '<a href="/fact-checking-policy" class="text-blue-600 hover:text-blue-800 underline font-bold" target="_blank" rel="noopener noreferrer">पूरी Fact Checking Policy पढ़ें</a>',
+      ],
+    },
+    {
+      heading: 'Official Helpdesk',
+      paragraphs: [
+        'Helpdesk@sarkarisewayojan.com',
       ],
     },
   ],
@@ -174,11 +194,16 @@ const ContactUs = () => {
     setSidebarOpen(false);
 
     if (option === 'Home') {
-      window.open('/', '_blank');
+      window.open('/', '_self');
       return;
     }
 
-    window.open(`/?filter=${encodeURIComponent(option)}&source=menu`, '_blank');
+    if (option === 'Contact Us') {
+      window.open('/contact-us', '_self');
+      return;
+    }
+
+    window.open(`/category/${encodeURIComponent(option)}`, '_self');
   };
 
   const handleSearch = () => {
@@ -237,9 +262,7 @@ const ContactUs = () => {
                 </h2>
 
                 {section.paragraphs.map((paragraph, index) => (
-                  <p key={`${section.heading}-${index}`} className="text-foreground text-[16px] sm:text-[17px] md:text-[19px] leading-7 sm:leading-8 md:leading-9 mb-3 last:mb-0">
-                    {paragraph}
-                  </p>
+                  <p key={`${section.heading}-${index}`} className="text-foreground text-[16px] sm:text-[17px] md:text-[19px] leading-7 sm:leading-8 md:leading-9 mb-3 last:mb-0" dangerouslySetInnerHTML={{ __html: paragraph }} />
                 ))}
 
                 {section.bullets && section.bullets.length > 0 && (

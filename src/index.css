@@ -472,6 +472,15 @@ table.post-summary-table th {
   text-decoration: underline !important;
 }
 
+html:not(.theme-bhagwa) .post-tables-content a,
+html:not(.theme-bhagwa) table.w-full.border-collapse a,
+html:not(.theme-bhagwa) .short-info-cell a,
+html:not(.theme-bhagwa) .post-content-container a {
+  text-decoration: underline !important;
+  color: #0b3d91 !important;
+  font-weight: 600 !important;
+}
+
 /* Override summary table default border for theme matching */
 table.post-summary-table,
 table.post-summary-table td,
