@@ -481,6 +481,20 @@ html:not(.theme-bhagwa) .post-content-container a {
   font-weight: 600 !important;
 }
 
+html:not(.theme-bhagwa) .post-tables-content a:visited,
+html:not(.theme-bhagwa) table.w-full.border-collapse a:visited,
+html:not(.theme-bhagwa) .short-info-cell a:visited,
+html:not(.theme-bhagwa) .post-content-container a:visited {
+  color: #00008B !important; /* Dark Blue */
+}
+
+html:not(.theme-bhagwa) .post-tables-content a:active,
+html:not(.theme-bhagwa) table.w-full.border-collapse a:active,
+html:not(.theme-bhagwa) .short-info-cell a:active,
+html:not(.theme-bhagwa) .post-content-container a:active {
+  color: #FF0000 !important; /* Red */
+}
+
 /* Override summary table default border for theme matching */
 table.post-summary-table,
 table.post-summary-table td,

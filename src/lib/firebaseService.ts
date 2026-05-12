@@ -326,10 +326,9 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 
   // Clear old chunks in any case just to be safe
   try {
-    const deletePromises = [];
-    for (let i = 0; i < 100; i++) {
-      deletePromises.push(deleteDoc(doc(db, `posts/${id}/chunks`, i.toString())));
-    }
+    const chunksRef = collection(db, `posts/${id}/chunks`);
+    const chunksSnap = await getDocs(chunksRef);
+    const deletePromises = chunksSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
     await Promise.all(deletePromises);
   } catch(e) {
     console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
@@ -363,10 +362,9 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 export const deletePost = async (id: string) => {
   try {
     try {
-      const deletePromises = [];
-      for (let i = 0; i < 100; i++) {
-        deletePromises.push(deleteDoc(doc(db, `posts/${id}/chunks`, i.toString())));
-      }
+      const chunksRef = collection(db, `posts/${id}/chunks`);
+      const chunksSnap = await getDocs(chunksRef);
+      const deletePromises = chunksSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
       await Promise.all(deletePromises);
     } catch(e) {
       console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);

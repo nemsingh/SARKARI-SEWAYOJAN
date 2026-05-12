@@ -76,6 +76,8 @@ const PostDetail = () => {
   });
 
   useEffect(() => {
+    let endlessRetry: ReturnType<typeof setInterval>;
+
     const fetchData = async () => {
       if (!slug) return;
 
@@ -94,8 +96,53 @@ const PostDetail = () => {
         return;
       }
 
+      const fetchPreviewWithRetry = async (slug: string, retries = 5, delay = 1000) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const p = await getPostBySlug(slug);
+            if (p) return p;
+          } catch (e) {
+            console.warn("Preview fetch attempt failed:", e);
+          }
+          if (i < retries - 1) {
+            await new Promise(res => setTimeout(res, delay));
+          }
+        }
+        return null;
+      };
+
       if (window.location.search.includes('preview=true')) {
         setIsFetchingPreview(true);
+
+        const livePost = await fetchPreviewWithRetry(slug!);
+        if (livePost) {
+          setPost(livePost);
+          setNotFound(false);
+          setIsFetchingPreview(false);
+          
+          // Also try to fetch categories and settings for the preview
+          try {
+            const data = await fetchHomeData();
+            if (data) {
+              setCategories(data.categories || []);
+              setCategoryLinks(data.category_links || []);
+              setSettings(data.settings_flat || {});
+            }
+          } catch(e) {}
+          
+          return;
+        } else {
+             endlessRetry = setInterval(async () => {
+               const p = await getPostBySlug(slug!);
+               if (p) {
+                 setPost(p);
+                 setNotFound(false);
+                 setIsFetchingPreview(false);
+                 clearInterval(endlessRetry);
+               }
+             }, 3000);
+             return;
+        }
       }
 
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
@@ -111,21 +158,6 @@ const PostDetail = () => {
         }
       }
 
-      const fetchPreviewWithRetry = async (slug: string, retries = 3, delay = 1000) => {
-        for (let i = 0; i < retries; i++) {
-          try {
-            const p = await getPostBySlug(slug);
-            if (p) return p;
-          } catch (e) {
-            console.warn("Preview fetch attempt failed:", e);
-          }
-          if (i < retries - 1) {
-            await new Promise(res => setTimeout(res, delay));
-          }
-        }
-        return null;
-      };
-
       if (data) {
         const allPosts = data.posts || [];
         const cats = data.categories || [];
@@ -136,42 +168,20 @@ const PostDetail = () => {
                        allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
                        allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
         
-        // Fallback to Firebase if not found in static data or if it's missing tables_html (stripped version) or in DEV mode
         if (!postData || postData.tables_html === undefined) {
-          // Fetch the individual post JSON generated at build time
           try {
             postData = await fetchPostData(slug!);
           } catch (err) {
             console.error("Error fetching static post JSON:", err);
           }
         }
-        
-        // If still no postData and we are in preview mode, try Firebase
-        if ((!postData || postData.tables_html === undefined) && window.location.search.includes('preview=true')) {
-          postData = await fetchPreviewWithRetry(slug!, 10, 2000); // Wait up to 20 seconds!
-        }
 
         if (postData) {
           setPost(postData);
           setCache(`post_${slug}`, postData);
           setNotFound(false);
-          setIsFetchingPreview(false);
         } else {
-          if (window.location.search.includes('preview=true')) {
-             // Keep retrying endlessly instead of showing 404
-             const endlessRetry = setInterval(async () => {
-               const p = await getPostBySlug(slug!);
-               if (p) {
-                 setPost(p);
-                 setNotFound(false);
-                 setIsFetchingPreview(false);
-                 clearInterval(endlessRetry);
-               }
-             }, 3000);
-          } else {
-            setNotFound(true);
-            setIsFetchingPreview(false);
-          }
+             setNotFound(true);
         }
         setCategories(cats);
         setCategoryLinks(links);
@@ -180,51 +190,25 @@ const PostDetail = () => {
         setCache('category_links', links);
         setCache('settings_flat', sett);
       } else {
-        // If data.json fails, try fetching individual post JSON
         try {
           let postData = await fetchPostData(slug!);
-          if (!postData && window.location.search.includes('preview=true')) {
-            postData = await fetchPreviewWithRetry(slug!);
-          }
           if (postData) {
             setPost(postData);
             setNotFound(false);
-            setIsFetchingPreview(false);
           } else {
-             if (window.location.search.includes('preview=true')) {
-               const endlessRetry = setInterval(async () => {
-                 const p = await getPostBySlug(slug!);
-                 if (p) {
-                   setPost(p);
-                   setNotFound(false);
-                   setIsFetchingPreview(false);
-                   clearInterval(endlessRetry);
-                 }
-               }, 3000);
-             } else {
                setNotFound(true);
-               setIsFetchingPreview(false);
-             }
           }
         } catch (err) {
-          if (window.location.search.includes('preview=true')) {
-            const endlessRetry = setInterval(async () => {
-                 const p = await getPostBySlug(slug!);
-                 if (p) {
-                   setPost(p);
-                   setNotFound(false);
-                   setIsFetchingPreview(false);
-                   clearInterval(endlessRetry);
-                 }
-               }, 3000);
-          } else {
-            setNotFound(true);
-            setIsFetchingPreview(false);
-          }
+             setNotFound(true);
         }
       }
     };
+    
     fetchData();
+
+    return () => {
+      if (endlessRetry) clearInterval(endlessRetry);
+    };
   }, [slug]);
 
   useEffect(() => {
