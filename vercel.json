@@ -4,6 +4,8 @@
   "rewrites": [
     { "source": "/admin-vikaskumar(.*)", "destination": "/admin.html" },
     { "source": "/admin(.*)", "destination": "/admin.html" },
+    { "source": "/search(.*)", "destination": "/search.html" },
+    { "source": "/category/(.*)", "destination": "/category_shell.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

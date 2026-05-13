@@ -87,7 +87,7 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
                     {moreSection.items.map((item, i) => (
                       <a
                         key={i}
-                        href={item.url || `/?filter=${encodeURIComponent(item.text)}&source=more`}
+                        href={item.url || `/search?filter=${encodeURIComponent(item.text)}&source=more`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary text-[18px] font-medium hover:underline hover:text-accent hover:pl-1 transition-all cursor-pointer py-1"

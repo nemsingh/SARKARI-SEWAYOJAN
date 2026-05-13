@@ -109,7 +109,7 @@ const Index = () => {
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      window.open('/?search=' + encodeURIComponent(searchQuery), '_blank');
+      window.open('/search?filter=' + encodeURIComponent(searchQuery) + '&source=more', '_blank');
       setSearchQuery('');
     }
   };
@@ -133,8 +133,12 @@ const Index = () => {
     : filteredCategories;
 
   const keyword = activeFilter.trim().toLowerCase();
-  const filteredPosts = filterSource === 'more' && activeFilter !== 'Home'
-    ? posts.filter((post) => {
+  
+  const getSearchLinks = () => {
+    if (filterSource !== 'more' || activeFilter === 'Home') return [];
+    
+    // 1. Find all posts that match the keyword
+    const matchingPosts = posts.filter((post) => {
         const searchTargets = [
           post.name_of_post,
           post.name_of_post_hi,
@@ -143,8 +147,48 @@ const Index = () => {
           post.search_corpus,
         ];
         return searchTargets.some((value) => (value || '').toLowerCase().includes(keyword));
-      })
-    : [];
+    });
+
+    // 2. Find all category links that match the keyword
+    const matchingLinks = categoryLinks.filter(l => l.title && l.title.toLowerCase().includes(keyword));
+
+    // Combine them, avoiding duplicates (links take precedence or vice versa, let's just make a map of URLs)
+    const uniqueLinksMap = new Map();
+
+    // Add matching posts first
+    matchingPosts.forEach(post => {
+      uniqueLinksMap.set(`/post/${post.slug || post.id}`, {
+        id: post.id,
+        url: `/post/${post.slug || post.id}`,
+        title: post.name_of_post,
+        is_new: false,
+        last_date_text: post.last_date_text
+      });
+    });
+
+    // Add matching category links, overriding/adding
+    matchingLinks.forEach(link => {
+      if (!uniqueLinksMap.has(link.url)) {
+         let last_date_text = link.actual_last_date_text;
+         if (!last_date_text && link.url?.startsWith('/post/')) {
+           const slug = link.url.replace('/post/', '');
+           const mPost = posts.find(p => p.slug === slug || p.id === slug);
+           if (mPost) last_date_text = mPost.last_date_text;
+         }
+         uniqueLinksMap.set(link.url, {
+           id: link.id,
+           url: link.url,
+           title: link.title,
+           is_new: link.is_new,
+           last_date_text: last_date_text
+         });
+      }
+    });
+
+    return Array.from(uniqueLinksMap.values());
+  };
+
+  const combinedSearchLinks = getSearchLinks();
 
   const globalDirection = (settings['update_bar_direction'] as 'left' | 'right' | 'bounce') || 'left';
 
@@ -226,16 +270,10 @@ const Index = () => {
 
       {filterSource === 'more' && activeFilter !== 'Home' ? (
         <div className="grid gap-5 py-8 px-3 mx-auto grid-cols-1">
-          {filteredPosts.length > 0 ? (
+          {combinedSearchLinks.length > 0 ? (
             <CategoryBox
               name={`${activeFilter} Update's`}
-              links={filteredPosts.map(post => ({
-                id: post.id,
-                url: `/post/${post.slug || post.id}`,
-                title: post.name_of_post,
-                is_new: false,
-                last_date_text: post.last_date_text
-              }))}
+              links={combinedSearchLinks}
               maxVisible={999999}
             />
           ) : (

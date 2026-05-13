@@ -31,6 +31,7 @@ const App = () => (
         <Suspense fallback={<div className="p-4">Loading...</div>}>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/search" element={<Index />} />
             <Route path="/post/:slug" element={<PostDetail />} />
             <Route path="/category/:name" element={<CategoryMore />} />
             <Route path="/admin-vikaskumar" element={<AdminLogin />} />

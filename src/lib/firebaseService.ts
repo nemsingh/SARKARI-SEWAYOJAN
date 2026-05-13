@@ -15,6 +15,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 const decompressHtml = (html: string | null | undefined) => {
@@ -286,14 +287,29 @@ export const createPost = async (data: Record<string, any>) => {
   if (isChunked) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
-    // Sequential chunk processing prevents overload with huge data
+    
+    // Process chunks in batches of up to 400 writes
+    let currentBatch = writeBatch(db);
+    let writesInBatch = 0;
+    
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      await setDoc(doc(db, `posts/${docRef.id}/chunks`, index.toString()), {
+      if (writesInBatch >= 400) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        writesInBatch = 0;
+      }
+      const chunkRef = doc(db, `posts/${docRef.id}/chunks`, index.toString());
+      currentBatch.set(chunkRef, {
         index,
         html: html.substring(i, i + CHUNK_SIZE),
         html_hi: html_hi.substring(i, i + CHUNK_SIZE),
       });
+      writesInBatch++;
       index++;
+    }
+    
+    if (writesInBatch > 0) {
+      await currentBatch.commit();
     }
   }
 
@@ -325,8 +341,23 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   try {
     const chunksRef = collection(db, `posts/${id}/chunks`);
     const chunksSnap = await getDocs(chunksRef);
-    const deletePromises = chunksSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
-    await Promise.all(deletePromises);
+    
+    let currentBatch = writeBatch(db);
+    let writesInBatch = 0;
+    
+    for (const docSnap of chunksSnap.docs) {
+      if (writesInBatch >= 400) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        writesInBatch = 0;
+      }
+      currentBatch.delete(docSnap.ref);
+      writesInBatch++;
+    }
+    
+    if (writesInBatch > 0) {
+      await currentBatch.commit();
+    }
   } catch(e) {
     console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
   }
@@ -339,14 +370,29 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   if (isChunked && html !== undefined && html_hi !== undefined) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
-    // Sequential chunk processing prevents overload with huge data
+    
+    // Process chunks in batches of up to 400 writes
+    let currentBatch = writeBatch(db);
+    let writesInBatch = 0;
+    
     for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
-      await setDoc(doc(db, `posts/${id}/chunks`, index.toString()), {
+      if (writesInBatch >= 400) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        writesInBatch = 0;
+      }
+      const chunkRef = doc(db, `posts/${id}/chunks`, index.toString());
+      currentBatch.set(chunkRef, {
         index,
         html: html.substring(i, i + CHUNK_SIZE),
         html_hi: html_hi.substring(i, i + CHUNK_SIZE),
       });
+      writesInBatch++;
       index++;
+    }
+    
+    if (writesInBatch > 0) {
+      await currentBatch.commit();
     }
   }
 
@@ -358,8 +404,23 @@ export const deletePost = async (id: string) => {
     try {
       const chunksRef = collection(db, `posts/${id}/chunks`);
       const chunksSnap = await getDocs(chunksRef);
-      const deletePromises = chunksSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
-      await Promise.all(deletePromises);
+      
+      let currentBatch = writeBatch(db);
+      let writesInBatch = 0;
+      
+      for (const docSnap of chunksSnap.docs) {
+        if (writesInBatch >= 400) {
+          await currentBatch.commit();
+          currentBatch = writeBatch(db);
+          writesInBatch = 0;
+        }
+        currentBatch.delete(docSnap.ref);
+        writesInBatch++;
+      }
+      
+      if (writesInBatch > 0) {
+        await currentBatch.commit();
+      }
     } catch(e) {
       console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
     }

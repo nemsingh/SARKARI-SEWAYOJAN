@@ -197,7 +197,24 @@ async function generate() {
   fs.writeFileSync(path.resolve(outDir, 'admin.html'), adminHtml);
   console.log(`Generated admin.html shell`);
 
-  // 5.5 Generate 404 Page
+  // 5.5 Generate Search Shell
+  const scriptTag = `<script>window.__INITIAL_DATA__ = ${JSON.stringify(homeData).replace(/</g, '\\u003c')};</script>`;
+  const searchHtml = template.replace(`<!--ssr-outlet-->`, '')
+                             .replace(`<title>Vite + React + TS</title>`, `<title>Search Results - Sarkari Sewayojan</title>`)
+                             .replace(`<div id="root"></div>`, `<div id="root"><div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 20px; font-weight: bold; color: #0b3d91;">Loading...</div></div>`)
+                             .replace('</body>', `${scriptTag}</body>`);
+  fs.writeFileSync(path.resolve(outDir, 'search.html'), searchHtml);
+  console.log(`Generated search.html shell`);
+
+  // 5.6 Generate Category Shell
+  const categoryHtml = template.replace(`<!--ssr-outlet-->`, '')
+                               .replace(`<title>Vite + React + TS</title>`, `<title>Section Details - Sarkari Sewayojan</title>`)
+                               .replace(`<div id="root"></div>`, `<div id="root"><div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 20px; font-weight: bold; color: #0b3d91;">Loading...</div></div>`)
+                               .replace('</body>', `${scriptTag}</body>`);
+  fs.writeFileSync(path.resolve(outDir, 'category_shell.html'), categoryHtml);
+  console.log(`Generated category_shell.html shell`);
+
+  // 5.7 Generate 404 Page
   generatePage('/404', homeData, '404.html', '404 - Page Not Found', 'The page you are looking for does not exist.');
 
   // 6. Generate data.json
