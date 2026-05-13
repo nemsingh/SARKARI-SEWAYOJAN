@@ -91,15 +91,15 @@ const Index = () => {
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
     if (option === 'Home') {
-      window.open('/', '_self');
+      window.open('/', '_blank');
       return;
     }
     if (option === 'Contact Us') {
-      window.open('/contact-us', '_self');
+      window.open('/contact-us', '_blank');
       return;
     }
     const url = `/category/${encodeURIComponent(option)}`;
-    window.open(url, '_self');
+    window.open(url, '_blank');
   };
 
   useEffect(() => {

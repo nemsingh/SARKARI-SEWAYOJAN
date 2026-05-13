@@ -307,14 +307,14 @@ const PostDetail = () => {
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
     if (option === 'Home') {
-      window.open('/', '_self');
+      window.open('/', '_blank');
       return;
     }
     if (option === 'Contact Us') {
-      window.open('/contact-us', '_self');
+      window.open('/contact-us', '_blank');
       return;
     }
-    window.open(`/category/${encodeURIComponent(option)}`, '_self');
+    window.open(`/category/${encodeURIComponent(option)}`, '_blank');
   };
 
   const handleSearch = () => {
