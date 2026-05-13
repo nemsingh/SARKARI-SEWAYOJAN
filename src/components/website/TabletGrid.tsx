@@ -29,7 +29,7 @@ const TabletGrid = ({ items, searchQuery }: TabletGridProps) => {
         <a
           key={item.id}
           href={getValidUrl(item.url)}
-          className="tablet-grid-cell py-4 px-2.5 text-center text-primary no-underline font-extrabold text-[22px] bg-background rounded-xl transition-all duration-300 flex flex-col justify-center min-h-[65px] border border-primary hover:bg-primary hover:text-primary-foreground hover:-translate-y-1 max-sm:text-[18px]"
+          className="tablet-grid-cell py-4 px-2.5 text-center text-primary no-underline font-extrabold text-[22px] bg-background rounded-xl transition-all duration-300 flex flex-col justify-center min-h-[65px] border border-primary hover:bg-primary hover:text-primary-foreground hover:-translate-y-1 select-none max-sm:text-[18px]"
           style={{ boxShadow: '0 8px 15px rgba(0,0,0,0.25)' }}
         >
           {item.title}

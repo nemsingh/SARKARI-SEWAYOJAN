@@ -113,6 +113,31 @@ const PostDetail = () => {
 
       if (window.location.search.includes('preview=true')) {
         setIsFetchingPreview(true);
+        
+        try {
+          const localPreview = localStorage.getItem('preview_post_data');
+          const localPreviewSlug = localStorage.getItem('preview_post_slug');
+          
+          if (localPreview && localPreviewSlug === slug) {
+            const parsed = JSON.parse(localPreview);
+            setPost(parsed);
+            setNotFound(false);
+            setIsFetchingPreview(false);
+            
+            // Still try to get categories gently from static files to populate the menus
+            try {
+              const data = await fetchHomeData();
+              if (data) {
+                setCategories(data.categories || []);
+                setCategoryLinks(data.category_links || []);
+                setSettings(data.settings_flat || {});
+              }
+            } catch(e) {}
+            return;
+          }
+        } catch(e) {
+          console.warn("Failed to load local preview:", e);
+        }
 
         const livePost = await fetchPreviewWithRetry(slug!);
         if (livePost) {

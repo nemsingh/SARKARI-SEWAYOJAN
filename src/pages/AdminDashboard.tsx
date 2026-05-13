@@ -964,7 +964,22 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
-                <Button variant="outline" size="sm" onClick={() => window.open(`/post/${encodeURIComponent(post.slug || post.id)}?preview=true`, '_blank')}>Preview</Button>
+                <Button variant="outline" size="sm" onClick={async () => {
+                   const overlay = document.createElement('div');
+                   overlay.innerText = 'Preparing Preview...';
+                   Object.assign(overlay.style, { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '24px', fontWeight: 'bold' });
+                   document.body.appendChild(overlay);
+                   try {
+                     const fullPost = await getPostBySlug(post.slug || post.id);
+                     if (fullPost) {
+                       localStorage.setItem('preview_post_data', JSON.stringify(fullPost));
+                       localStorage.setItem('preview_post_slug', post.slug || post.id);
+                     }
+                   } finally {
+                     document.body.removeChild(overlay);
+                     window.open(`/post/${encodeURIComponent(post.slug || post.id)}?preview=true`, '_blank');
+                   }
+                }}>Preview</Button>
                 <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
               </div>
             </div>
