@@ -17,6 +17,9 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
       {menuItems.map(item => (
         <a
           key={item}
+          href={item === 'Home' ? '/' : item === 'Contact Us' ? '/contact-us' : `/category/${encodeURIComponent(item)}`}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={() => onFilter(item)}
           className="no-underline text-primary py-4 px-1 font-bold transition-all flex-1 text-center cursor-pointer whitespace-nowrap text-[18px] hover:bg-primary hover:text-primary-foreground select-none"
         >

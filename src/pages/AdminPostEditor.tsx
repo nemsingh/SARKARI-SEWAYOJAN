@@ -945,7 +945,50 @@ const AdminPostEditor = () => {
         {/* Preview */}
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <h2 className="text-xl font-bold text-primary mb-4">Preview</h2>
-          <div className="border-t-4 border-primary rounded-lg p-4">
+          <div className="border-t-4 border-primary rounded-lg p-4" onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest('a');
+            if (anchor) {
+              e.preventDefault();
+              e.stopPropagation();
+              const isShortInfo = !!anchor.closest('.short-info-cell');
+              const isTables = !!anchor.closest('.post-tables-content');
+              
+              const currentHref = anchor.getAttribute('href') || (anchor as HTMLAnchorElement).href || '';
+              const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
+              if (shouldVisit) {
+                window.open(currentHref, '_blank');
+              } else {
+                const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
+                if (newHref !== null) {
+                  if (newHref.trim() === '') {
+                    const childNodes = Array.from(anchor.childNodes);
+                    const parent = anchor.parentNode;
+                    if (parent) {
+                        childNodes.forEach(child => parent.insertBefore(child, anchor));
+                        parent.removeChild(anchor);
+                    }
+                  } else {
+                    anchor.setAttribute('href', newHref);
+                    if (!anchor.getAttribute('target')) {
+                       anchor.setAttribute('target', '_blank');
+                    }
+                  }
+                  
+                  if (isShortInfo) {
+                     const cell = e.currentTarget.querySelector('.short-info-cell');
+                     if (cell) setShortInfo(cell.innerHTML);
+                  } else if (isTables) {
+                     const cell = e.currentTarget.querySelector('.post-tables-content');
+                     if (cell) {
+                       setTablesHtml(cell.innerHTML);
+                       setTables(syncTablesFromHtml(cell.innerHTML));
+                     }
+                  }
+                }
+              }
+            }
+          }}>
             <table className="post-summary-table w-full mb-5 border-collapse">
               <tbody>
                 <tr>

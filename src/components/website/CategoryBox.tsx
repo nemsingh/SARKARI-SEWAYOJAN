@@ -22,8 +22,25 @@ const getValidUrl = (url: string | null) => {
 };
 
 const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
-  const visibleLinks = links.slice(0, maxVisible);
-  const hasMore = links.length > maxVisible;
+  let actualMax = maxVisible;
+  if (maxVisible >= 25 && maxVisible < 100 && links.length > 25) {
+    let linesCount = 0;
+    for (let i = 0; i < 25; i++) {
+      if (!links[i]) break;
+      linesCount += 1;
+      if (links[i].title && links[i].title.length > 45) linesCount += 1;
+      if (links[i].last_date_text || links[i].actual_last_date_text) linesCount += 1;
+    }
+    
+    // Dynamically add 1-3 extra links if the box is visually shorter (fewer lines)
+    if (linesCount < 28) actualMax = 28;
+    else if (linesCount < 32) actualMax = 27;
+    else if (linesCount < 36) actualMax = 26;
+    else actualMax = 25;
+  }
+
+  const visibleLinks = links.slice(0, actualMax);
+  const hasMore = links.length > actualMax;
 
   return (
     <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col" style={{ boxShadow: 'var(--box-shadow-strong)' }}>

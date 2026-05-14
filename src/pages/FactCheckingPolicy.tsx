@@ -111,18 +111,6 @@ const FactCheckingPolicy = () => {
 
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
-
-    if (option === 'Home') {
-      window.open('/', '_blank');
-      return;
-    }
-
-    if (option === 'Contact Us') {
-      window.open('/contact-us', '_blank');
-      return;
-    }
-
-    window.open(`/category/${encodeURIComponent(option)}`, '_blank');
   };
 
   const handleSearch = () => {

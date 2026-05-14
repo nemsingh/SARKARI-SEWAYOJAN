@@ -55,6 +55,9 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
       {menuItems.map(item => (
           <a
             key={item}
+            href={item === 'Home' ? '/' : item === 'Contact Us' ? '/contact-us' : `/category/${encodeURIComponent(item)}`}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={() => handleClick(item)}
             className="block py-4 px-8 no-underline text-primary font-semibold text-[20px] cursor-pointer hover:bg-primary hover:text-primary-foreground hover:pl-10 transition-all duration-200 select-none"
           >

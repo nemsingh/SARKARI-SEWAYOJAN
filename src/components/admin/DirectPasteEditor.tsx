@@ -253,6 +253,36 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
               document.execCommand('insertText', false, text);
           }
         }}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          const anchor = target.closest('a');
+          if (anchor) {
+            e.preventDefault();
+            e.stopPropagation();
+            const currentHref = anchor.getAttribute('href') || (anchor as HTMLAnchorElement).href || '';
+            const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
+            if (shouldVisit) {
+              window.open(currentHref, '_blank');
+            } else {
+              const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
+              if (newHref !== null) {
+                if (newHref.trim() === '') {
+                   const childNodes = Array.from(anchor.childNodes);
+                   const parent = anchor.parentNode;
+                   if (parent) {
+                       childNodes.forEach(child => parent.insertBefore(child, anchor));
+                       parent.removeChild(anchor);
+                   }
+                } else {
+                   anchor.setAttribute('href', newHref);
+                   if (!anchor.getAttribute('target')) {
+                      anchor.setAttribute('target', '_blank');
+                   }
+                }
+              }
+            }
+          }
+        }}
         className="paste-box w-full min-h-[150px] bg-white border border-input rounded-md p-4 overflow-auto focus:outline-none focus:ring-2 focus:ring-ring post-tables-content"
       ></div>
 

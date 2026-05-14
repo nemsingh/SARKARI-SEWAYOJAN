@@ -1772,6 +1772,37 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                       rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
                       contentEditable
                       suppressContentEditableWarning
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        const anchor = target.closest('a');
+                        if (anchor) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const currentHref = anchor.getAttribute('href') || (anchor as HTMLAnchorElement).href || '';
+                          const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
+                          if (shouldVisit) {
+                            window.open(currentHref, '_blank');
+                          } else {
+                            const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
+                            if (newHref !== null) {
+                              if (newHref.trim() === '') {
+                                const childNodes = Array.from(anchor.childNodes);
+                                const parent = anchor.parentNode;
+                                if (parent) {
+                                    childNodes.forEach(child => parent.insertBefore(child, anchor));
+                                    parent.removeChild(anchor);
+                                }
+                              } else {
+                                anchor.setAttribute('href', newHref);
+                                if (!anchor.getAttribute('target')) {
+                                   anchor.setAttribute('target', '_blank');
+                                }
+                              }
+                              updateCell(ri, ci, { text: (e.currentTarget as HTMLElement).innerHTML });
+                            }
+                          }
+                        }
+                      }}
                       onMouseDown={() => handleMouseDown(ri, ci)}
                       onMouseOver={() => handleMouseOver(ri, ci)}
                       onTouchStart={(e) => handleTouchStart(e, ri, ci)}

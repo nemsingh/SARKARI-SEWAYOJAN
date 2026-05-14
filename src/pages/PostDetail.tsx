@@ -115,12 +115,12 @@ const PostDetail = () => {
         setIsFetchingPreview(true);
         
         try {
-          const localPreview = localStorage.getItem('preview_post_data');
+          const { getPreviewData } = await import('@/lib/previewDb');
+          const localPreview = await getPreviewData();
           const localPreviewSlug = localStorage.getItem('preview_post_slug');
           
           if (localPreview && localPreviewSlug === slug) {
-            const parsed = JSON.parse(localPreview);
-            setPost(parsed);
+            setPost(localPreview);
             setNotFound(false);
             setIsFetchingPreview(false);
             
@@ -306,15 +306,6 @@ const PostDetail = () => {
 
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
-    if (option === 'Home') {
-      window.open('/', '_blank');
-      return;
-    }
-    if (option === 'Contact Us') {
-      window.open('/contact-us', '_blank');
-      return;
-    }
-    window.open(`/category/${encodeURIComponent(option)}`, '_blank');
   };
 
   const handleSearch = () => {
