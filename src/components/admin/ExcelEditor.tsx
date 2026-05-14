@@ -1581,18 +1581,66 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Insert (Link + Bullet) */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onMouseDown={e => e.preventDefault()} onClick={() => {
+            <button onMouseDown={e => {
+              e.preventDefault();
+              const sel = window.getSelection();
+              if (sel && sel.rangeCount > 0 && activeCell) {
+                 const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+                 if (td && td.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+                    savedSelectionRange.current = sel.getRangeAt(0).cloneRange();
+                 }
+              }
+            }} onClick={() => {
               if (!activeCell) return;
+              
+              const range = savedSelectionRange.current;
               const url = prompt('Enter URL for selected text:');
               if (url) {
-                if (applyRichTextFormat('createLink', url)) return;
-                
-                const cell = grid[activeCell.row][activeCell.col];
-                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${cell.text || url}</a>`;
-                updateCell(activeCell.row, activeCell.col, { text: linkHtml });
-                // Also update DOM
                 const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
-                if (td) td.innerHTML = linkHtml;
+                const cell = grid[activeCell.row][activeCell.col];
+                
+                if (td && range && !range.collapsed) {
+                   // Ensure range is still valid within td
+                   if (td.contains(range.commonAncestorContainer)) {
+                     const a = document.createElement('a');
+                     a.href = url;
+                     a.target = '_blank';
+                     a.style.color = cell.color || '#primary';
+                     a.style.textDecoration = 'underline';
+                     a.appendChild(range.extractContents());
+                     range.insertNode(a);
+                     
+                     // Clear selection
+                     const sel = window.getSelection();
+                     if (sel) sel.removeAllRanges();
+                     
+                     skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
+                     updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
+                     setFormulaValue(td.innerText);
+                     return;
+                   }
+                }
+                
+                // Fallback for collapsed selection or no selection
+                const textToShow = prompt('Enter text to display (or leave empty to show URL):') || url;
+                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${textToShow}</a>`;
+                
+                if (td) {
+                  td.focus();
+                  if (range) {
+                    const sel = window.getSelection();
+                    if (sel) {
+                      sel.removeAllRanges();
+                      sel.addRange(range);
+                    }
+                  }
+                  document.execCommand('insertHTML', false, linkHtml);
+                  skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
+                  updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
+                  setFormulaValue(td.innerText);
+                } else {
+                  updateCell(activeCell.row, activeCell.col, { text: linkHtml });
+                }
               }
             }} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">🔗 Link</button>
             <div className="relative group">

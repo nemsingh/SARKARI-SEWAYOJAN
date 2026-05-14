@@ -223,13 +223,24 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             const sel = window.getSelection();
-            if (!sel || sel.isCollapsed) {
+            if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
               alert("Please select some text first to add a link.");
               return;
             }
+            const range = sel.getRangeAt(0).cloneRange();
             const url = prompt('Enter URL:');
             if (url) {
-              document.execCommand('createLink', false, url);
+               const a = document.createElement('a');
+               a.href = url;
+               a.target = '_blank';
+               a.appendChild(range.extractContents());
+               range.insertNode(a);
+               sel.removeAllRanges();
+               if (editorRef.current) {
+                 const event = new Event('input', { bubbles: true });
+                 editorRef.current.dispatchEvent(event);
+                 onChange(editorRef.current.innerHTML);
+               }
             }
           }}
         >
