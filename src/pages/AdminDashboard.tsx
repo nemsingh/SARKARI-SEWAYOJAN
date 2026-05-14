@@ -973,7 +973,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
                      const fullPost = await getPostBySlug(post.slug || post.id);
                      if (fullPost) {
                        const { savePreviewData } = await import('@/lib/previewDb');
-                       await savePreviewData(fullPost);
+                       try { await savePreviewData(JSON.parse(JSON.stringify(fullPost))); } catch(e) { console.error('Preview error', e); }
                        localStorage.setItem('preview_post_slug', post.slug || post.id);
                      }
                    } finally {

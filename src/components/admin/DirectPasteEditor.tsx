@@ -239,7 +239,6 @@ export default function DirectPasteEditor({ onAdd, lang = 'en' }: { onAdd: (html
                if (editorRef.current) {
                  const event = new Event('input', { bubbles: true });
                  editorRef.current.dispatchEvent(event);
-                 onChange(editorRef.current.innerHTML);
                }
             }
           }}

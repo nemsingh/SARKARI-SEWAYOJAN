@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
 import { fetchHomeData, fetchPostData } from '@/lib/fetchData';
-import { getPostBySlug } from '@/lib/firebaseService';
 import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
@@ -61,6 +60,7 @@ const PostDetail = () => {
     }
     return false;
   });
+  const [previewError, setPreviewError] = useState(false);
 
   const [notFound, setNotFound] = useState(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
@@ -96,21 +96,6 @@ const PostDetail = () => {
         return;
       }
 
-      const fetchPreviewWithRetry = async (slug: string, retries = 5, delay = 1000) => {
-        for (let i = 0; i < retries; i++) {
-          try {
-            const p = await getPostBySlug(slug);
-            if (p) return p;
-          } catch (e) {
-            console.warn("Preview fetch attempt failed:", e);
-          }
-          if (i < retries - 1) {
-            await new Promise(res => setTimeout(res, delay));
-          }
-        }
-        return null;
-      };
-
       if (window.location.search.includes('preview=true')) {
         setIsFetchingPreview(true);
         
@@ -132,41 +117,20 @@ const PostDetail = () => {
                 setCategoryLinks(data.category_links || []);
                 setSettings(data.settings_flat || {});
               }
-            } catch(e) {}
+            } catch(e) {
+              console.error("Categories fetch failed:", e);
+            }
             return;
+          } else {
+             setIsFetchingPreview(false);
+             setPreviewError(true);
+             return;
           }
         } catch(e) {
           console.warn("Failed to load local preview:", e);
-        }
-
-        const livePost = await fetchPreviewWithRetry(slug!);
-        if (livePost) {
-          setPost(livePost);
-          setNotFound(false);
           setIsFetchingPreview(false);
-          
-          // Also try to fetch categories and settings for the preview
-          try {
-            const data = await fetchHomeData();
-            if (data) {
-              setCategories(data.categories || []);
-              setCategoryLinks(data.category_links || []);
-              setSettings(data.settings_flat || {});
-            }
-          } catch(e) {}
-          
+          setPreviewError(true);
           return;
-        } else {
-             endlessRetry = setInterval(async () => {
-               const p = await getPostBySlug(slug!);
-               if (p) {
-                 setPost(p);
-                 setNotFound(false);
-                 setIsFetchingPreview(false);
-                 clearInterval(endlessRetry);
-               }
-             }, 3000);
-             return;
         }
       }
 
@@ -216,7 +180,7 @@ const PostDetail = () => {
         setCache('settings_flat', sett);
       } else {
         try {
-          let postData = await fetchPostData(slug!);
+          const postData = await fetchPostData(slug!);
           if (postData) {
             setPost(postData);
             setNotFound(false);
@@ -319,6 +283,7 @@ const PostDetail = () => {
     ? categories.filter(c => c.name.includes(activeFilter))
     : [];
 
+  if (previewError) return <div className="min-h-screen flex items-center justify-center text-red-500 font-bold text-xl">Failed to load preview. Please try again.</div>;
   if (isFetchingPreview) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading Preview...</div>;
   if (notFound) return <NotFound />;
   if (!post && !activeFilter) return <div className="min-h-screen flex items-center justify-center text-primary font-bold text-xl">Loading...</div>;
