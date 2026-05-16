@@ -240,6 +240,35 @@ const PostDetail = () => {
           link.setAttribute('rel', 'noopener noreferrer');
         });
       });
+
+      // Special handling for Short Info links to GUARANTEE red text and blue click
+      const shortInfoCells = document.querySelectorAll('.short-info-cell');
+      shortInfoCells.forEach(cell => {
+        const shortLinks = cell.querySelectorAll('a');
+        shortLinks.forEach(link => {
+          // Remove ALL inline colors from the link and its children
+          if (link.style) link.style.removeProperty('color');
+          const children = link.querySelectorAll('*');
+          children.forEach((child: any) => {
+            if (child.style) {
+              child.style.removeProperty('color');
+            }
+          });
+          
+          link.classList.add('short-info-link-force');
+
+          // Handle click effects using predictable class toggling
+          const handleClickState = () => {
+            link.classList.add('force-blue-click');
+            setTimeout(() => {
+              link.classList.remove('force-blue-click');
+            }, 500); // 500ms duration for click feedback
+          };
+
+          link.addEventListener('mousedown', handleClickState);
+          link.addEventListener('touchstart', handleClickState, {passive: true});
+        });
+      });
     }, 100);
     return () => clearTimeout(timer);
   }, [post, language, translatedContent]);

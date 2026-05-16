@@ -247,6 +247,35 @@ const AdminPostEditor = () => {
     return () => unsubscribe();
   }, [navigate]);
 
+  // Special handling for live preview to guarantee Short Info links are RED unconditionally
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const shortInfoCells = document.querySelectorAll('.short-info-cell');
+      shortInfoCells.forEach(cell => {
+        const shortLinks = cell.querySelectorAll('a');
+        shortLinks.forEach(link => {
+          if (link.style) link.style.removeProperty('color');
+          const children = link.querySelectorAll('*');
+          children.forEach((child: any) => { if (child.style) child.style.removeProperty('color'); });
+          
+          link.classList.add('short-info-link-force');
+
+          // Click states handling via class to ensure we don't block CSS rules
+          const handleClickState = () => {
+            link.classList.add('force-blue-click');
+            setTimeout(() => {
+              link.classList.remove('force-blue-click');
+            }, 500); // 500ms duration
+          };
+
+          link.addEventListener('mousedown', handleClickState);
+          link.addEventListener('touchstart', handleClickState, {passive: true});
+        });
+      });
+    }, 300); // 300ms delays to ensure it runs after renders
+    return () => clearTimeout(timer);
+  }, [shortInfo, shortInfoHi, tablesHtml, tablesHtmlHi]);
+
   useEffect(() => {
     getCategories().then(setCategories);
   }, []);

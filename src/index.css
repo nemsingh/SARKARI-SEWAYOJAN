@@ -104,18 +104,7 @@
   display: block;
 }
 
-/* Hide links inherently in Short Info */
-.short-info-cell a {
-  color: inherit !important;
-  text-decoration: none !important;
-}
-.short-info-cell a:hover {
-  text-decoration: underline !important;
-  text-decoration-color: blue !important;
-}
-.short-info-cell a:visited:hover {
-  text-decoration-color: darkblue !important;
-}
+/* Short info cell links inherit standard rules now */
 .post-tables-content *[style*="font-size:10px"] { font-size: 15px !important; }
 .post-tables-content *[style*="font-size:11px"] { font-size: 16px !important; }
 .post-tables-content *[style*="font-size:12px"] { font-size: 17px !important; }
@@ -466,33 +455,24 @@ table.post-summary-table th {
 
 
 /* Link colors in tables */
-.theme-bhagwa .post-tables-content a,
-.theme-bhagwa table.w-full.border-collapse a {
-  color: blue !important;
-  text-decoration: underline !important;
-}
-
 html:not(.theme-bhagwa) .post-tables-content a,
 html:not(.theme-bhagwa) table.w-full.border-collapse a,
-html:not(.theme-bhagwa) .short-info-cell a,
 html:not(.theme-bhagwa) .post-content-container a {
   text-decoration: underline !important;
-  color: #0b3d91 !important;
+  color: #0000FF !important; /* Standard Blue before click */
   font-weight: 600 !important;
 }
 
 html:not(.theme-bhagwa) .post-tables-content a:visited,
 html:not(.theme-bhagwa) table.w-full.border-collapse a:visited,
-html:not(.theme-bhagwa) .short-info-cell a:visited,
 html:not(.theme-bhagwa) .post-content-container a:visited {
-  color: #00008B !important; /* Dark Blue */
+  color: #00008B !important; /* Exact Dark Blue */
 }
 
 html:not(.theme-bhagwa) .post-tables-content a:active,
 html:not(.theme-bhagwa) table.w-full.border-collapse a:active,
-html:not(.theme-bhagwa) .short-info-cell a:active,
 html:not(.theme-bhagwa) .post-content-container a:active {
-  color: #FF0000 !important; /* Red */
+  color: #FF0000 !important; /* Red on click */
 }
 
 /* Override summary table default border for theme matching */
@@ -559,10 +539,47 @@ table.post-summary-table th {
 }
 
 /* Post Content Link States (For all themes) */
-.post-tables-content a:visited, table.w-full.border-collapse a:visited, .short-info-cell a:visited {
-  color: darkblue !important;
+.theme-bhagwa .post-tables-content a,
+.theme-bhagwa table.w-full.border-collapse a,
+.theme-bhagwa .post-content-container a {
+  color: blue !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
 }
 
-.post-tables-content a:active, table.w-full.border-collapse a:active, .short-info-cell a:active {
-  color: red !important;
+.theme-bhagwa .post-tables-content a:visited,
+.theme-bhagwa table.w-full.border-collapse a:visited,
+.theme-bhagwa .post-content-container a:visited {
+  color: #00008B !important; /* EXACTLY Dark Blue */
 }
+
+.theme-bhagwa .post-tables-content a:active,
+.theme-bhagwa table.w-full.border-collapse a:active,
+.theme-bhagwa .post-content-container a:active {
+  color: #FF0000 !important; /* EXACTLY Red */
+}
+
+/* --- Special Rules for Links in Short Info --- */
+/* Maximum specificity to override table rules */
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a:visited,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a > *,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a:visited > *,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a.short-info-link-force,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a.short-info-link-force > *,
+html body .short-info-cell a.short-info-link-force,
+html body .short-info-cell a.short-info-link-force > * {
+  color: #FF0000 !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a:active,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a:active > *,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a.force-blue-click,
+html body table.w-full.border-collapse.post-summary-table td.short-info-cell a.force-blue-click > *,
+html body .short-info-cell a.force-blue-click,
+html body .short-info-cell a.force-blue-click > * {
+  color: #0000FF !important;
+}
+
