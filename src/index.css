@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide Google Translate Banner and reset body top */
+.goog-te-banner-frame.skiptranslate, .goog-te-banner-frame {
+    display: none !important;
+} 
+body {
+    top: 0px !important; 
+    position: static !important;
+}
+#google_translate_element {
+   position: absolute !important;
+   left: -9999px !important;
+   top: -9999px !important;
+   width: 1px !important;
+   height: 1px !important;
+   overflow: hidden !important;
+}
+/* Hide translation tooltip popup */
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+#goog-gt-tt, .goog-te-balloon-frame {
+  display: none !important;
+}
+.skiptranslate > iframe.VIpgJd-ZVi9od-aZ2wEe-wOHMyf-ti6hGc {
+    display: none !important;
+}
+body > .skiptranslate {
+    display: none !important;
+}
+iframe[id=":1.container"] {
+    display: none !important;
+}
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
+    display: none !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCache, setCache } from '@/lib/cache';
 import { fetchHomeData, fetchPostData } from '@/lib/fetchData';
-import { googleTranslate } from '@/lib/googleTranslate';
 import SiteHeader from '@/components/website/SiteHeader';
 import SiteMenu from '@/components/website/SiteMenu';
 import Sidebar from '@/components/website/Sidebar';
@@ -51,9 +50,13 @@ const PostDetail = () => {
   const [categories, setCategories] = useState<any[]>(() => initialData?.categories || getCache('categories') || []);
   const [categoryLinks, setCategoryLinks] = useState<any[]>(() => initialData?.category_links || getCache('category_links') || []);
   const [settings, setSettings] = useState<Record<string, string>>(() => initialData?.settings_flat || getCache('settings_flat') || {});
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
-  const [translatedContent, setTranslatedContent] = useState<Record<string, string>>({});
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'hi'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('lang') === 'hi' ? 'hi' : 'en';
+    }
+    return 'en';
+  });
   const [isFetchingPreview, setIsFetchingPreview] = useState(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
       return true;
@@ -201,33 +204,18 @@ const PostDetail = () => {
   }, [slug]);
 
   useEffect(() => {
-    if (language === 'hi' && post) {
-      const translateFields = async () => {
-        setIsTranslating(true);
-        const newTranslated: Record<string, string> = {};
-        let hasChanges = false;
-        
-        for (const { en, hi } of TRANSLATABLE_FIELDS) {
-          if (!post[hi] && post[en] && !translatedContent[en]) {
-            try {
-              const translated = await googleTranslate(post[en], 'hi');
-              newTranslated[en] = translated;
-              hasChanges = true;
-            } catch (e) {
-              console.error(`Translation failed for ${en}:`, e);
-            }
-          }
-        }
-        
-        if (hasChanges) {
-          setTranslatedContent(prev => ({ ...prev, ...newTranslated }));
-        }
-        setIsTranslating(false);
-      };
-      
-      translateFields();
+    if (post && typeof window !== 'undefined') {
+      const scrollPos = sessionStorage.getItem('scrollPos');
+      if (scrollPos) {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(scrollPos, 10));
+          sessionStorage.removeItem('scrollPos');
+        }, 100); // slight delay to allow rendering
+      }
     }
-  }, [language, post, translatedContent]);
+  }, [post]);
+
+
 
   useEffect(() => {
     // Set all links in post content to open in new tab
@@ -271,27 +259,32 @@ const PostDetail = () => {
       });
     }, 100);
     return () => clearTimeout(timer);
-  }, [post, language, translatedContent]);
+  }, [post, language]);
 
   // Smart field getter: Manual Hindi > English
   const getField = (enField: string, hiField: string) => {
     let val = '';
+    let isManualHi = false;
     if (language === 'hi') {
-      if (post?.[hiField]) val = post[hiField]; // Admin manual Hindi (highest priority)
-      else if (translatedContent[enField]) val = translatedContent[enField]; // Translated Hindi
-      else val = post?.[enField] || ''; // Fallback to English
+      if (post?.[hiField]) {
+        val = post[hiField]; // Admin manual Hindi (highest priority)
+        isManualHi = true;
+      }
+      else val = post?.[enField] || ''; // Fallback to English, let Google translate do its logic
     } else {
       val = post?.[enField] || '';
     }
-    return val ? val.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
+    const html = val ? val.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
+    return isManualHi ? `<span class="notranslate">${html}</span>` : html;
   };
 
   const labels = language === 'hi'
-    ? { name: 'पद का नाम:', date: 'पोस्ट तिथि / अपडेट:', info: 'संक्षिप्त जानकारी:' }
-    : { name: 'Name of Post:', date: 'Post Date / Update:', info: 'Short Info:' };
+    ? { name: <span className="notranslate">पद का नाम:</span>, date: <span className="notranslate">पोस्ट तिथि / अपडेट:</span>, info: <span className="notranslate">संक्षिप्त जानकारी:</span> }
+    : { name: <span>Name of Post:</span>, date: <span>Post Date / Update:</span>, info: <span>Short Info:</span> };
 
-  const rawTablesHtml = language === 'hi'
-    ? (post?.tables_html_hi || translatedContent['tables_html'] || post?.tables_html || '')
+  const hasManualTableHi = language === 'hi' && !!post?.tables_html_hi;
+  const rawTablesHtml = hasManualTableHi
+    ? post.tables_html_hi
     : (post?.tables_html || '');
   const displayTablesHtml = rawTablesHtml ? rawTablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
 
@@ -353,12 +346,14 @@ const PostDetail = () => {
           image={mediaUrls.length > 0 ? mediaUrls[0] : undefined}
         />
       )}
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
-      <SiteHeader logoUrl={settings.logo_url} />
-      <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />
+      <div className="notranslate">
+        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
+        <SiteHeader logoUrl={settings.logo_url} />
+        <SiteMenu onFilter={handleFilter} searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={handleSearch} />
+      </div>
 
       {activeFilter ? (
-        <>
+        <div className="notranslate">
           <div className="text-center text-accent font-black text-lg my-2.5">
             {settings.tagline || ''}
           </div>
@@ -370,22 +365,41 @@ const PostDetail = () => {
           <div className="text-center text-accent font-black text-lg my-2.5">
             {settings.contact_text || ''}
           </div>
-        </>
+        </div>
       ) : (
         <div className="mx-auto my-5 px-3">
           <div className="bg-background rounded-2xl p-5 border-t-4 border-primary mb-8 relative" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-            <div className="flex justify-end mb-3">
+            <div className="flex justify-end mb-3 notranslate">
               <select
                 value={language}
-                onChange={e => setLanguage(e.target.value as 'en' | 'hi')}
+                onChange={e => {
+                  const newLang = e.target.value as 'en' | 'hi';
+                  
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    if (newLang === 'hi') {
+                      url.searchParams.set('lang', 'hi');
+                      document.cookie = 'googtrans=/en/hi; path=/';
+                      document.cookie = `googtrans=/en/hi; path=/; domain=${window.location.hostname}`;
+                    } else {
+                      url.searchParams.delete('lang');
+                      document.cookie = 'googtrans=/en/en; path=/';
+                      document.cookie = `googtrans=/en/en; path=/; domain=${window.location.hostname}`;
+                      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+                    }
+                    window.location.href = url.toString();
+                  }
+                }}
                 className="px-4 py-2 border border-border rounded-lg bg-background text-primary text-base font-bold cursor-pointer hover:bg-primary/10 transition-colors"
+                style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=%27black%27 height=%2724%27 viewBox=%270 0 24 24%27 width=%2724%27 xmlns=%27http://www.w3.org/2000/svg%27><path d=%27M7 10l5 5 5-5z%27/><path d=%27M0 0h24v24H0z%27 fill=%27none%27/></svg>")', backgroundRepeat: 'no-repeat', backgroundPositionX: '100%', backgroundPositionY: '50%', paddingRight: '1.5rem' }}
               >
                 <option value="en">English</option>
                 <option value="hi">हिन्दी</option>
               </select>
             </div>
 
-            <table key={language} className="post-summary-table w-full mb-5 border-collapse">
+            <table className="translate post-summary-table w-full mb-5 border-collapse">
               <tbody>
                 <tr>
                   <td className="p-3 align-top font-bold w-[180px] text-[19px] border border-black/10" style={{ color: '#FF0033' }}>{labels.name}</td>
@@ -403,7 +417,7 @@ const PostDetail = () => {
             </table>
 
             {displayTablesHtml && (
-              <div key={`tables-${language}`} className="post-tables-content" dangerouslySetInnerHTML={{ __html: displayTablesHtml }} />
+              <div className={`post-tables-content ${hasManualTableHi ? 'notranslate' : 'translate'}`} dangerouslySetInnerHTML={{ __html: displayTablesHtml }} />
             )}
           </div>
 
@@ -438,7 +452,9 @@ const PostDetail = () => {
         </div>
       )}
 
-      <SiteFooter settings={settings} />
+      <div className="notranslate">
+        <SiteFooter settings={settings} />
+      </div>
     </div>
   );
 };
