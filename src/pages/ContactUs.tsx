@@ -56,7 +56,7 @@ const englishPolicy: PolicyContent = {
     {
       heading: 'Founder & Content Administration',
       paragraphs: [
-        '<strong>Vikas Kumar Suryavanshi</strong><br/>Founder & Content Administrator – Sarkari Sewayojan',
+        '<strong>Vikas Kumar</strong><br/>Founder & Content Administrator – Sarkari Sewayojan',
         'He is actively involved in content management and publishing related to education, government recruitment updates, and digital information services. The quality, clarity, and usefulness of the content published on the website are maintained under his supervision.',
       ],
     },
