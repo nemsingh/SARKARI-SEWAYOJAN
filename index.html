@@ -28,19 +28,22 @@
         if (theme === 'bhagwa') {
           document.documentElement.classList.add('theme-bhagwa');
         }
+        if (window.location.pathname.startsWith('/admin') || window.location.pathname === '/admin-vikaskumar') {
+          document.body.classList.add('is-admin-route');
+        }
       } catch (e) {}
     })();
   </script>
   <style>
     /* Inline essential desktop constraints to prevent Flash of Unstyled Content (FOUC) when opening in a new tab */
     @media (min-width: 1024px) and (pointer: fine) {
-      body {
+      body:not(.is-admin-route) {
         background-color: #e2e8f0 !important;
         background-image: none !important;
       }
-      html.dark body { background-color: #020617 !important; }
-      html.theme-bhagwa body { background-color: #ffedd5 !important; }
-      #desktop-layout-wrapper {
+      html.dark body:not(.is-admin-route) { background-color: #020617 !important; }
+      html.theme-bhagwa body:not(.is-admin-route) { background-color: #ffedd5 !important; }
+      body:not(.is-admin-route) > #root {
         max-width: 1200px;
         margin: 0 auto;
         box-shadow: 0 0 20px rgba(0,0,0,0.2);
@@ -51,8 +54,8 @@
         flex-direction: column;
         overflow-x: hidden;
       }
-      html.dark #desktop-layout-wrapper { background-color: #0a0a0a; }
-      html.theme-bhagwa #desktop-layout-wrapper { background-color: #ffffff; }
+      html.dark body:not(.is-admin-route) > #root { background-color: #0a0a0a; }
+      html.theme-bhagwa body:not(.is-admin-route) > #root { background-color: #ffffff; }
     }
   </style>
 </head>

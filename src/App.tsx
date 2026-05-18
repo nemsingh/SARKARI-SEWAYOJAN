@@ -46,17 +46,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
       window.location.reload();
     }
-  }, [location.pathname, location.search]);
+    
+    if (isAdmin) {
+      document.body.classList.add('is-admin-route');
+    } else {
+      document.body.classList.remove('is-admin-route');
+    }
+  }, [location.pathname, location.search, isAdmin]);
 
-  if (isAdmin) {
-    return <>{children}</>;
-  }
-
-  return (
-    <div id="desktop-layout-wrapper">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 };
 
 const App = () => (
