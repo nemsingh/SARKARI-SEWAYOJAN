@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 /* Hide Google Translate Banner and reset body top */
-.goog-te-banner-frame.skiptranslate, .goog-te-banner-frame {
+.goog-te-banner-frame.skiptranslate, .goog-te-banner-frame, iframe.goog-te-banner-frame {
     display: none !important;
+    visibility: hidden !important;
 } 
-body {
+html, body {
     top: 0px !important; 
     position: static !important;
+    transform: none !important;
 }
 #google_translate_element {
    position: absolute !important;
@@ -17,6 +19,11 @@ body {
    width: 1px !important;
    height: 1px !important;
    overflow: hidden !important;
+   opacity: 0 !important;
+   pointer-events: none !important;
+}
+#google_translate_element * {
+    display: none !important;
 }
 /* Hide translation tooltip popup */
 .goog-text-highlight {
@@ -25,8 +32,19 @@ body {
 }
 #goog-gt-tt, .goog-te-balloon-frame {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 .skiptranslate > iframe.VIpgJd-ZVi9od-aZ2wEe-wOHMyf-ti6hGc {
+    display: none !important;
+    visibility: hidden !important;
+}
+body > iframe.skiptranslate, body > .skiptranslate {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
     display: none !important;
 }
 body > .skiptranslate {
@@ -130,6 +148,32 @@ iframe[id=":1.container"] {
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Apply desktop constraints ONLY if the device has a precise mouse (laptops/computers).
+   This ensures mobile phones (even in "Desktop Site" mode) stay full width. */
+@media (min-width: 1024px) and (pointer: fine) {
+  body {
+    background-color: #e2e8f0 !important; /* solid background separating the site */
+    background-image: none !important;
+  }
+  html.dark body {
+    background-color: #020617 !important;
+  }
+  html.theme-bhagwa body {
+    background-color: #ffedd5 !important;
+  }
+  #desktop-layout-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    position: relative;
+    min-height: 100vh;
+    background-color: var(--background);
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
   }
 }
 

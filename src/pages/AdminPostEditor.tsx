@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, updateCategoryLink, getPostBySlug, getTabletItems, updateTabletItem } from '@/lib/firebaseService';
+import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, updateCategoryLink, getPostBySlug, getTabletItems, updateTabletItem, deleteCategoryLink } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -234,9 +234,16 @@ const AdminPostEditor = () => {
 
   // Optional category linking
   const [categories, setCategories] = useState<any[]>([]);
-  const [linkTitle, setLinkTitle] = useState('');
-  const [linkCategoryId, setLinkCategoryId] = useState('');
-  const [linkId, setLinkId] = useState('');
+  
+  type CategoryLinkInput = {
+    id: string;
+    title: string;
+    categoryId: string;
+    postDate: string;
+  };
+  const [categoryLinksData, setCategoryLinksData] = useState<CategoryLinkInput[]>([
+    { id: '', title: '', categoryId: '', postDate: '' }
+  ]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -306,11 +313,14 @@ const AdminPostEditor = () => {
           
           // Fetch existing category link
           const existingLinks = await getCategoryLinks();
-          const existingLink = existingLinks.find((l: any) => l.url === `/post/${data.slug || id}`);
-          if (existingLink) {
-            setLinkTitle(existingLink.title || '');
-            setLinkCategoryId(existingLink.category_id || '');
-            setLinkId(existingLink.id || '');
+          const existingLinksForPost = existingLinks.filter((l: any) => l.url === `/post/${data.slug || id}`);
+          if (existingLinksForPost.length > 0) {
+            setCategoryLinksData(existingLinksForPost.map((l: any) => ({
+              id: l.id || '',
+              title: l.title || '',
+              categoryId: l.category_id || '',
+              postDate: l.post_date || data.post_date || ''
+            })));
           }
         }
         setLoading(false);
@@ -526,8 +536,7 @@ const AdminPostEditor = () => {
     setTablesHi([]);
     setMediaUrls([]);
     setNewMediaUrl('');
-    setLinkTitle('');
-    setLinkCategoryId('');
+    setCategoryLinksData([{ id: '', title: '', categoryId: '', postDate: '' }]);
     setEditorKey(prev => prev + 1);
     setEditorKeyHi(prev => prev + 1);
   };
@@ -587,17 +596,29 @@ const AdminPostEditor = () => {
     try {
       if (isNew) {
         const result = await createPost(postData);
-        if (linkTitle.trim() && linkCategoryId) {
-          await addCategoryLink({
-            category_id: linkCategoryId,
-            title: linkTitle.trim(),
-            url: `/post/${finalSlug || result.id}`,
-            link_timestamp: customTs,
-            is_new: true,
-            post_date: postDate,
-            last_date_text: null,
-          });
-          toast({ title: 'Post created & added to category!', description: 'Please wait up to 3 minutes or click "Publish Website" from the Dashboard to see it live.' });
+        let linksAdded = false;
+        
+        for (const link of categoryLinksData) {
+          if (link.title.trim() && link.categoryId) {
+            const linkDate = link.postDate || postDate;
+            const customDate = parseDateTime(linkDate, 'en');
+            const customTimestamp = customDate ? customDate.getTime() : customTs;
+            
+            await addCategoryLink({
+              category_id: link.categoryId,
+              title: link.title.trim(),
+              url: `/post/${finalSlug || result.id}`,
+              link_timestamp: customTimestamp,
+              is_new: true,
+              post_date: linkDate,
+              last_date_text: null,
+            });
+            linksAdded = true;
+          }
+        }
+        
+        if (linksAdded) {
+          toast({ title: 'Post created & added to categories!', description: 'Please wait up to 3 minutes or click "Publish Website" from the Dashboard to see it live.' });
         } else {
           toast({ title: 'Post created!', description: 'Click "Publish Website" from the Dashboard to make the changes live.' });
         }
@@ -609,35 +630,48 @@ const AdminPostEditor = () => {
 
         await updatePost(id!, postData);
 
-        if (linkTitle.trim() && linkCategoryId) {
-          if (linkId) {
-            await updateCategoryLink(linkId, {
-              title: linkTitle.trim(),
-              category_id: linkCategoryId,
-              url: `/post/${finalSlug}`,
-              post_date: postDate,
-              link_timestamp: customTs
-            });
-          } else {
-            await addCategoryLink({
-              category_id: linkCategoryId,
-              title: linkTitle.trim(),
-              url: `/post/${finalSlug}`,
-              link_timestamp: customTs,
-              is_new: true,
-              post_date: postDate,
-              last_date_text: null,
-            });
+        const existingLinks = await getCategoryLinks();
+        const existingLinksForPost = existingLinks.filter((l: any) => l.url === `/post/${oldSlug}`);
+        
+        for (const link of categoryLinksData) {
+          if (link.title.trim() && link.categoryId) {
+            const linkDate = link.postDate || postDate;
+            const customDate = parseDateTime(linkDate, 'en');
+            const customTimestamp = customDate ? customDate.getTime() : customTs;
+            
+            if (link.id) {
+              await updateCategoryLink(link.id, {
+                title: link.title.trim(),
+                category_id: link.categoryId,
+                url: `/post/${finalSlug}`,
+                post_date: linkDate,
+                link_timestamp: customTimestamp
+              });
+            } else {
+              await addCategoryLink({
+                category_id: link.categoryId,
+                title: link.title.trim(),
+                url: `/post/${finalSlug}`,
+                link_timestamp: customTimestamp,
+                is_new: true,
+                post_date: linkDate,
+                last_date_text: null,
+              });
+            }
+          }
+        }
+        
+        // Find links that were removed in the UI
+        for (const extLink of existingLinksForPost) {
+          const stillExists = categoryLinksData.find(l => l.id === extLink.id);
+          if (!stillExists) {
+             await deleteCategoryLink(extLink.id);
+          } else if (oldSlug !== finalSlug) {
+             await updateCategoryLink(extLink.id, { url: `/post/${finalSlug}` });
           }
         }
         
         if (oldSlug !== finalSlug) {
-          const existingLinks = await getCategoryLinks();
-          for (const link of existingLinks) {
-            if (link.url === `/post/${oldSlug}` && link.id !== linkId) {
-              await updateCategoryLink(link.id, { url: `/post/${finalSlug}` });
-            }
-          }
           const tabletItems = await getTabletItems();
           for (const item of tabletItems) {
             if (item.url === `/post/${oldSlug}`) {
@@ -665,6 +699,40 @@ const AdminPostEditor = () => {
     a.download = `${nameOfPost.replace(/\s+/g, '-').toLowerCase()}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const copyRichText = async (html: string) => {
+    try {
+      const blobHtml = new Blob([html], { type: 'text/html' });
+      const blobText = new Blob([html.replace(/<[^>]*>?/gm, '')], { type: 'text/plain' });
+      const data = [new ClipboardItem({
+        ['text/html']: blobHtml,
+        ['text/plain']: blobText,
+      })];
+      await navigator.clipboard.write(data);
+      toast({ title: 'Copied!', description: 'Content successfully copied.' });
+    } catch (error) {
+      console.warn("Clipboard API failed, falling back to execCommand", error);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      // Inline styles help retain Word formatting.
+      document.body.appendChild(tempDiv);
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(tempDiv);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      try {
+        document.execCommand('copy');
+        toast({ title: 'Copied!', description: 'Content successfully copied.' });
+      } catch (err) {
+        toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' });
+      }
+      selection?.removeAllRanges();
+      document.body.removeChild(tempDiv);
+    }
   };
 
   const generateFullHtml = () => {
@@ -726,26 +794,90 @@ const AdminPostEditor = () => {
       <div className="max-w-[1200px] mx-auto p-6 space-y-6">
         {/* Optional: Link to Category Box */}
         <div className="bg-background rounded-2xl p-6 border-2 border-primary/30" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-          <h2 className="text-xl font-bold text-primary mb-2">🔗 {isNew ? 'Add to Category Box (Optional)' : 'Category Box Link'}</h2>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-bold text-primary">🔗 {isNew ? 'Add to Category Box (Optional)' : 'Category Box Link'}</h2>
+            <Button variant="outline" size="sm" onClick={() => {
+              setCategoryLinksData(prev => [
+                ...prev,
+                { id: '', title: prev[0].title || nameOfPost, categoryId: prev[0].categoryId || '', postDate: postDate }
+              ]);
+            }}>
+              + Add Category link
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground mb-4">Agar aap dono fields fill karenge to ye post automatically selected category box me show hogi.</p>
-          <div className="flex gap-3 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-base font-bold text-primary block mb-1">Link Title</label>
-              <Input value={linkTitle} onChange={e => setLinkTitle(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Apply Online" />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-base font-bold text-primary block mb-1">Category</label>
-              <select
-                value={linkCategoryId}
-                onChange={e => setLinkCategoryId(e.target.value)}
-                className="w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-base text-primary"
-              >
-                <option value="">-- Select Category --</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+          
+          <div className="space-y-4">
+            {categoryLinksData.map((link, index) => (
+              <div key={index} className="flex gap-3 flex-wrap items-end border-b border-border pb-4 last:border-0 last:pb-0 relative">
+                {categoryLinksData.length > 1 && (
+                  <Button 
+                    variant="destructive" size="sm" 
+                    className="absolute -right-2 -top-2 h-6 w-6 rounded-full p-0 flex items-center justify-center leading-none"
+                    onClick={() => {
+                      setCategoryLinksData(prev => prev.filter((_, i) => i !== index));
+                    }}
+                  >
+                    ×
+                  </Button>
+                )}
+                <div className="flex-1 min-w-[200px]">
+                  <label className="text-base font-bold text-primary block mb-1">Link Title</label>
+                  <Input value={link.title} onChange={e => {
+                    const newLinks = [...categoryLinksData];
+                    newLinks[index].title = e.target.value;
+                    setCategoryLinksData(newLinks);
+                  }} placeholder="e.g. UPSC CAPF 2026 Apply Online" />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="text-base font-bold text-primary block mb-1">Category</label>
+                  <select
+                    value={link.categoryId}
+                    onChange={e => {
+                      const newLinks = [...categoryLinksData];
+                      newLinks[index].categoryId = e.target.value;
+                      setCategoryLinksData(newLinks);
+                    }}
+                    className="w-full h-10 px-3 py-2 border border-input rounded-md bg-background text-base text-primary"
+                  >
+                    <option value="">-- Select Category --</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {categoryLinksData.length > 1 && (
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-base font-bold text-primary block mb-1 text-red-600">Post Date / Update (For this link)</label>
+                    <div className="flex gap-2 relative">
+                      <Input value={link.postDate} onChange={e => {
+                        const newLinks = [...categoryLinksData];
+                        newLinks[index].postDate = e.target.value;
+                        setCategoryLinksData(newLinks);
+                      }} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1 border-red-500 text-red-600 font-bold" />
+                      <div className="relative w-12 h-10 flex-shrink-0">
+                        <DateTimePicker
+                          date={parseDateTime(link.postDate, 'en')}
+                          setDate={(d) => {
+                            if (d) {
+                              const newLinks = [...categoryLinksData];
+                              newLinks[index].postDate = formatDateTime(d.toISOString(), 'en');
+                              setCategoryLinksData(newLinks);
+                            }
+                          }}
+                          customTrigger={
+                            <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center border-red-500 text-red-600 hover:bg-red-50">
+                              📅
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -764,7 +896,7 @@ const AdminPostEditor = () => {
             <div>
               <label className="text-base font-bold text-primary block mb-1">Post Date / Update</label>
               <div className="flex gap-2 relative">
-                <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1" />
+                <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1" disabled={categoryLinksData.length > 1} />
                 <div className="relative w-12 h-10 flex-shrink-0">
                   <DateTimePicker
                     date={parseDateTime(postDate, 'en')}
@@ -772,13 +904,16 @@ const AdminPostEditor = () => {
                       if (d) setPostDate(formatDateTime(d.toISOString(), 'en'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center" disabled={categoryLinksData.length > 1}>
                         📅
                       </Button>
                     }
                   />
                 </div>
               </div>
+              {categoryLinksData.length > 1 && (
+                <p className="text-xs text-red-500 mt-1 font-bold">Multiple category links enabled. Global date is disabled, set dates in category links list.</p>
+              )}
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">Last Date / Extra Text (Red text below link in Latest Jobs)</label>
@@ -815,9 +950,14 @@ const AdminPostEditor = () => {
         <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-primary">Added Tables & Content - English</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowRawHtml(!showRawHtml)}>
-              {showRawHtml ? 'Hide HTML Source' : 'Edit HTML Source'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => copyRichText(tablesHtml)} title="Copy entirely formatted tables and text for Word">
+                📋 Copy All Tables
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowRawHtml(!showRawHtml)}>
+                {showRawHtml ? 'Hide HTML Source' : 'Edit HTML Source'}
+              </Button>
+            </div>
           </div>
           
           {showRawHtml && (
@@ -842,9 +982,10 @@ const AdminPostEditor = () => {
             <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndex === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
               <div className="flex justify-between items-center mb-2">
                 <span className="font-bold text-primary">Table {index + 1} {editingTableIndex === index && '(Editing...)'}</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUp(index)} disabled={index === 0 || editingTableIndex !== null}>↑ Up</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDown(index)} disabled={index === tables.length - 1 || editingTableIndex !== null}>↓ Down</Button>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUp(index)} disabled={index === 0 || editingTableIndex !== null}>↑</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDown(index)} disabled={index === tables.length - 1 || editingTableIndex !== null}>↓</Button>
+                  <Button variant="outline" size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" onClick={() => copyRichText(tableHtml)}>📋 Copy</Button>
                   <Button variant="outline" size="sm" onClick={() => {
                     setEditingTableIndex(index);
                     // Scroll to editor
@@ -924,9 +1065,14 @@ const AdminPostEditor = () => {
         <div className="bg-background rounded-2xl p-6 mb-6 border-2 border-accent" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-primary">Added Tables & Content - Hindi</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowRawHtmlHi(!showRawHtmlHi)}>
-              {showRawHtmlHi ? 'Hide HTML Source' : 'Edit HTML Source'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => copyRichText(tablesHtmlHi)} title="Copy entirely formatted tables and text for Word">
+                📋 Copy All Tables
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowRawHtmlHi(!showRawHtmlHi)}>
+                {showRawHtmlHi ? 'Hide HTML Source' : 'Edit HTML Source'}
+              </Button>
+            </div>
           </div>
           
           {showRawHtmlHi && (
@@ -951,9 +1097,10 @@ const AdminPostEditor = () => {
             <div key={index} className={`mb-4 border rounded-lg p-4 ${editingTableIndexHi === index ? 'border-primary bg-primary/5' : 'border-border'}`}>
               <div className="flex justify-between items-center mb-2">
                 <span className="font-bold text-primary">Table {index + 1} (Hindi) {editingTableIndexHi === index && '(Editing...)'}</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUpHi(index)} disabled={index === 0 || editingTableIndexHi !== null}>↑ Up</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDownHi(index)} disabled={index === tablesHi.length - 1 || editingTableIndexHi !== null}>↓ Down</Button>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableUpHi(index)} disabled={index === 0 || editingTableIndexHi !== null}>↑</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleMoveTableDownHi(index)} disabled={index === tablesHi.length - 1 || editingTableIndexHi !== null}>↓</Button>
+                  <Button variant="outline" size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" onClick={() => copyRichText(tableHtml)}>📋 Copy</Button>
                   <Button variant="outline" size="sm" onClick={() => {
                     setEditingTableIndexHi(index);
                     // Scroll to editor

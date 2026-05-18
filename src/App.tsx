@@ -53,38 +53,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <>
-      <style>{`
-        /* Apply desktop constraints ONLY if the device has a precise mouse (laptops/computers).
-           This ensures mobile phones (even in "Desktop Site" mode) stay full width. */
-        @media (min-width: 1024px) and (pointer: fine) {
-          body {
-            background-color: #e2e8f0 !important; /* solid background separating the site */
-            background-image: none !important;
-          }
-          html.dark body {
-            background-color: #020617 !important;
-          }
-          html.theme-bhagwa body {
-            background-color: #ffedd5 !important;
-          }
-          #desktop-layout-wrapper {
-            max-width: 1200px;
-            margin: 0 auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            position: relative;
-            min-height: 100vh;
-            background-color: var(--background);
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-          }
-        }
-      `}</style>
-      <div id="desktop-layout-wrapper">
-        {children}
-      </div>
-    </>
+    <div id="desktop-layout-wrapper">
+      {children}
+    </div>
   );
 };
 

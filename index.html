@@ -31,6 +31,30 @@
       } catch (e) {}
     })();
   </script>
+  <style>
+    /* Inline essential desktop constraints to prevent Flash of Unstyled Content (FOUC) when opening in a new tab */
+    @media (min-width: 1024px) and (pointer: fine) {
+      body {
+        background-color: #e2e8f0 !important;
+        background-image: none !important;
+      }
+      html.dark body { background-color: #020617 !important; }
+      html.theme-bhagwa body { background-color: #ffedd5 !important; }
+      #desktop-layout-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        position: relative;
+        min-height: 100vh;
+        background-color: #ffffff; /* Fallback until variables load */
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+      }
+      html.dark #desktop-layout-wrapper { background-color: #0a0a0a; }
+      html.theme-bhagwa #desktop-layout-wrapper { background-color: #ffffff; }
+    }
+  </style>
 </head>
 
   <body>
