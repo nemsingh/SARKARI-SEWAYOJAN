@@ -46,6 +46,11 @@ const CategoryMore = () => {
           const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
           return { ...l, actual_last_date_text: post?.last_date_text };
         });
+        filtered.sort((a: any, b: any) => {
+            const aTime = a.link_timestamp || 0;
+            const bTime = b.link_timestamp || 0;
+            return bTime - aTime;
+        });
         return filtered;
       }
     }
@@ -102,6 +107,11 @@ const CategoryMore = () => {
             const post = cachedPosts.find((p: any) => p.slug === slug || p.id === slug);
             return { ...l, actual_last_date_text: post?.last_date_text };
           });
+          filtered.sort((a: any, b: any) => {
+            const aTime = a.link_timestamp || 0;
+            const bTime = b.link_timestamp || 0;
+            return bTime - aTime;
+          });
           setLinks(filtered);
           setNotFound(false);
           foundCategory = true;
@@ -138,6 +148,11 @@ const CategoryMore = () => {
             const slug = match ? match[1] : null;
             const post = allPosts.find((p: any) => p.slug === slug || p.id === slug);
             return { ...l, actual_last_date_text: post?.last_date_text };
+          });
+          filtered.sort((a: any, b: any) => {
+            const aTime = a.link_timestamp || 0;
+            const bTime = b.link_timestamp || 0;
+            return bTime - aTime;
           });
           setLinks(filtered);
         } else {
