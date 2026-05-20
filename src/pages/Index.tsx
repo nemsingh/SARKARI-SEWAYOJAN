@@ -152,8 +152,7 @@ const Index = () => {
         url: `/post/${post.slug || post.id}`,
         title: post.name_of_post,
         is_new: false,
-        last_date_text: post.last_date_text,
-        link_timestamp: post.post_timestamp || 0
+        last_date_text: post.last_date_text
       });
     });
 
@@ -171,19 +170,12 @@ const Index = () => {
            url: link.url,
            title: link.title,
            is_new: link.is_new,
-           last_date_text: last_date_text,
-           link_timestamp: link.link_timestamp || 0
+           last_date_text: last_date_text
          });
       }
     });
 
-    const searchResults = Array.from(uniqueLinksMap.values());
-    searchResults.sort((a: any, b: any) => {
-      const aTime = a.link_timestamp || 0;
-      const bTime = b.link_timestamp || 0;
-      return bTime - aTime;
-    });
-    return searchResults;
+    return Array.from(uniqueLinksMap.values());
   };
 
   const combinedSearchLinks = getSearchLinks();
@@ -287,14 +279,8 @@ const Index = () => {
         <div className={`grid gap-5 py-8 px-3 mx-auto ${activeFilter !== 'Home' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
           {filteredCategoriesWithSearch.map(cat => {
             let catLinks = categoryLinks.filter(l => l.category_id === cat.id);
-            catLinks.sort((a, b) => {
-              const aTime = a.link_timestamp || 0;
-              const bTime = b.link_timestamp || 0;
-              return bTime - aTime;
-            });
             if (activeFilter !== 'Home' && filterSource === 'menu' && (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest'))) {
                catLinks = catLinks.map((l: any) => {
-                 if (l.last_date_text || l.actual_last_date_text) return l; // Do not overwrite if it exists
                  const match = l.url?.match(/\/post\/(.+)/);
                  const slug = match ? match[1] : null;
                  const post = posts.find((p: any) => p.slug === slug || p.id === slug);

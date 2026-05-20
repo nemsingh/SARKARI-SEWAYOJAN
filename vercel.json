@@ -6,7 +6,6 @@
     { "source": "/admin(.*)", "destination": "/admin.html" },
     { "source": "/search(.*)", "destination": "/search.html" },
     { "source": "/category/(.*)", "destination": "/category_shell.html" },
-    { "source": "/data/(.*)", "destination": "/404.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

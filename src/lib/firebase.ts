@@ -20,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore
-export const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+export const db = getFirestore(app);
 
 export enum OperationType {
   CREATE = 'create',
