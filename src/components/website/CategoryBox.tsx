@@ -13,12 +13,21 @@ interface CategoryBoxProps {
   maxVisible?: number;
 }
 
-const getValidUrl = (url: string | null) => {
+const getValidUrl = (url: string | null, linkId?: string) => {
   if (!url) return '#';
+  let finalUrl = '';
   if (url.startsWith('http') || url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:')) {
-    return url;
+    finalUrl = url;
+  } else {
+    finalUrl = `/post/${url}`;
   }
-  return `/post/${url}`;
+  
+  // Append clid parameter if linkId is provided and it's a post URL
+  if (linkId && finalUrl.includes('/post/')) {
+    const separator = finalUrl.includes('?') ? '&' : '?';
+    return `${finalUrl}${separator}clid=${linkId}`;
+  }
+  return finalUrl;
 };
 
 const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
@@ -53,7 +62,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
             <div className="flex items-center text-primary font-medium text-[19px] group">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
               {link.url ? (
-                <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
+                <a href={getValidUrl(link.url, link.id)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
                   {link.title}
                 </a>
               ) : (

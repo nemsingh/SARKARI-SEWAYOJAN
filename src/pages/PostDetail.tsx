@@ -265,6 +265,20 @@ const PostDetail = () => {
   const getField = (enField: string, hiField: string) => {
     let val = '';
     let isManualHi = false;
+    
+    // Override post_date if clid is present in URL
+    if (enField === 'post_date' && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const clid = searchParams.get('clid');
+      if (clid && categoryLinks.length > 0) {
+        const link = categoryLinks.find((l: any) => l.id === clid);
+        if (link && link.post_date) {
+           const html = link.post_date.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>');
+           return isManualHi ? `<span class="notranslate">${html}</span>` : html;
+        }
+      }
+    }
+
     if (language === 'hi') {
       if (post?.[hiField]) {
         val = post[hiField]; // Admin manual Hindi (highest priority)

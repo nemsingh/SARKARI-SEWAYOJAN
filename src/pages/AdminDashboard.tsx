@@ -970,7 +970,11 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
                    Object.assign(overlay.style, { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '24px', fontWeight: 'bold' });
                    document.body.appendChild(overlay);
                    try {
-                     const fullPost = await getPostBySlug(post.slug || post.id);
+                     let fullPost = { ...post };
+                     if (fullPost.is_chunked) {
+                       const { loadChunksForPost } = await import('@/lib/firebaseService');
+                       await loadChunksForPost(fullPost.id, fullPost);
+                     }
                      if (fullPost) {
                        const { savePreviewData } = await import('@/lib/previewDb');
                        try { await savePreviewData(JSON.parse(JSON.stringify(fullPost))); } catch(e) { console.error('Preview error', e); }
