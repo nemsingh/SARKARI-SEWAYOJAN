@@ -179,10 +179,6 @@ const AdminDashboard = () => {
             updates.post_date = match.post_date;
             updateRequired = true;
           }
-          if (match.last_date_text && match.last_date_text !== l.last_date_text) {
-            updates.last_date_text = match.last_date_text;
-            updateRequired = true;
-          }
           
           const matchTimestamp = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
           if (matchTimestamp && matchTimestamp !== l.link_timestamp && Math.abs(matchTimestamp - (l.link_timestamp || 0)) > 1000) {
@@ -546,14 +542,15 @@ const AdminDashboard = () => {
                           updates.post_date = match.post_date;
                           updateRequired = true;
                         }
-                        if (match.last_date_text && match.last_date_text !== l.last_date_text) {
-                          updates.last_date_text = match.last_date_text;
-                          updateRequired = true;
-                        }
                         
                         const matchTimestamp = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
                         if (matchTimestamp && matchTimestamp !== l.link_timestamp && Math.abs(matchTimestamp - (l.link_timestamp || 0)) > 1000) {
                           updates.link_timestamp = matchTimestamp;
+                          updateRequired = true;
+                        }
+                        
+                        if (l.last_date_text && l.last_date_text === match.last_date_text) {
+                          updates.last_date_text = null;
                           updateRequired = true;
                         }
                         
@@ -884,6 +881,7 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url || '');
+  const [postDate, setPostDate] = useState(link.post_date || '');
 
   const dateStr = link.post_date || (link.link_timestamp ? formatDate(new Date(link.link_timestamp).toISOString()) : 
                   (link.created_at?.toDate ? formatDate(link.created_at.toDate().toISOString()) : formatDate(link.created_at || '')));
@@ -894,9 +892,17 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
         <div className="flex gap-2 flex-wrap">
           <Input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1 min-w-[200px]" />
           <Input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} className="flex-1 min-w-[200px]" />
+          <Input placeholder="Post Date / Update" value={postDate} onChange={e => setPostDate(e.target.value)} className="flex-1 min-w-[200px]" />
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => { onUpdate(link.id, { title, url }); setEditing(false); }}>Save</Button>
+          <Button size="sm" onClick={() => { 
+            const updates: any = { title, url, post_date: postDate };
+            // Auto update timestamp if date provided so it resorts
+            const pDate = postDate ? parseDateTime(postDate, 'en') : undefined;
+            if (pDate) updates.link_timestamp = pDate.getTime();
+            onUpdate(link.id, updates); 
+            setEditing(false); 
+          }}>Save</Button>
           <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
         </div>
       </div>

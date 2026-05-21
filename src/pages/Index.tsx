@@ -265,6 +265,7 @@ const Index = () => {
               name={`${activeFilter} Update's`}
               links={combinedSearchLinks}
               maxVisible={999999}
+              showGlobalLastDateText={filterSource === 'more'}
             />
           ) : (
             <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 text-center" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
@@ -279,20 +280,19 @@ const Index = () => {
         <div className={`grid gap-5 py-8 px-3 mx-auto ${activeFilter !== 'Home' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
           {filteredCategoriesWithSearch.map(cat => {
             let catLinks = categoryLinks.filter(l => l.category_id === cat.id);
-            if (activeFilter !== 'Home' && filterSource === 'menu' && (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest'))) {
-               catLinks = catLinks.map((l: any) => {
-                 const match = l.url?.match(/\/post\/(.+)/);
-                 const slug = match ? match[1] : null;
-                 const post = posts.find((p: any) => p.slug === slug || p.id === slug);
-                 return { ...l, actual_last_date_text: post?.last_date_text };
-               });
-            }
+            catLinks = catLinks.map((l: any) => {
+               const match = l.url?.match(/\/post\/(.+)/);
+               const slug = match ? match[1] : null;
+               const post = posts.find((p: any) => p.slug === slug || p.id === slug);
+               return { ...l, actual_last_date_text: post?.last_date_text };
+            });
             return (
               <CategoryBox
                 key={cat.id}
                 name={cat.name}
                 links={catLinks}
                 maxVisible={activeFilter === 'Home' ? 25 : 999999}
+                showGlobalLastDateText={activeFilter !== 'Home'}
               />
             );
           })}

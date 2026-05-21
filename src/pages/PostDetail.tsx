@@ -265,6 +265,21 @@ const PostDetail = () => {
   const getField = (enField: string, hiField: string) => {
     let val = '';
     let isManualHi = false;
+    
+    // LocalStorage override for post_date specifically to support multiple category links dynamic dates
+    if (enField === 'post_date') {
+        if (typeof window !== 'undefined') {
+            try {
+                const override = localStorage.getItem('post_date_override_' + window.location.pathname);
+                if (override) {
+                    val = override;
+                    const html = val ? val.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
+                    return html;
+                }
+            } catch(e) { /* ignore */ }
+        }
+    }
+
     if (language === 'hi') {
       if (post?.[hiField]) {
         val = post[hiField]; // Admin manual Hindi (highest priority)
