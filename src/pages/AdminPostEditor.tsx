@@ -600,7 +600,8 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const customDate = parseDateTime(postDate, 'en');
+            const linkDate = link.postDate || postDate;
+            const customDate = parseDateTime(linkDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
             await addCategoryLink({
@@ -609,8 +610,8 @@ const AdminPostEditor = () => {
               url: `/post/${finalSlug || result.id}`,
               link_timestamp: customTimestamp,
               is_new: true,
-              post_date: postDate,
-              last_date_text: lastDateText || null,
+              post_date: linkDate,
+              last_date_text: null,
             });
             linksAdded = true;
           }
@@ -634,7 +635,8 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const customDate = parseDateTime(postDate, 'en');
+            const linkDate = link.postDate || postDate;
+            const customDate = parseDateTime(linkDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
             if (link.id) {
@@ -642,9 +644,8 @@ const AdminPostEditor = () => {
                 title: link.title.trim(),
                 category_id: link.categoryId,
                 url: `/post/${finalSlug}`,
-                post_date: postDate,
-                link_timestamp: customTimestamp,
-                last_date_text: lastDateText || null
+                post_date: linkDate,
+                link_timestamp: customTimestamp
               });
             } else {
               await addCategoryLink({
@@ -653,8 +654,8 @@ const AdminPostEditor = () => {
                 url: `/post/${finalSlug}`,
                 link_timestamp: customTimestamp,
                 is_new: true,
-                post_date: postDate,
-                last_date_text: lastDateText || null,
+                post_date: linkDate,
+                last_date_text: null,
               });
             }
           }
@@ -845,6 +846,36 @@ const AdminPostEditor = () => {
                     ))}
                   </select>
                 </div>
+                
+                {categoryLinksData.length > 1 && (
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-base font-bold text-primary block mb-1 text-red-600">Post Date / Update (For this link)</label>
+                    <div className="flex gap-2 relative">
+                      <Input value={link.postDate} onChange={e => {
+                        const newLinks = [...categoryLinksData];
+                        newLinks[index].postDate = e.target.value;
+                        setCategoryLinksData(newLinks);
+                      }} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1 border-red-500 text-red-600 font-bold" />
+                      <div className="relative w-12 h-10 flex-shrink-0">
+                        <DateTimePicker
+                          date={parseDateTime(link.postDate, 'en')}
+                          setDate={(d) => {
+                            if (d) {
+                              const newLinks = [...categoryLinksData];
+                              newLinks[index].postDate = formatDateTime(d.toISOString(), 'en');
+                              setCategoryLinksData(newLinks);
+                            }
+                          }}
+                          customTrigger={
+                            <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center border-red-500 text-red-600 hover:bg-red-50">
+                              📅
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -865,7 +896,7 @@ const AdminPostEditor = () => {
             <div>
               <label className="text-base font-bold text-primary block mb-1">Post Date / Update</label>
               <div className="flex gap-2 relative">
-                <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1" />
+                <Input value={postDate} onChange={e => setPostDate(e.target.value)} placeholder="e.g. 21 February 2026 | 12:12 AM" className="flex-1" disabled={categoryLinksData.length > 1} />
                 <div className="relative w-12 h-10 flex-shrink-0">
                   <DateTimePicker
                     date={parseDateTime(postDate, 'en')}
@@ -873,13 +904,16 @@ const AdminPostEditor = () => {
                       if (d) setPostDate(formatDateTime(d.toISOString(), 'en'));
                     }}
                     customTrigger={
-                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center">
+                      <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center" disabled={categoryLinksData.length > 1}>
                         📅
                       </Button>
                     }
                   />
                 </div>
               </div>
+              {categoryLinksData.length > 1 && (
+                <p className="text-xs text-red-500 mt-1 font-bold">Multiple category links enabled. Global date is disabled, set dates in category links list.</p>
+              )}
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">Last Date / Extra Text (Red text below link in Latest Jobs)</label>

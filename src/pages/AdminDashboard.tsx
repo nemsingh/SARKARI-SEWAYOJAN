@@ -49,41 +49,6 @@ interface ConfirmState {
   onConfirm: () => void;
 }
 
-
-const parseDateTime = (dateString: string, lang: 'en' | 'hi' = 'en'): Date | undefined => {
-  if (!dateString) return undefined;
-  let d = new Date(dateString);
-  if (!isNaN(d.getTime())) return d;
-  const noPipe = dateString.replace('|', '');
-  d = new Date(noPipe);
-  if (!isNaN(d.getTime())) return d;
-  try {
-    const parts = dateString.split('|').map(p => p.trim());
-    if (parts.length !== 2) return undefined;
-    const dateTokens = parts[0].split(' ');
-    if (dateTokens.length < 3) return undefined;
-    const day = parseInt(dateTokens[0], 10);
-    const monthStr = dateTokens[1];
-    const year = parseInt(dateTokens[2], 10);
-    const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const monthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
-    const monthIndex = lang === 'hi' ? monthsHi.indexOf(monthStr) : monthsEn.indexOf(monthStr);
-    if (monthIndex === -1) return undefined;
-    const timeTokens = parts[1].split(' ');
-    if (timeTokens.length !== 2) return undefined;
-    const timeParts = timeTokens[0].split(':');
-    if (timeParts.length !== 2) return undefined;
-    let hours = parseInt(timeParts[0], 10);
-    const minutes = parseInt(timeParts[1], 10);
-    const ampm = timeTokens[1].toUpperCase();
-    if (ampm === 'PM' && hours < 12) hours += 12;
-    if (ampm === 'AM' && hours === 12) hours = 0;
-    return new Date(year, monthIndex, day, hours, minutes);
-  } catch (e) {
-    return undefined;
-  }
-};
-
 const AdminDashboard = () => {
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -160,49 +125,12 @@ const AdminDashboard = () => {
 
     if (brokenLinks.length > 0) {
       await Promise.all(brokenLinks.map(link => deleteCategoryLink(link.id)));
+      // Refetch links after cleanup
+      const updatedLinks = await getCategoryLinks();
+      setCategoryLinks(updatedLinks);
+    } else {
+      setCategoryLinks(cl);
     }
-    
-    // Refresh links after cleanup or for sync
-    let currentLinks = await getCategoryLinks();
-
-    // Auto-sync mismatching Post Dates & last dates to category links
-    let anySynced = false;
-    for (const l of currentLinks) {
-      if (l.url && l.url.startsWith('/post/')) {
-        const slug = l.url.replace('/post/', '');
-        const match = p.find(post => post.slug === slug || (post.slug && post.slug.startsWith(slug)) || post.id === slug);
-        if (match) {
-          let updateRequired = false;
-          const updates: any = {};
-          
-          if (match.post_date && match.post_date !== l.post_date) {
-            updates.post_date = match.post_date;
-            updateRequired = true;
-          }
-          if (match.last_date_text && match.last_date_text !== l.last_date_text) {
-            updates.last_date_text = match.last_date_text;
-            updateRequired = true;
-          }
-          
-          const matchTimestamp = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
-          if (matchTimestamp && matchTimestamp !== l.link_timestamp && Math.abs(matchTimestamp - (l.link_timestamp || 0)) > 1000) {
-            updates.link_timestamp = matchTimestamp;
-            updateRequired = true;
-          }
-          
-          if (updateRequired) {
-            await updateCategoryLink(l.id, updates);
-            anySynced = true;
-          }
-        }
-      }
-    }
-
-    if (anySynced) {
-       currentLinks = await getCategoryLinks();
-    }
-    
-    setCategoryLinks(currentLinks);
 
     setCategories(c);
     setTabletItems(t);
@@ -528,50 +456,6 @@ const AdminDashboard = () => {
                 }
                 await fetchAll();
               }}
-              onSyncAllLinks={async () => {
-                setLoading(true);
-                try {
-                  const currentLinks = await getCategoryLinks();
-                  const p = await getPosts();
-                  let syncedCount = 0;
-                  for (const l of currentLinks) {
-                    if (l.url && l.url.startsWith('/post/')) {
-                      const slug = l.url.replace('/post/', '');
-                      const match = p.find(post => post.slug === slug || (post.slug && post.slug.startsWith(slug)) || post.id === slug);
-                      if (match) {
-                        let updateRequired = false;
-                        const updates: any = {};
-                        
-                        if (match.post_date && match.post_date !== l.post_date) {
-                          updates.post_date = match.post_date;
-                          updateRequired = true;
-                        }
-                        if (match.last_date_text && match.last_date_text !== l.last_date_text) {
-                          updates.last_date_text = match.last_date_text;
-                          updateRequired = true;
-                        }
-                        
-                        const matchTimestamp = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
-                        if (matchTimestamp && matchTimestamp !== l.link_timestamp && Math.abs(matchTimestamp - (l.link_timestamp || 0)) > 1000) {
-                          updates.link_timestamp = matchTimestamp;
-                          updateRequired = true;
-                        }
-                        
-                        if (updateRequired) {
-                          await updateCategoryLink(l.id, updates);
-                          syncedCount++;
-                        }
-                      }
-                    }
-                  }
-                  await fetchAll();
-                  toast({ title: 'Sync Complete!', description: `Updated ${syncedCount} links successfully.` });
-                } catch (e: any) {
-                  toast({ title: 'Error', description: e.message, variant: 'destructive' });
-                } finally {
-                  setLoading(false);
-                }
-              }}
               formatDate={formatDate}
             />
           </TabsContent>
@@ -738,7 +622,7 @@ const TabletItemRow = ({ item, onDelete, onUpdate, formatDate }: { item: any; on
 // ============ CATEGORY LINKS TAB (with filter dropdown) ============
 const CategoryLinksTab = ({
   categories, categoryLinks, posts, onAddCategory, onDeleteCategory, onUpdateCategory, onMoveCategory,
-  onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, onSyncAllLinks, formatDate,
+  onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
   categories: any[]; categoryLinks: any[]; posts: any[];
   onAddCategory: (name: string) => void;
@@ -751,7 +635,6 @@ const CategoryLinksTab = ({
   onUpdateLinkLastDate: (id: string, text: string) => void;
   onUpdateLink: (id: string, data: Record<string, any>) => void;
   onMoveLink: (linkId: string, categoryId: string, moveType: 'up' | 'top') => void;
-  onSyncAllLinks: () => void;
   formatDate: (d: string) => string;
 }) => {
   const [filterCat, setFilterCat] = useState('all');
@@ -760,14 +643,6 @@ const CategoryLinksTab = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm mb-4">
-        <div>
-           <h3 className="text-lg font-bold text-blue-800">Auto-Sync Existing Post Dates</h3>
-           <p className="text-sm text-blue-600">Kya purani posts category links me upar adjust nahi hui and date purani dikh rahi hai? Is button se automatically saari mismatch posts apni current post date ke hisab se order and update ho jayengi.</p>
-        </div>
-        <Button onClick={onSyncAllLinks} className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">🔄 Sync Dates Now</Button>
-      </div>
-
       <div className="flex gap-2 items-center flex-wrap">
         <AddCategoryForm onAdd={onAddCategory} />
       </div>
