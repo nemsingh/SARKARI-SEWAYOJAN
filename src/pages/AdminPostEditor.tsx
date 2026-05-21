@@ -315,16 +315,12 @@ const AdminPostEditor = () => {
           const existingLinks = await getCategoryLinks();
           const existingLinksForPost = existingLinks.filter((l: any) => l.url === `/post/${data.slug || id}`);
           if (existingLinksForPost.length > 0) {
-            setCategoryLinksData(existingLinksForPost.map((l: any) => {
-              // If the link date equals the post date, set it to empty so it syncs automatically
-              const pDate = l.post_date === data.post_date ? '' : (l.post_date || '');
-              return {
-                id: l.id || '',
-                title: l.title || '',
-                categoryId: l.category_id || '',
-                postDate: pDate
-              };
-            }));
+            setCategoryLinksData(existingLinksForPost.map((l: any) => ({
+              id: l.id || '',
+              title: l.title || '',
+              categoryId: l.category_id || '',
+              postDate: l.post_date || data.post_date || ''
+            })));
           }
         }
         setLoading(false);
@@ -604,8 +600,7 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const linkDate = link.postDate || postDate;
-            const customDate = parseDateTime(linkDate, 'en');
+            const customDate = parseDateTime(postDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
             await addCategoryLink({
@@ -614,7 +609,8 @@ const AdminPostEditor = () => {
               url: `/post/${finalSlug || result.id}`,
               link_timestamp: customTimestamp,
               is_new: true,
-              post_date: linkDate
+              post_date: postDate,
+              last_date_text: lastDateText || null,
             });
             linksAdded = true;
           }
@@ -638,8 +634,7 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const linkDate = link.postDate || postDate;
-            const customDate = parseDateTime(linkDate, 'en');
+            const customDate = parseDateTime(postDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
             if (link.id) {
@@ -647,8 +642,9 @@ const AdminPostEditor = () => {
                 title: link.title.trim(),
                 category_id: link.categoryId,
                 url: `/post/${finalSlug}`,
-                post_date: linkDate,
-                link_timestamp: customTimestamp
+                post_date: postDate,
+                link_timestamp: customTimestamp,
+                last_date_text: lastDateText || null
               });
             } else {
               await addCategoryLink({
@@ -657,7 +653,8 @@ const AdminPostEditor = () => {
                 url: `/post/${finalSlug}`,
                 link_timestamp: customTimestamp,
                 is_new: true,
-                post_date: linkDate
+                post_date: postDate,
+                last_date_text: lastDateText || null,
               });
             }
           }
@@ -847,34 +844,6 @@ const AdminPostEditor = () => {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                </div>
-
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-base font-bold text-primary block mb-1 text-red-600">Post Date / Update (For this link)</label>
-                  <div className="flex gap-2 relative">
-                    <Input value={link.postDate} onChange={e => {
-                      const newLinks = [...categoryLinksData];
-                      newLinks[index].postDate = e.target.value;
-                      setCategoryLinksData(newLinks);
-                    }} placeholder={`e.g. ${postDate || '21 February 2026 | 12:12 AM'} (Leave empty to use main post date)`} className="flex-1 border-red-500 text-red-600 font-bold" />
-                    <div className="relative w-12 h-10 flex-shrink-0">
-                      <DateTimePicker
-                        date={parseDateTime(link.postDate || postDate, 'en')}
-                        setDate={(d) => {
-                          if (d) {
-                            const newLinks = [...categoryLinksData];
-                            newLinks[index].postDate = formatDateTime(d.toISOString(), 'en');
-                            setCategoryLinksData(newLinks);
-                          }
-                        }}
-                        customTrigger={
-                          <Button type="button" variant="outline" className="w-full h-full p-0 flex items-center justify-center border-red-500 text-red-600 hover:bg-red-50">
-                            📅
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             ))}

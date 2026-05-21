@@ -5,14 +5,12 @@ interface CategoryLink {
   is_new?: boolean;
   last_date_text?: string | null;
   actual_last_date_text?: string | null;
-  post_date?: string | null;
 }
 
 interface CategoryBoxProps {
   name: string;
   links: CategoryLink[];
   maxVisible?: number;
-  showGlobalLastDateText?: boolean;
 }
 
 const getValidUrl = (url: string | null) => {
@@ -23,7 +21,7 @@ const getValidUrl = (url: string | null) => {
   return `/post/${url}`;
 };
 
-const CategoryBox = ({ name, links, maxVisible = 25, showGlobalLastDateText = false }: CategoryBoxProps) => {
+const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
   let actualMax = maxVisible;
   if (maxVisible >= 25 && maxVisible < 100 && links.length > 25) {
     let linesCount = 0;
@@ -31,9 +29,7 @@ const CategoryBox = ({ name, links, maxVisible = 25, showGlobalLastDateText = fa
       if (!links[i]) break;
       linesCount += 1;
       if (links[i].title && links[i].title.length > 45) linesCount += 1;
-      
-      const textToShow = links[i].last_date_text || (showGlobalLastDateText ? links[i].actual_last_date_text : null);
-      if (textToShow) linesCount += 1;
+      if (links[i].last_date_text || links[i].actual_last_date_text) linesCount += 1;
     }
     
     // Dynamically add 1-3 extra links if the box is visually shorter (fewer lines)
@@ -57,19 +53,7 @@ const CategoryBox = ({ name, links, maxVisible = 25, showGlobalLastDateText = fa
             <div className="flex items-center text-primary font-medium text-[19px] group">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
               {link.url ? (
-                <a 
-                  href={getValidUrl(link.url)} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-primary no-underline hover:underline hover:text-accent transition-colors"
-                  onClick={(e) => {
-                     if (link.post_date) {
-                        try {
-                           localStorage.setItem('post_date_override_' + getValidUrl(link.url), link.post_date);
-                        } catch(err) { /* ignore */ }
-                     }
-                  }}
-                >
+                <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
                   {link.title}
                 </a>
               ) : (
@@ -79,17 +63,11 @@ const CategoryBox = ({ name, links, maxVisible = 25, showGlobalLastDateText = fa
                 <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
               )}
             </div>
-            {(() => {
-                const textToShow = link.last_date_text || (showGlobalLastDateText ? link.actual_last_date_text : null);
-
-                if (!textToShow) return null;
-
-                return (
-                  <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
-                    {textToShow}
-                  </div>
-                );
-            })()}
+            {(link.last_date_text || link.actual_last_date_text) && (
+              <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
+                {link.last_date_text || link.actual_last_date_text}
+              </div>
+            )}
           </li>
         ))}
       </ul>

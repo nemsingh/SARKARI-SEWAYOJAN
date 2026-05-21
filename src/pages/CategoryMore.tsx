@@ -194,7 +194,6 @@ const CategoryMore = () => {
                 key={cat.id}
                 name={cat.name}
                 links={categoryLinks.filter(l => l.category_id === cat.id)}
-                showGlobalLastDateText={true}
               />
             ))}
           </div>
@@ -208,7 +207,6 @@ const CategoryMore = () => {
             name={`${categoryName} - All Links`}
             links={links}
             maxVisible={999999}
-            showGlobalLastDateText={true}
           />
         </div>
       )}

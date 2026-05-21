@@ -68,7 +68,7 @@ async function run() {
       const slug = l.url.replace('/post/', '');
       
       const match = posts.find(p => p.slug === slug || (p.slug && p.slug.startsWith(slug)) || p.id === slug);
-        if (match) {
+      if (match) {
         let updateRequired = false;
         const updates: any = {};
         
@@ -77,18 +77,16 @@ async function run() {
             updateRequired = true;
         }
 
-        const postTimestampForLink = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
-        if (postTimestampForLink && postTimestampForLink !== l.link_timestamp && Math.abs(postTimestampForLink - (l.link_timestamp || 0)) > 1000) {
-            updates.link_timestamp = postTimestampForLink;
+        if (match.last_date_text && match.last_date_text !== l.last_date_text) {
+            updates.last_date_text = match.last_date_text;
             updateRequired = true;
         }
 
-        // --- THE FIX ---
-        // If the category link has the exact SAME last_date_text as the post, it was autobound! 
-        // We must remove it from the link, because the user only wants it on main interface if MANUALLY written differently!
-        if (l.last_date_text && l.last_date_text === match.last_date_text) {
-           updates.last_date_text = null;
-           updateRequired = true;
+        const postTimestampForLink = match.post_date ? (parseDateTime(match.post_date, 'en')?.getTime() || match.post_timestamp) : match.post_timestamp;
+        
+        if (postTimestampForLink && postTimestampForLink !== l.link_timestamp && Math.abs(postTimestampForLink - (l.link_timestamp || 0)) > 1000) {
+            updates.link_timestamp = postTimestampForLink;
+            updateRequired = true;
         }
         
         if (updateRequired) {
