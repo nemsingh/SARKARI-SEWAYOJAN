@@ -277,7 +277,7 @@ const Index = () => {
         </div>
       ) : (
         <div className={`grid gap-5 py-8 px-3 mx-auto ${activeFilter !== 'Home' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-          {filteredCategoriesWithSearch.map(cat => {
+          {filteredCategoriesWithSearch.map((cat, index) => {
             let catLinks = categoryLinks.filter(l => l.category_id === cat.id);
             if (activeFilter !== 'Home' && filterSource === 'menu' && (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest'))) {
                catLinks = catLinks.map((l: any) => {
@@ -292,7 +292,7 @@ const Index = () => {
                 key={cat.id}
                 name={cat.name}
                 links={catLinks}
-                maxVisible={activeFilter === 'Home' ? 25 : 999999}
+                maxVisible={activeFilter === 'Home' ? (index < 6 ? 25 : 15) : 999999}
               />
             );
           })}

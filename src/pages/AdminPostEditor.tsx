@@ -600,7 +600,7 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const linkDate = link.postDate || postDate;
+            const linkDate = categoryLinksData.length > 1 ? (link.postDate || postDate) : postDate;
             const customDate = parseDateTime(linkDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
@@ -635,7 +635,7 @@ const AdminPostEditor = () => {
         
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
-            const linkDate = link.postDate || postDate;
+            const linkDate = categoryLinksData.length > 1 ? (link.postDate || postDate) : postDate;
             const customDate = parseDateTime(linkDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
@@ -886,7 +886,14 @@ const AdminPostEditor = () => {
           <div className="space-y-4">
             <div>
               <label className="text-base font-bold text-primary block mb-1">Name of Post</label>
-              <Input value={nameOfPost} onChange={e => setNameOfPost(e.target.value)} placeholder="e.g. UPSC CAPF 2026 Recruitment" />
+              <Input 
+                value={nameOfPost} 
+                onChange={e => {
+                  setNameOfPost(e.target.value);
+                  setSlug(generateShortSlug(e.target.value));
+                }} 
+                placeholder="e.g. UPSC CAPF 2026 Recruitment" 
+              />
             </div>
             <div>
               <label className="text-base font-bold text-primary block mb-1">URL Slug</label>
