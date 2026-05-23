@@ -610,7 +610,6 @@ const AdminPostEditor = () => {
               url: `/post/${finalSlug || result.id}`,
               link_timestamp: customTimestamp,
               is_new: true,
-              post_date: linkDate,
               last_date_text: null,
             });
             linksAdded = true;
@@ -644,7 +643,6 @@ const AdminPostEditor = () => {
                 title: link.title.trim(),
                 category_id: link.categoryId,
                 url: `/post/${finalSlug}`,
-                post_date: linkDate,
                 link_timestamp: customTimestamp
               });
             } else {
@@ -654,7 +652,6 @@ const AdminPostEditor = () => {
                 url: `/post/${finalSlug}`,
                 link_timestamp: customTimestamp,
                 is_new: true,
-                post_date: linkDate,
                 last_date_text: null,
               });
             }

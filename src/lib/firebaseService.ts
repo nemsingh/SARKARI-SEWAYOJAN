@@ -337,36 +337,12 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
     postData.is_chunked = false;
   }
 
-  // Clear old chunks in any case just to be safe
-  try {
-    const chunksRef = collection(db, `posts/${id}/chunks`);
-    const chunksSnap = await getDocs(chunksRef);
-    
-    let currentBatch = writeBatch(db);
-    let writesInBatch = 0;
-    
-    for (const docSnap of chunksSnap.docs) {
-      if (writesInBatch >= 400) {
-        await currentBatch.commit();
-        currentBatch = writeBatch(db);
-        writesInBatch = 0;
-      }
-      currentBatch.delete(docSnap.ref);
-      writesInBatch++;
-    }
-    
-    if (writesInBatch > 0) {
-      await currentBatch.commit();
-    }
-  } catch(e) {
-    console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
-  }
-
   await updateDoc(doc(db, 'posts', id), {
     ...postData,
     updated_at: serverTimestamp(),
   });
   
+  let newChunkCount = 0;
   if (isChunked && html !== undefined && html_hi !== undefined) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
@@ -394,6 +370,36 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
     if (writesInBatch > 0) {
       await currentBatch.commit();
     }
+    
+    newChunkCount = index;
+  }
+
+  // Soft-delete older chunks extending beyond the newly written set
+  try {
+    const chunksRef = collection(db, `posts/${id}/chunks`);
+    const chunksSnap = await getDocs(chunksRef);
+    
+    let deleteBatch = writeBatch(db);
+    let writesInBatch = 0;
+    
+    for (const docSnap of chunksSnap.docs) {
+      const idx = parseInt(docSnap.id, 10);
+      if (isNaN(idx) || idx >= newChunkCount) {
+        if (writesInBatch >= 400) {
+          await deleteBatch.commit();
+          deleteBatch = writeBatch(db);
+          writesInBatch = 0;
+        }
+        deleteBatch.delete(docSnap.ref);
+        writesInBatch++;
+      }
+    }
+    
+    if (writesInBatch > 0) {
+      await deleteBatch.commit();
+    }
+  } catch(e) {
+    console.warn("Could not delete old post chunks:", e);
   }
 
   clearCache();
