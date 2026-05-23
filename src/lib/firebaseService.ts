@@ -167,14 +167,35 @@ export const deleteTabletItem = async (id: string) => {
 export const loadChunksForPost = async (id: string, postData: any) => {
   if (postData.is_chunked) {
     try {
-      const chunksSnap = await getDocs(query(collection(db, `posts/${id}/chunks`), orderBy('index')));
       let full_html = '';
       let full_html_hi = '';
-      chunksSnap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.html) full_html += data.html;
-        if (data.html_hi) full_html_hi += data.html_hi;
-      });
+      const chunkCount = postData.chunk_count || 0;
+      
+      if (chunkCount === 0) {
+        // Fallback to legacy chunks if they exist (unlikely to have permissions though)
+        try {
+          const chunksSnap = await getDocs(query(collection(db, `posts/${id}/chunks`), orderBy('index')));
+          chunksSnap.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.html) full_html += data.html;
+            if (data.html_hi) full_html_hi += data.html_hi;
+          });
+        } catch(e) { /* ignore fallback errors */ }
+      } else {
+        const promises = [];
+        for (let i = 0; i < chunkCount; i++) {
+          promises.push(getDoc(doc(db, 'posts', `${id}_chunk_${i}`)));
+        }
+        const snaps = await Promise.all(promises);
+        snaps.forEach(snap => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.html) full_html += data.html;
+            if (data.html_hi) full_html_hi += data.html_hi;
+          }
+        });
+      }
+      
       postData.tables_html = full_html ? decompressHtml(full_html) : '';
       postData.tables_html_hi = full_html_hi ? decompressHtml(full_html_hi) : '';
     } catch(e) {
@@ -267,15 +288,18 @@ export const createPost = async (data: Record<string, any>) => {
   const html_hi = (postData.tables_html_hi ? compressHtml(postData.tables_html_hi) : '') as string;
   
   const isChunked = (html.length + html_hi.length) > CHUNK_SIZE;
+  const chunkCount = isChunked ? Math.ceil(Math.max(html.length, html_hi.length) / CHUNK_SIZE) : 0;
   
   if (isChunked) {
     postData.tables_html = '';
     postData.tables_html_hi = '';
     postData.is_chunked = true;
+    postData.chunk_count = chunkCount;
   } else {
     postData.tables_html = html;
     postData.tables_html_hi = html_hi;
     postData.is_chunked = false;
+    postData.chunk_count = 0;
   }
 
   const docRef = await addDoc(collection(db, 'posts'), {
@@ -298,7 +322,7 @@ export const createPost = async (data: Record<string, any>) => {
         currentBatch = writeBatch(db);
         writesInBatch = 0;
       }
-      const chunkRef = doc(db, `posts/${docRef.id}/chunks`, index.toString());
+      const chunkRef = doc(db, 'posts', `${docRef.id}_chunk_${index}`);
       currentBatch.set(chunkRef, {
         index,
         html: html.substring(i, i + CHUNK_SIZE),
@@ -326,23 +350,28 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   const lenHtml = html ? html.length : 0;
   const lenHtmlHi = html_hi ? html_hi.length : 0;
   const isChunked = (lenHtml + lenHtmlHi) > CHUNK_SIZE;
+  const newChunkCount = isChunked ? Math.ceil(Math.max(lenHtml, lenHtmlHi) / CHUNK_SIZE) : 0;
   
   if (isChunked) {
     postData.tables_html = '';
     postData.tables_html_hi = '';
     postData.is_chunked = true;
+    postData.chunk_count = newChunkCount;
   } else {
     if (html !== undefined) postData.tables_html = html;
     if (html_hi !== undefined) postData.tables_html_hi = html_hi;
     postData.is_chunked = false;
+    postData.chunk_count = 0;
   }
+
+  const oldDocSnap = await getDoc(doc(db, 'posts', id));
+  const oldChunkCount = oldDocSnap.exists() ? (oldDocSnap.data().chunk_count || 0) : 0;
 
   await updateDoc(doc(db, 'posts', id), {
     ...postData,
     updated_at: serverTimestamp(),
   });
   
-  let newChunkCount = 0;
   if (isChunked && html !== undefined && html_hi !== undefined) {
     const maxLen = Math.max(html.length, html_hi.length);
     let index = 0;
@@ -357,7 +386,7 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
         currentBatch = writeBatch(db);
         writesInBatch = 0;
       }
-      const chunkRef = doc(db, `posts/${id}/chunks`, index.toString());
+      const chunkRef = doc(db, 'posts', `${id}_chunk_${index}`);
       currentBatch.set(chunkRef, {
         index,
         html: html.substring(i, i + CHUNK_SIZE),
@@ -370,36 +399,24 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
     if (writesInBatch > 0) {
       await currentBatch.commit();
     }
-    
-    newChunkCount = index;
   }
 
-  // Soft-delete older chunks extending beyond the newly written set
-  try {
-    const chunksRef = collection(db, `posts/${id}/chunks`);
-    const chunksSnap = await getDocs(chunksRef);
-    
+  // delete older chunks extending beyond the newly written set
+  if (oldChunkCount > newChunkCount) {
     let deleteBatch = writeBatch(db);
-    let writesInBatch = 0;
-    
-    for (const docSnap of chunksSnap.docs) {
-      const idx = parseInt(docSnap.id, 10);
-      if (isNaN(idx) || idx >= newChunkCount) {
-        if (writesInBatch >= 400) {
-          await deleteBatch.commit();
-          deleteBatch = writeBatch(db);
-          writesInBatch = 0;
-        }
-        deleteBatch.delete(docSnap.ref);
-        writesInBatch++;
-      }
+    let deletes = 0;
+    for (let i = newChunkCount; i < oldChunkCount; i++) {
+       deleteBatch.delete(doc(db, 'posts', `${id}_chunk_${i}`));
+       deletes++;
+       if (deletes >= 400) {
+         await deleteBatch.commit();
+         deleteBatch = writeBatch(db);
+         deletes = 0;
+       }
     }
-    
-    if (writesInBatch > 0) {
-      await deleteBatch.commit();
+    if (deletes > 0) {
+        await deleteBatch.commit();
     }
-  } catch(e) {
-    console.warn("Could not delete old post chunks:", e);
   }
 
   clearCache();
@@ -407,29 +424,46 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
 
 export const deletePost = async (id: string) => {
   try {
-    try {
-      const chunksRef = collection(db, `posts/${id}/chunks`);
-      const chunksSnap = await getDocs(chunksRef);
-      
+    const docSnap = await getDoc(doc(db, 'posts', id));
+    const chunkCount = docSnap.exists() ? (docSnap.data().chunk_count || 0) : 0;
+    
+    if (chunkCount > 0) {
       let currentBatch = writeBatch(db);
       let writesInBatch = 0;
-      
-      for (const docSnap of chunksSnap.docs) {
+      for (let i = 0; i < chunkCount; i++) {
+        currentBatch.delete(doc(db, 'posts', `${id}_chunk_${i}`));
+        writesInBatch++;
         if (writesInBatch >= 400) {
           await currentBatch.commit();
           currentBatch = writeBatch(db);
           writesInBatch = 0;
         }
-        currentBatch.delete(docSnap.ref);
-        writesInBatch++;
       }
-      
       if (writesInBatch > 0) {
         await currentBatch.commit();
       }
-    } catch(e) {
-      console.warn("Could not delete post chunks (likely insufficient permissions or they do not exist):", e);
     }
+    
+    // Fallback: silently try to delete subcollection chunks if they exist (unlikely due to permissions)
+    try {
+      const chunksRef = collection(db, `posts/${id}/chunks`);
+      const chunksSnap = await getDocs(chunksRef);
+      if (!chunksSnap.empty) {
+        let currentBatch = writeBatch(db);
+        let writesInBatch = 0;
+        for (const d of chunksSnap.docs) {
+          currentBatch.delete(d.ref);
+          writesInBatch++;
+          if (writesInBatch >= 400) {
+            await currentBatch.commit();
+            currentBatch = writeBatch(db);
+            writesInBatch = 0;
+          }
+        }
+        if (writesInBatch > 0) await currentBatch.commit();
+      }
+    } catch (e) { /* ignore fallback errors */ }
+
     await deleteDoc(doc(db, 'posts', id));
     clearCache();
   } catch (error) {
