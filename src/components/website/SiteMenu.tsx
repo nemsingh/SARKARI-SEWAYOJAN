@@ -13,7 +13,7 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
   const menuItems = ['Home', 'Latest Jobs', 'Admit Card', 'Result', 'Answer Key', 'Syllabus', 'Contact Us'];
 
   return (
-    <div className="site-menu hidden md:flex justify-evenly items-center bg-background sticky top-[173px] z-40 w-full px-1" style={{ boxShadow: 'var(--box-shadow-light)' }}>
+    <div className="site-menu hidden md:flex justify-evenly items-center bg-background sticky top-[173px] z-40 w-full px-1" style={{ boxShadow: 'var(--box-shadow-light)', transform: 'translateZ(0)', willChange: 'transform' }}>
       {menuItems.map(item => (
         <a
           key={item}
