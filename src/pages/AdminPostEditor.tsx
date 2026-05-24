@@ -124,6 +124,14 @@ const AdminPostEditor = () => {
   const [loading, setLoading] = useState(!isNew);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [newMediaUrl, setNewMediaUrl] = useState('');
+  
+  const [pdfUrls, setPdfUrls] = useState<string[]>([]);
+  const [newPdfUrl, setNewPdfUrl] = useState('');
+  const [showPdfScrollHint, setShowPdfScrollHint] = useState(true);
+  
+  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
+  const [newYoutubeUrl, setNewYoutubeUrl] = useState('');
+
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showRawHtml, setShowRawHtml] = useState(false);
@@ -304,6 +312,9 @@ const AdminPostEditor = () => {
           setShortInfoHi(data.short_info_hi || '');
           setTablesHtmlHi(data.tables_html_hi || '');
           setMediaUrls(data.media_urls || []);
+          setPdfUrls(data.pdf_urls || []);
+          setShowPdfScrollHint(data.show_pdf_scroll_hint !== undefined ? data.show_pdf_scroll_hint : true);
+          setYoutubeUrls(data.youtube_urls || []);
           if (data.tables_html) {
             setTables(Array.from(new DOMParser().parseFromString(data.tables_html, 'text/html').querySelectorAll('table')).map(t => t.outerHTML));
           }
@@ -520,6 +531,28 @@ const AdminPostEditor = () => {
     setMediaUrls(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleAddPdf = () => {
+    if (newPdfUrl.trim()) {
+      setPdfUrls(prev => [...prev, newPdfUrl.trim()]);
+      setNewPdfUrl('');
+    }
+  };
+
+  const handleRemovePdf = (index: number) => {
+    setPdfUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddYoutube = () => {
+    if (newYoutubeUrl.trim()) {
+      setYoutubeUrls(prev => [...prev, newYoutubeUrl.trim()]);
+      setNewYoutubeUrl('');
+    }
+  };
+
+  const handleRemoveYoutube = (index: number) => {
+    setYoutubeUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   const clearForm = () => {
     setNameOfPost('');
     setPostDate('');
@@ -536,6 +569,11 @@ const AdminPostEditor = () => {
     setTablesHi([]);
     setMediaUrls([]);
     setNewMediaUrl('');
+    setPdfUrls([]);
+    setNewPdfUrl('');
+    setShowPdfScrollHint(true);
+    setYoutubeUrls([]);
+    setNewYoutubeUrl('');
     setCategoryLinksData([{ id: '', title: '', categoryId: '', postDate: '' }]);
     setEditorKey(prev => prev + 1);
     setEditorKeyHi(prev => prev + 1);
@@ -582,6 +620,9 @@ const AdminPostEditor = () => {
       short_info_hi: shortInfoHi || null,
       tables_html_hi: tablesHtmlHi || null,
       media_urls: mediaUrls.length > 0 ? mediaUrls : null,
+      pdf_urls: pdfUrls.length > 0 ? pdfUrls : null,
+      show_pdf_scroll_hint: showPdfScrollHint,
+      youtube_urls: youtubeUrls.length > 0 ? youtubeUrls : null,
     };
 
     try {
@@ -609,6 +650,7 @@ const AdminPostEditor = () => {
               title: link.title.trim(),
               url: `/post/${finalSlug || result.id}`,
               link_timestamp: customTimestamp,
+              post_date: linkDate,
               is_new: true,
               last_date_text: null,
             });
@@ -643,7 +685,8 @@ const AdminPostEditor = () => {
                 title: link.title.trim(),
                 category_id: link.categoryId,
                 url: `/post/${finalSlug}`,
-                link_timestamp: customTimestamp
+                link_timestamp: customTimestamp,
+                post_date: linkDate
               });
             } else {
               await addCategoryLink({
@@ -651,6 +694,7 @@ const AdminPostEditor = () => {
                 title: link.title.trim(),
                 url: `/post/${finalSlug}`,
                 link_timestamp: customTimestamp,
+                post_date: linkDate,
                 is_new: true,
                 last_date_text: null,
               });
@@ -1221,6 +1265,76 @@ const AdminPostEditor = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* PDF URLs */}
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-2">📄 PDF Viewers (Public URL)</h2>
+          <p className="text-sm text-muted-foreground mb-4">Google Drive Public URL, Cloudinary PDF URL dalen. PDF browser par hi open hogi.</p>
+          <div className="flex gap-2 mb-4">
+            <Input
+              value={newPdfUrl}
+              onChange={e => setNewPdfUrl(e.target.value)}
+              placeholder="https://.../file.pdf"
+              className="flex-1"
+              onKeyDown={e => { if (e.key === 'Enter') handleAddPdf(); }}
+            />
+            <Button onClick={handleAddPdf}>Add PDF</Button>
+          </div>
+          <div className="flex items-center gap-2 mb-4">
+            <input 
+              type="checkbox" 
+              id="showPdfScrollHint" 
+              checked={showPdfScrollHint} 
+              onChange={e => setShowPdfScrollHint(e.target.checked)}
+              className="w-4 h-4 cursor-pointer"
+            />
+            <label htmlFor="showPdfScrollHint" className="text-sm font-medium cursor-pointer">
+               Show "Scroll for more pages" text above PDF (Agar PDF me 1 se jyada pages hain)
+            </label>
+          </div>
+          {pdfUrls.length > 0 && (
+            <div className="space-y-3">
+              {pdfUrls.map((url, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
+                  <div className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                     <p className="text-sm text-primary font-medium">PDF {index + 1}</p>
+                     <p className="text-xs text-muted-foreground break-all">{url}</p>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={() => handleRemovePdf(index)}>Remove</Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* YouTube Video URLs */}
+        <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
+          <h2 className="text-xl font-bold text-primary mb-2">▶️ YouTube Videos</h2>
+          <p className="text-sm text-muted-foreground mb-4">YouTube video ka link yaha dalen (e.g. https://www.youtube.com/watch?v=...).</p>
+          <div className="flex gap-2 mb-4">
+            <Input
+              value={newYoutubeUrl}
+              onChange={e => setNewYoutubeUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="flex-1"
+              onKeyDown={e => { if (e.key === 'Enter') handleAddYoutube(); }}
+            />
+            <Button onClick={handleAddYoutube}>Add YouTube Video</Button>
+          </div>
+          {youtubeUrls.length > 0 && (
+            <div className="space-y-3">
+              {youtubeUrls.map((url, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
+                  <div className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                     <p className="text-sm text-primary font-medium">YouTube Video {index + 1}</p>
+                     <p className="text-xs text-muted-foreground break-all">{url}</p>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={() => handleRemoveYoutube(index)}>Remove</Button>
+                </div>
+              ))}
             </div>
           )}
         </div>

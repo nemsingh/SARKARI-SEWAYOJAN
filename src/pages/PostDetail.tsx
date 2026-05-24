@@ -9,6 +9,7 @@ import CategoryBox from '@/components/website/CategoryBox';
 import SiteFooter from '@/components/website/SiteFooter';
 import SEO from '@/components/SEO';
 import NotFound from '@/pages/NotFound';
+import YouTubeOverlay from '@/components/YouTubeOverlay';
 
 // Fields that can be translated, mapped to their Hindi manual counterparts
 const TRANSLATABLE_FIELDS = [
@@ -79,7 +80,7 @@ const PostDetail = () => {
   });
 
   useEffect(() => {
-    let endlessRetry: ReturnType<typeof setInterval>;
+    let endlessRetry: ReturnType<typeof setInterval> | null = null;
 
     const fetchData = async () => {
       if (!slug) return;
@@ -289,6 +290,9 @@ const PostDetail = () => {
   const displayTablesHtml = rawTablesHtml ? rawTablesHtml.replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>') : '';
 
   const mediaUrls: string[] = post?.media_urls || [];
+  const pdfUrls: string[] = post?.pdf_urls || [];
+  const showPdfScrollHint: boolean = post?.show_pdf_scroll_hint || false;
+  const youtubeUrls: string[] = post?.youtube_urls || [];
 
   const handleFilter = (option: string) => {
     setSidebarOpen(false);
@@ -444,6 +448,79 @@ const PostDetail = () => {
                         loading="lazy"
                       />
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* PDF Display */}
+          {pdfUrls.length > 0 && (
+            <div className="flex flex-col items-center gap-5 mb-8 w-full">
+              {showPdfScrollHint && (
+                 <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse mt-4">
+                   Scroll for more pages ↓
+                 </div>
+              )}
+              {pdfUrls.map((url, index) => {
+                let embedUrl = url;
+                if (embedUrl.includes('drive.google.com/file/d/')) {
+                  const match = embedUrl.match(/\/d\/(.*?)\//);
+                  if (match && match[1]) {
+                    embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+                  } else {
+                    embedUrl = embedUrl.replace(/\/view.*$/, '/preview');
+                  }
+                } else {
+                  // Clean up URL and add required params for native viewers
+                  const base = embedUrl.split('#')[0];
+                  embedUrl = `${base}#view=FitH&toolbar=0&navpanes=0&scrollbar=1`;
+                }
+                
+                return (
+                  <div key={index} className="w-full relative overflow-hidden bg-gray-600 rounded-xl" style={{ height: '85vh', minHeight: '600px', maxHeight: '1200px', boxShadow: 'var(--box-shadow-strong)' }}>
+                    <iframe
+                      src={embedUrl}
+                      className="absolute inset-0 w-full h-full border-none"
+                      style={{ backgroundColor: '#4b5563' }}
+                      title={`PDF Document ${index + 1}`}
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* YouTube Video Display */}
+          {youtubeUrls.length > 0 && (
+            <div className="flex flex-col items-center gap-5 mb-8 px-4">
+              {youtubeUrls.map((url, index) => {
+                let videoId = '';
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                const match = url.match(regExp);
+                if (match && match[2].length === 11) {
+                  videoId = match[2];
+                }
+
+                if (videoId) {
+                  return (
+                    <div key={index} className="w-full max-w-[700px] aspect-video">
+                      <YouTubeOverlay videoId={videoId} originalUrl={url} />
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={index} className="w-full max-w-[700px] aspect-video">
+                    <iframe
+                      src={url}
+                      title={`YouTube Video ${index + 1}`}
+                      className="w-full h-full rounded-xl border-none"
+                      style={{ boxShadow: 'var(--box-shadow-strong)' }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
                   </div>
                 );
               })}

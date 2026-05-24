@@ -102,6 +102,7 @@ export const addCategoryLink = async (data: {
   title: string;
   url: string;
   link_timestamp?: number;
+  post_date?: string;
   is_new: boolean;
   last_date_text: string | null;
 }) => {

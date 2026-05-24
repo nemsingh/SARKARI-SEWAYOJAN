@@ -993,7 +993,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
 };
 
 // ============ FORMS ============
-const AddLinkForm = ({ categoryId, onAdd }: { categoryId: string; onAdd: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => Promise<void> }) => {
+const AddLinkForm = ({ categoryId, onAdd }: { categoryId: string; onAdd: (catId: string, title: string, url: string, isNew: boolean, lastDate: string) => void | Promise<void> }) => {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [isNew, setIsNew] = useState(false);
@@ -1017,7 +1017,7 @@ const AddLinkForm = ({ categoryId, onAdd }: { categoryId: string; onAdd: (catId:
   );
 };
 
-const AddCategoryForm = ({ onAdd }: { onAdd: (name: string) => Promise<void> }) => {
+const AddCategoryForm = ({ onAdd }: { onAdd: (name: string) => void | Promise<void> }) => {
   const [name, setName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   return (
