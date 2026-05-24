@@ -477,6 +477,8 @@ const PostDetail = () => {
                   embedUrl = `${base}#view=FitH&toolbar=0&navpanes=0&scrollbar=1`;
                 }
                 
+                const isDrive = embedUrl.includes('drive.google.com');
+
                 return (
                   <div key={index} className="w-full relative overflow-hidden bg-gray-600 rounded-xl" style={{ height: '85vh', minHeight: '600px', maxHeight: '1200px', boxShadow: 'var(--box-shadow-strong)' }}>
                     <iframe
@@ -486,6 +488,13 @@ const PostDetail = () => {
                       title={`PDF Document ${index + 1}`}
                       allowFullScreen
                     ></iframe>
+                    {isDrive && (
+                      <div 
+                        className="absolute top-0 right-[15px] w-[50px] h-[50px] bg-black/70 backdrop-blur-md z-10 pointer-events-auto flex items-center justify-center rounded-bl-lg"
+                        title="View Document"
+                        style={{ boxShadow: '-2px 2px 4px rgba(0,0,0,0.1)' }}
+                      ></div>
+                    )}
                   </div>
                 );
               })}
