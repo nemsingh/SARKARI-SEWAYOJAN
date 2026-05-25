@@ -11,6 +11,15 @@ html, body {
     top: 0px !important; 
     position: static !important;
     transform: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: none;
+}
+
+/* Optimize rendering and fix blanking/checkerboarding during fast zoom/scroll */
+.category-box-body, .tablet-grid-cell, .site-header, .site-menu, .post-content-container, .post-tables-content, .sidebar {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
 }
 #google_translate_element {
    position: absolute !important;

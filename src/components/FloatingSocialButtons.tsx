@@ -87,26 +87,32 @@ export default function FloatingSocialButtons() {
   // Scroll event listener for hide on scroll down, show on scroll up
   useEffect(() => {
     let lastScrollY = window.scrollY;
+    let ticking = false;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       
-      if (currentScrollY > 50) {
-        if (currentScrollY > lastScrollY) {
-          // Scrolling DOWN (window moves down, user swipes UP)
-          // Hide buttons
-          setIsVisible(false);
-        } else if (currentScrollY < lastScrollY) {
-          // Scrolling UP (window moves up, user swipes DOWN)
-          // Show buttons
-          setIsVisible(true);
-        }
-      } else {
-        // Alway show at the very top
-        setIsVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (currentScrollY > 50) {
+            if (currentScrollY > lastScrollY) {
+              // Scrolling DOWN (window moves down, user swipes UP)
+              setIsVisible(false);
+            } else if (currentScrollY < lastScrollY) {
+              // Scrolling UP (window moves up, user swipes DOWN)
+              // Show buttons
+              setIsVisible(true);
+            }
+          } else {
+            // Alway show at the very top
+            setIsVisible(true);
+          }
+          
+          lastScrollY = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
       }
-      
-      lastScrollY = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -132,7 +138,7 @@ export default function FloatingSocialButtons() {
 
   return (
     <div 
-      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out ${
+      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out will-change-transform ${
         isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-90 pointer-events-none'
       }`}
     >
