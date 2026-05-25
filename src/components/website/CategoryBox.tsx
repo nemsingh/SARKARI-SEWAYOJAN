@@ -44,7 +44,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
 
   return (
     <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-      <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-[#f3f4f6] rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+      <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-background/40 backdrop-blur-sm rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
         {name}
       </div>
       <ul className="list-none p-0 mt-2.5 flex-1">

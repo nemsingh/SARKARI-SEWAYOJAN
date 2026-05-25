@@ -480,11 +480,11 @@ const PostDetail = () => {
                 const isDrive = embedUrl.includes('drive.google.com');
 
                 return (
-                  <div key={index} className="w-full relative overflow-hidden bg-gray-600 rounded-xl" style={{ height: '85vh', minHeight: '600px', maxHeight: '1200px', boxShadow: 'var(--box-shadow-strong)' }}>
+                  <div key={index} className="w-full relative overflow-hidden bg-gray-200 rounded-xl" style={{ height: '85vh', minHeight: '600px', maxHeight: '1200px', boxShadow: 'var(--box-shadow-strong)' }}>
                     <iframe
                       src={embedUrl}
                       className="absolute inset-0 w-full h-full border-none"
-                      style={{ backgroundColor: '#4b5563' }}
+                      style={{ backgroundColor: '#e5e7eb' }}
                       title={`PDF Document ${index + 1}`}
                       allowFullScreen
                     ></iframe>
