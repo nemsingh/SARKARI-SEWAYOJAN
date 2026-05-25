@@ -975,6 +975,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
                        const { savePreviewData } = await import('@/lib/previewDb');
                        try { await savePreviewData(JSON.parse(JSON.stringify(fullPost))); } catch(e) { console.error('Preview error', e); }
                        localStorage.setItem('preview_post_slug', post.slug || post.id);
+                        try { localStorage.setItem('preview_post_data', JSON.stringify(fullPost)); } catch (e) { console.warn('Failed to set localStorage fallback preview:', e); }
                      }
                    } finally {
                      document.body.removeChild(overlay);

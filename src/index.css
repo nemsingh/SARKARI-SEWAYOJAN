@@ -12,7 +12,6 @@ html, body {
     position: static !important;
     transform: none !important;
     -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: none;
 }
 
 #google_translate_element {

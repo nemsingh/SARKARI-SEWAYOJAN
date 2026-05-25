@@ -85,28 +85,49 @@ const PostDetail = () => {
     const fetchData = async () => {
       if (!slug) return;
 
-      // Try cache first
-      const cachedPost = getCache<any>(`post_${slug}`);
-      const cachedCats = getCache<any[]>('categories');
-      const cachedLinks = getCache<any[]>('category_links');
-      const cachedSettings = getCache<Record<string, string>>('settings_flat');
+      const isPreviewMode = typeof window !== 'undefined' && window.location.search.includes('preview=true');
 
-      if (cachedPost && cachedPost.tables_html !== undefined && cachedCats && cachedLinks && cachedSettings) {
-        setPost(cachedPost);
-        setCategories(cachedCats);
-        setCategoryLinks(cachedLinks);
-        setSettings(cachedSettings);
-        setNotFound(false);
-        return;
+      // Try cache first (Bypass if in preview mode so we can fetch the latest live preview)
+      if (!isPreviewMode) {
+        const cachedPost = getCache<any>(`post_${slug}`);
+        const cachedCats = getCache<any[]>('categories');
+        const cachedLinks = getCache<any[]>('category_links');
+        const cachedSettings = getCache<Record<string, string>>('settings_flat');
+
+        if (cachedPost && cachedPost.tables_html !== undefined && cachedCats && cachedLinks && cachedSettings) {
+          setPost(cachedPost);
+          setCategories(cachedCats);
+          setCategoryLinks(cachedLinks);
+          setSettings(cachedSettings);
+          setNotFound(false);
+          return;
+        }
       }
 
       if (window.location.search.includes('preview=true')) {
         setIsFetchingPreview(true);
         
         try {
-          const { getPreviewData } = await import('@/lib/previewDb');
-          const localPreview = await getPreviewData();
           const localPreviewSlug = localStorage.getItem('preview_post_slug');
+          let localPreview: any = null;
+
+          // 1. Try local storage first (instant, synchronous, robust fallback)
+          if (localPreviewSlug === slug) {
+            const raw = localStorage.getItem('preview_post_data');
+            if (raw) {
+              try {
+                localPreview = JSON.parse(raw);
+              } catch (e) {
+                console.error("Failed to parse localPreview_data JSON:", e);
+              }
+            }
+          }
+
+          // 2. Fallback to IndexedDB
+          if (!localPreview) {
+            const { getPreviewData } = await import('@/lib/previewDb');
+            localPreview = await getPreviewData();
+          }
           
           if (localPreview && localPreviewSlug === slug) {
             setPost(localPreview);
