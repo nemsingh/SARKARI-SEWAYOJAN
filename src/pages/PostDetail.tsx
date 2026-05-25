@@ -80,6 +80,8 @@ const PostDetail = () => {
   });
 
   useEffect(() => {
+    let endlessRetry: ReturnType<typeof setInterval> | null = null;
+
     const fetchData = async () => {
       if (!slug) return;
 
@@ -196,6 +198,10 @@ const PostDetail = () => {
     };
     
     fetchData();
+
+    return () => {
+      if (endlessRetry) clearInterval(endlessRetry);
+    };
   }, [slug]);
 
   useEffect(() => {
@@ -484,8 +490,9 @@ const PostDetail = () => {
                     ></iframe>
                     {isDrive && (
                       <div 
-                        className="absolute top-0 right-[15px] w-[50px] h-[50px] bg-[#1a1a1a] z-10 pointer-events-auto"
-                        title=""
+                        className="absolute top-0 right-[15px] w-[50px] h-[50px] bg-black/70 backdrop-blur-md z-10 pointer-events-auto flex items-center justify-center rounded-bl-lg"
+                        title="View Document"
+                        style={{ boxShadow: '-2px 2px 4px rgba(0,0,0,0.1)' }}
                       ></div>
                     )}
                   </div>
@@ -499,7 +506,7 @@ const PostDetail = () => {
             <div className="flex flex-col items-center gap-5 mb-8 px-4">
               {youtubeUrls.map((url, index) => {
                 let videoId = '';
-                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                 const match = url.match(regExp);
                 if (match && match[2].length === 11) {
                   videoId = match[2];

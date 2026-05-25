@@ -85,39 +85,28 @@ export default function FloatingSocialButtons() {
   }, [location.pathname]);
 
   // Scroll event listener for hide on scroll down, show on scroll up
-  // We use a ref to track visibility without triggering React loops continuously,
-  // and only update state when visibility *actually* changes.
   useEffect(() => {
     let lastScrollY = window.scrollY;
-    let currentlyVisible = true;
-    let ticking = false;
 
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          let shouldBeVisible = currentlyVisible;
-          
-          if (currentScrollY > 50) {
-            if (currentScrollY > lastScrollY) {
-              shouldBeVisible = false;
-            } else if (currentScrollY < lastScrollY) {
-              shouldBeVisible = true;
-            }
-          } else {
-            shouldBeVisible = true;
-          }
-          
-          if (shouldBeVisible !== currentlyVisible) {
-            currentlyVisible = shouldBeVisible;
-            setIsVisible(shouldBeVisible);
-          }
-          
-          lastScrollY = currentScrollY;
-          ticking = false;
-        });
-        ticking = true;
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > 50) {
+        if (currentScrollY > lastScrollY) {
+          // Scrolling DOWN (window moves down, user swipes UP)
+          // Hide buttons
+          setIsVisible(false);
+        } else if (currentScrollY < lastScrollY) {
+          // Scrolling UP (window moves up, user swipes DOWN)
+          // Show buttons
+          setIsVisible(true);
+        }
+      } else {
+        // Alway show at the very top
+        setIsVisible(true);
       }
+      
+      lastScrollY = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

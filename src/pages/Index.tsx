@@ -267,7 +267,7 @@ const Index = () => {
               maxVisible={999999}
             />
           ) : (
-            <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 text-center" style={{ boxShadow: 'var(--box-shadow-strong)', transform: 'translateZ(0)' }}>
+            <div className="category-box-body bg-background rounded-2xl relative pt-[70px] px-5 pb-5 text-center" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
               <div className="category-box-header absolute top-0 left-0 w-full text-center text-[26px] font-bold text-primary py-4 bg-gray-100 rounded-t-2xl" style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                 {activeFilter} Update's
               </div>

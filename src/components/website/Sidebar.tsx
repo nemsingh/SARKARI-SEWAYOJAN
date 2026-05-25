@@ -11,20 +11,11 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    let ticking = false;
-    let currentScrolled = false;
-
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const isNowScrolled = window.scrollY > 150;
-          if (isNowScrolled !== currentScrolled) {
-            currentScrolled = isNowScrolled;
-            setIsScrolled(isNowScrolled);
-          }
-          ticking = false;
-        });
-        ticking = true;
+      if (window.scrollY > 150) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -57,10 +48,9 @@ const Sidebar = ({ isOpen, onToggle, onFilter }: SidebarProps) => {
 
       {/* Sidebar */}
       <div
-        className={`sidebar fixed top-0 h-full w-[280px] bg-background shadow-2xl transition-transform duration-400 pt-24 z-[2500] ${
-          isOpen ? 'translate-x-0' : '-translate-x-[280px]'
+        className={`sidebar fixed top-0 h-full w-[280px] backdrop-blur-[20px] bg-primary/5 transition-all duration-400 pt-24 z-[2500] ${
+          isOpen ? 'left-0' : '-left-[280px]'
         }`}
-        style={{ willChange: 'transform' }}
       >
       {menuItems.map(item => (
           <a
