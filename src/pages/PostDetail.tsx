@@ -80,7 +80,7 @@ const PostDetail = () => {
   });
 
   useEffect(() => {
-    let endlessRetry: ReturnType<typeof setInterval> | null = null;
+    const endlessRetry: ReturnType<typeof setInterval> | null = null;
 
     const fetchData = async () => {
       if (!slug) return;
@@ -527,7 +527,7 @@ const PostDetail = () => {
             <div className="flex flex-col items-center gap-5 mb-8 px-4">
               {youtubeUrls.map((url, index) => {
                 let videoId = '';
-                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
                 const match = url.match(regExp);
                 if (match && match[2].length === 11) {
                   videoId = match[2];

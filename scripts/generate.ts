@@ -107,9 +107,10 @@ async function generate() {
           ${helmet.link.toString()}
           ${helmet.script.toString()}
         `;
-        // Remove default title and description
+        // Remove default title, description, and keywords
         html = html.replace(/<title>.*?<\/title>/, '');
         html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, '');
+        html = html.replace(/<meta name="keywords" content=".*?"\s*\/?>/, '');
         // Inject helmet tags before </head>
         html = html.replace('</head>', `${helmetTags}\n</head>`);
       } else {
