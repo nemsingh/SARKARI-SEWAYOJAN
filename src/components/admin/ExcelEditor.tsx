@@ -740,6 +740,21 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     resetGrid();
   };
 
+  const clearSelectedCellsContent = () => {
+    updateGrid(g => {
+      const newGrid = g.map(r => [...r]);
+      selectedCells.forEach(({ row, col }) => {
+        newGrid[row][col] = { ...newGrid[row][col], text: '' };
+        const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+        if (td) td.innerHTML = '';
+      });
+      return newGrid;
+    });
+    if (activeCell) {
+      setFormulaValue('');
+    }
+  };
+
   const mergeCells = () => {
     if (selectedCells.length < 2) return;
     const rows = selectedCells.map(c => c.row);
@@ -816,6 +831,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       if (next.length > TOTAL_ROWS) next.pop();
       return next;
     });
+    focusDOMCell(activeCell.row, activeCell.col);
   };
 
   const insertCol = (left: boolean) => {
@@ -835,6 +851,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       if (next.length > TOTAL_COLS) next.pop();
       return next;
     });
+    focusDOMCell(activeCell.row, activeCell.col);
   };
 
   const deleteRow = () => {
@@ -852,7 +869,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       next.push(24);
       return next;
     });
-    setActiveCellState(null);
+    const nextRow = Math.min(rowIndex, TOTAL_ROWS - 1);
+    focusDOMCell(nextRow, activeCell.col);
   };
 
   const applyBorder = (type: 'all' | 'outside' | 'none') => {
@@ -895,7 +913,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       next.push(80);
       return next;
     });
-    setActiveCellState(null);
+    const nextCol = Math.min(colIndex, TOTAL_COLS - 1);
+    focusDOMCell(activeCell.row, nextCol);
   };
 
   const autoSum = () => {
@@ -932,7 +951,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       // If they just selected the cell but are not editing text inside it (or selected all text)
       if (selectedCells.length > 1 || (sel && sel.toString() === (e.currentTarget as HTMLElement).innerText)) {
          e.preventDefault();
-         clearSelection();
+         clearSelectedCellsContent();
          return;
       }
     }
@@ -1033,6 +1052,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
       const td = gridRef.current?.querySelector(`td[data-row="${r}"][data-col="${c}"]`) as HTMLElement;
       if (td) {
         td.focus();
+        setFormulaValue(td.innerText || '');
         
         // Select all text in the cell, mirroring Excel behavior where a focused cell has its content selected
         // unless they explicitly double-click.
@@ -1043,6 +1063,8 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           selection?.removeAllRanges();
           selection?.addRange(range);
         }
+      } else {
+        setFormulaValue('');
       }
     }, 0);
   };
@@ -1555,9 +1577,9 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Alignment */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10">
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyLeft')) applyToSelection('textAlign', 'left'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyLeft || activeCellData?.textAlign === 'left' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Left">⬅ L</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyCenter')) applyToSelection('textAlign', 'center'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyCenter || activeCellData?.textAlign === 'center' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Center">⬌ C</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('justifyRight')) applyToSelection('textAlign', 'right'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeFormats.justifyRight || activeCellData?.textAlign === 'right' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Right">➡ R</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { applyRichTextFormat('justifyLeft'); applyToSelection('textAlign', 'left'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.textAlign === 'left' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Left">⬅ L</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { applyRichTextFormat('justifyCenter'); applyToSelection('textAlign', 'center'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.textAlign === 'center' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Center">⬌ C</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { applyRichTextFormat('justifyRight'); applyToSelection('textAlign', 'right'); }} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.textAlign === 'right' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Right">➡ R</button>
             <span className="border-l border-border mx-1 h-6"></span>
             <button onMouseDown={e => e.preventDefault()} onClick={() => applyToSelection('verticalAlign', 'top')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'top' ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Top">⬆ T</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => applyToSelection('verticalAlign', 'middle')} className={`px-2 cursor-pointer border border-transparent hover:bg-border ${activeCellData?.verticalAlign === 'middle' || !activeCellData?.verticalAlign ? 'bg-border shadow-inner' : 'bg-transparent'}`} title="Align Middle">⬍ M</button>
@@ -1594,53 +1616,36 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               if (!activeCell) return;
               
               const range = savedSelectionRange.current;
+              const hasSelection = range && !range.collapsed;
               const url = prompt('Enter URL for selected text:');
-              if (url) {
-                const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
-                const cell = grid[activeCell.row][activeCell.col];
-                
-                if (td && range && !range.collapsed) {
-                   // Ensure range is still valid within td
-                   if (td.contains(range.commonAncestorContainer)) {
-                     const a = document.createElement('a');
-                     a.href = url;
-                     a.target = '_blank';
-                     a.style.color = cell.color || '#primary';
-                     a.style.textDecoration = 'underline';
-                     a.appendChild(range.extractContents());
-                     range.insertNode(a);
-                     
-                     // Clear selection
-                     const sel = window.getSelection();
-                     if (sel) sel.removeAllRanges();
-                     
-                     skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
-                     updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
-                     setFormulaValue(td.innerText);
-                     return;
-                   }
-                }
-                
-                // Fallback for collapsed selection or no selection
-                const textToShow = prompt('Enter text to display (or leave empty to show URL):') || url;
-                const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color};text-decoration:underline;">${textToShow}</a>`;
-                
-                if (td) {
-                  td.focus();
-                  if (range) {
-                    const sel = window.getSelection();
-                    if (sel) {
-                      sel.removeAllRanges();
-                      sel.addRange(range);
-                    }
+              if (!url) return;
+
+              if (hasSelection) {
+                applyRichTextFormat('createLink', url);
+                return;
+              }
+              
+              const cell = grid[activeCell.row][activeCell.col];
+              // Fallback for collapsed selection or no selection
+              const textToShow = prompt('Enter text to display (or leave empty to show URL):') || url;
+              const linkHtml = `<a href="${url}" target="_blank" style="color:${cell.color || 'inherit'};text-decoration:underline;">${textToShow}</a>`;
+              
+              const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+              if (td) {
+                td.focus();
+                if (range) {
+                  const sel = window.getSelection();
+                  if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
                   }
-                  document.execCommand('insertHTML', false, linkHtml);
-                  skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
-                  updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
-                  setFormulaValue(td.innerText);
-                } else {
-                  updateCell(activeCell.row, activeCell.col, { text: linkHtml });
                 }
+                document.execCommand('insertHTML', false, linkHtml);
+                skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
+                updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
+                setFormulaValue(td.innerText);
+              } else {
+                updateCell(activeCell.row, activeCell.col, { text: linkHtml });
               }
             }} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">🔗 Link</button>
             <div className="relative group">

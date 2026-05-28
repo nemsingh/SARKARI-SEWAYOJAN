@@ -686,7 +686,8 @@ const AdminPostEditor = () => {
                 category_id: link.categoryId,
                 url: `/post/${finalSlug}`,
                 link_timestamp: customTimestamp,
-                post_date: linkDate
+                post_date: linkDate,
+                is_new: true
               });
             } else {
               await addCategoryLink({
@@ -708,7 +709,7 @@ const AdminPostEditor = () => {
           if (!stillExists) {
              await deleteCategoryLink(extLink.id);
           } else if (oldSlug !== finalSlug) {
-             await updateCategoryLink(extLink.id, { url: `/post/${finalSlug}` });
+             await updateCategoryLink(extLink.id, { url: `/post/${finalSlug}`, is_new: true });
           }
         }
         
