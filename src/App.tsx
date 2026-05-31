@@ -103,6 +103,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
       const targets = [/sarkari\s+sewayojan/gi, /sarkarisewayojan/gi];
       let matched = false;
+      let startChar = 0;
+      let endChar = 0;
 
       for (const regex of targets) {
         regex.lastIndex = 0;
@@ -113,6 +115,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           // Allow small 2-char margin for accuracy on various screen densities
           if (offset >= start - 2 && offset <= end + 2) {
             matched = true;
+            startChar = start;
+            endChar = end;
             break;
           }
         }
@@ -120,7 +124,25 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (matched) {
-        window.open(window.location.origin, '_blank');
+        try {
+          const testRange = document.createRange();
+          testRange.setStart(textNode, startChar);
+          testRange.setEnd(textNode, endChar);
+          const rects = testRange.getClientRects();
+          let physicalHover = false;
+          for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 4 && e.clientY <= r.bottom + 4) {
+              physicalHover = true;
+              break;
+            }
+          }
+          if (physicalHover) {
+            window.open(window.location.origin, '_blank');
+          }
+        } catch (err) {
+          window.open(window.location.origin, '_blank');
+        }
       }
     };
 
@@ -163,6 +185,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         const offset = range.startOffset;
 
         const targets = [/sarkari\s+sewayojan/gi, /sarkarisewayojan/gi];
+        let matchedWord = false;
+        let startChar = 0;
+        let endChar = 0;
+
         for (const regex of targets) {
           regex.lastIndex = 0;
           let match;
@@ -170,11 +196,35 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             const start = match.index;
             const end = start + match[0].length;
             if (offset >= start - 2 && offset <= end + 2) {
-              isOverText = true;
+              matchedWord = true;
+              startChar = start;
+              endChar = end;
               break;
             }
           }
-          if (isOverText) break;
+          if (matchedWord) break;
+        }
+
+        if (matchedWord) {
+          try {
+            const testRange = document.createRange();
+            testRange.setStart(textNode, startChar);
+            testRange.setEnd(textNode, endChar);
+            const rects = testRange.getClientRects();
+            let physicalHover = false;
+            for (let i = 0; i < rects.length; i++) {
+              const r = rects[i];
+              if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 4 && e.clientY <= r.bottom + 4) {
+                physicalHover = true;
+                break;
+              }
+            }
+            if (physicalHover) {
+              isOverText = true;
+            }
+          } catch (err) {
+            console.debug(err);
+          }
         }
       } else {
         if (target.children.length === 0) {
