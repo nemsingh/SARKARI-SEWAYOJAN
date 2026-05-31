@@ -48,7 +48,7 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
         <h1 className="m-0 text-5xl font-black text-primary tracking-wide uppercase max-sm:text-[24px] sm:max-md:text-3xl">
           <span 
             onClick={() => window.open(window.location.origin, '_blank')}
-            className="cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity inline-block"
+            className="cursor-pointer inline-block"
           >
             SARKARI SEWAYOJAN
           </span>
@@ -56,7 +56,7 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
         <div className="text-3xl text-primary mt-1 font-medium max-sm:text-[16px] sm:max-md:text-xl">
           <span 
             onClick={() => window.open(window.location.origin, '_blank')}
-            className="cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity inline-block"
+            className="cursor-pointer inline-block"
           >
             www.sarkarisewayojan.com
           </span>
