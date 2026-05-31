@@ -32,11 +32,13 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
   return (
     <div className="site-header bg-background py-8 sticky top-0 z-50 flex items-center relative" style={{ boxShadow: 'var(--box-shadow-medium)' }}>
       {/* Logo - Positioned exactly next to the hamburger menu with a tiny gap */}
-      <div className="absolute left-[52px] top-0 bottom-0 h-full flex items-center justify-center">
+      <div className="absolute left-[52px] top-0 bottom-0 h-full flex items-center justify-center min-w-max">
         <img 
           src={logoUrl || defaultLogo} 
           alt="Sarkari Sewayojan Logo" 
-          className="h-full w-auto object-contain cursor-pointer"
+          className="h-full w-auto object-contain cursor-pointer max-w-none"
+          loading="eager"
+          decoding="sync"
           referrerPolicy="no-referrer"
           onClick={() => window.open(window.location.origin, '_blank')}
           onContextMenu={(e) => e.preventDefault()}
