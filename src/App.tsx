@@ -87,10 +87,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) {
-        // Fallback for single elements containing exactly the name
-        const elementText = (target.innerText || target.textContent || '').trim().toLowerCase();
-        if (elementText === 'sarkari sewayojan' || elementText === 'sarkarisewayojan') {
-          window.open(window.location.origin, '_blank');
+        // Fallback for single elements containing exactly the name (only leaf nodes with no children)
+        if (target.children.length === 0) {
+          const elementText = (target.innerText || target.textContent || '').trim().toLowerCase();
+          if (elementText === 'sarkari sewayojan' || elementText === 'sarkarisewayojan') {
+            window.open(window.location.origin, '_blank');
+          }
         }
         return;
       }
@@ -122,9 +124,81 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
+    // Global stealth mousemove listener to show cursor pointer over words
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (isAdmin) return;
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Ignore interactive controls
+      if (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.tagName === 'BUTTON' || 
+        target.tagName === 'A' || 
+        target.tagName === 'SELECT' ||
+        target.closest('a') || 
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('select') ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      let isOverText = false;
+      let range: Range | null = null;
+      if ((document as any).caretRangeFromPoint) {
+        range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
+      } else if ((e as any).rangeParent) {
+        range = document.createRange();
+        range.setStart((e as any).rangeParent, (e as any).rangeOffset);
+      }
+
+      if (range && range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+        const textNode = range.startContainer;
+        const text = textNode.textContent || '';
+        const offset = range.startOffset;
+
+        const targets = [/sarkari\s+sewayojan/gi, /sarkarisewayojan/gi];
+        for (const regex of targets) {
+          regex.lastIndex = 0;
+          let match;
+          while ((match = regex.exec(text)) !== null) {
+            const start = match.index;
+            const end = start + match[0].length;
+            if (offset >= start - 2 && offset <= end + 2) {
+              isOverText = true;
+              break;
+            }
+          }
+          if (isOverText) break;
+        }
+      } else {
+        if (target.children.length === 0) {
+          const elementText = (target.innerText || target.textContent || '').trim().toLowerCase();
+          if (elementText === 'sarkari sewayojan' || elementText === 'sarkarisewayojan') {
+            isOverText = true;
+          }
+        }
+      }
+
+      if (isOverText) {
+        target.style.cursor = 'pointer';
+      } else {
+        if (target.style.cursor === 'pointer' && !target.classList.contains('cursor-pointer')) {
+          target.style.cursor = '';
+        }
+      }
+    };
+
     document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('mousemove', handleGlobalMouseMove);
     return () => {
       document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
     };
   }, [location.pathname, location.search, isAdmin]);
 

@@ -44,11 +44,17 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
       </div>
       
       {/* Text Container - Shifted right to prevent overlap with logo */}
-      <div className="w-full pl-[160px] md:pl-[240px] pr-3 flex flex-col justify-center text-right md:text-center">
-        <h1 className="m-0 text-5xl font-black text-primary tracking-wide uppercase max-sm:text-[24px] sm:max-md:text-3xl">
+      <div className="w-full pl-[160px] md:pl-[240px] pr-3 flex flex-col justify-center text-right md:text-center select-none">
+        <h1 
+          onClick={() => window.open(window.location.origin, '_blank')}
+          className="m-0 text-5xl font-black text-primary tracking-wide uppercase max-sm:text-[24px] sm:max-md:text-3xl cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity"
+        >
           SARKARI SEWAYOJAN
         </h1>
-        <div className="text-3xl text-primary mt-1 font-medium max-sm:text-[16px] sm:max-md:text-xl">
+        <div 
+          onClick={() => window.open(window.location.origin, '_blank')}
+          className="text-3xl text-primary mt-1 font-medium max-sm:text-[16px] sm:max-md:text-xl cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity"
+        >
           www.sarkarisewayojan.com
         </div>
         <div className="text-[10px] text-accent mt-1.5 tracking-[3px] max-sm:tracking-[1px] font-medium max-sm:text-[9px]">
