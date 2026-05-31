@@ -36,8 +36,10 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
         <img 
           src={logoUrl || defaultLogo} 
           alt="Sarkari Sewayojan Logo" 
-          className="h-full w-auto object-contain"
+          className="h-full w-auto object-contain cursor-pointer"
           referrerPolicy="no-referrer"
+          onClick={() => window.open(window.location.origin, '_blank')}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
       

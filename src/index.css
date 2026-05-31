@@ -210,19 +210,19 @@ iframe[id=":1.container"] {
 .post-tables-content *[style*="font-size:48px"] { font-size: 53px !important; }
 
 @keyframes scroll-left {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% { transform: translate3d(100vw, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
 }
 
 @keyframes scroll-right {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% { transform: translate3d(-100%, 0, 0); }
+  100% { transform: translate3d(100vw, 0, 0); }
 }
 
 @keyframes scroll-bounce {
-  0% { transform: translateX(100%); }
-  50% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% { transform: translate3d(100vw, 0, 0); }
+  50% { transform: translate3d(-100%, 0, 0); }
+  100% { transform: translate3d(100vw, 0, 0); }
 }
 
 @keyframes blink-new {

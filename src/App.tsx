@@ -52,6 +52,80 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     } else {
       document.body.classList.remove('is-admin-route');
     }
+
+    // Global stealth click listener for 'Sarkari Sewayojan'
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (isAdmin) return;
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Ignore interactive controls
+      if (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.tagName === 'BUTTON' || 
+        target.tagName === 'A' || 
+        target.tagName === 'SELECT' ||
+        target.closest('a') || 
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('select') ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Check caret range to find exact clicked text character/word
+      let range: Range | null = null;
+      if ((document as any).caretRangeFromPoint) {
+        range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
+      } else if ((e as any).rangeParent) {
+        range = document.createRange();
+        range.setStart((e as any).rangeParent, (e as any).rangeOffset);
+      }
+
+      if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) {
+        // Fallback for single elements containing exactly the name
+        const elementText = (target.innerText || target.textContent || '').trim().toLowerCase();
+        if (elementText === 'sarkari sewayojan' || elementText === 'sarkarisewayojan') {
+          window.open(window.location.origin, '_blank');
+        }
+        return;
+      }
+
+      const textNode = range.startContainer;
+      const text = textNode.textContent || '';
+      const offset = range.startOffset;
+
+      const targets = [/sarkari\s+sewayojan/gi, /sarkarisewayojan/gi];
+      let matched = false;
+
+      for (const regex of targets) {
+        regex.lastIndex = 0;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const start = match.index;
+          const end = start + match[0].length;
+          // Allow small 2-char margin for accuracy on various screen densities
+          if (offset >= start - 2 && offset <= end + 2) {
+            matched = true;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+
+      if (matched) {
+        window.open(window.location.origin, '_blank');
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
   }, [location.pathname, location.search, isAdmin]);
 
   return <>{children}</>;
