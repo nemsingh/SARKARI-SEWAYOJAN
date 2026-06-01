@@ -132,14 +132,17 @@ const AdminPostEditor = () => {
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
   const [newYoutubeUrl, setNewYoutubeUrl] = useState('');
 
-  const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+  const [isThemeBhagwa, setIsThemeBhagwa] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showRawHtml, setShowRawHtml] = useState(false);
   const [showRawHtmlHi, setShowRawHtmlHi] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme-mode');
-    if (savedTheme === 'bhagwa') {
+    if (savedTheme === 'default') {
+      document.documentElement.classList.remove('theme-bhagwa');
+      setIsThemeBhagwa(false);
+    } else {
       document.documentElement.classList.add('theme-bhagwa');
       setIsThemeBhagwa(true);
     }

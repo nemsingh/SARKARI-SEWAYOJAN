@@ -62,9 +62,13 @@ const AdminDashboard = () => {
   const { toast } = useToast();
 
   const ThemeToggle = () => {
-    const [isThemeBhagwa, setIsThemeBhagwa] = useState(false);
+    const [isThemeBhagwa, setIsThemeBhagwa] = useState(true);
     useEffect(() => {
-      if (document.documentElement.classList.contains('theme-bhagwa') || localStorage.getItem('theme-mode') === 'bhagwa') {
+      const savedTheme = localStorage.getItem('theme-mode');
+      if (savedTheme === 'default') {
+        document.documentElement.classList.remove('theme-bhagwa');
+        setIsThemeBhagwa(false);
+      } else {
         document.documentElement.classList.add('theme-bhagwa');
         setIsThemeBhagwa(true);
       }
