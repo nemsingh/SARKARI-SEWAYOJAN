@@ -850,6 +850,520 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
   );
 };
 
+// ============ DATE EXTRACTION & DISPLAY FOR ADMIN ============
+interface ExtractedDates {
+  startDate: string | null;
+  lastDate: string | null;
+}
+
+const cleanText = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/[\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/g, ' ') // replace non-breaking & special spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const extractDateText = (text: string): string | null => {
+  if (!text) return null;
+  const cleaned = cleanText(text);
+  // Strip common separating colons, dashes, bullets, spaces, colons (including Hindi colon equivalents like ः or । or -) at start/end
+  // eslint-disable-next-line no-misleading-character-class
+  const finalVal = cleaned.replace(/^[:\-–—\s\u200b•|ः।]+/, '').replace(/[:\-–—\s|ः।]+$/, '').trim();
+  if (!finalVal) return null;
+
+  // Check if there is any date-like pattern or Hindi month/words
+  const hasDate = /\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/i.test(finalVal) || 
+                  /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)/i.test(finalVal);
+  
+  if (hasDate) {
+    if (finalVal.length < 55) return finalVal;
+  }
+  
+  // Try regex to pull out specifically the date from longer text
+  const matchNumeric = finalVal.match(/\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/i);
+  if (matchNumeric) return matchNumeric[0];
+
+  const matchAlpha = finalVal.match(/\b\d{1,2}(?:st|nd|rd|th)?[\s./-]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)[a-z]*[\s./-]*\d{2,4}\b/i);
+  if (matchAlpha) return matchAlpha[0];
+
+  const matchAlphaRev = finalVal.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)[a-z]*[\s./-]*\d{1,2}(?:st|nd|rd|th)?[\s./-]*\d{2,4}\b/i);
+  if (matchAlphaRev) return matchAlphaRev[0];
+
+  // Fallback: short descriptive strings with a numeric component
+  if (finalVal.length < 25 && /\d/.test(finalVal)) {
+    return finalVal;
+  }
+
+  return null;
+};
+
+const isElementRed = (el: Element): boolean => {
+  const inlineStyle = el.getAttribute('style') || '';
+  const colorAttr = el.getAttribute('color') || '';
+  const classAttr = el.getAttribute('class') || '';
+
+  const lowerStyle = inlineStyle.toLowerCase();
+  const lowerColor = colorAttr.toLowerCase();
+  const lowerClass = classAttr.toLowerCase();
+
+  // Primary check for the word 'red' or text-red classes/rgb
+  if (
+    lowerStyle.includes('color: red') || 
+    lowerStyle.includes('color:red') ||
+    lowerColor === 'red' ||
+    lowerClass.includes('text-red') ||
+    lowerClass.includes('red-text') ||
+    lowerStyle.includes('color:rgb(255, 0, 0)') ||
+    lowerStyle.includes('color:rgb(255,0,0)') ||
+    lowerStyle.includes('color: rgb(255, 0, 0)') ||
+    lowerStyle.includes('color: rgb(255,0,0)')
+  ) {
+    return true;
+  }
+
+  // Handle generalized hex backgrounds or colors (dominant red component)
+  const styleColorMatch = lowerStyle.match(/color\s*:\s*(#[0-9a-f]{3,8}|rgb\([^)]+\)|rgba\([^)]+\))/);
+  const colorVal = styleColorMatch ? styleColorMatch[1] : (lowerColor.startsWith('#') || lowerColor.startsWith('rgb') ? lowerColor : null);
+
+  if (colorVal) {
+    if (colorVal.startsWith('#')) {
+      const hex = colorVal.substring(1);
+      if (hex.length === 3 || hex.length === 4) {
+        const r = parseInt(hex[0], 16);
+        const g = parseInt(hex[1], 16);
+        const b = parseInt(hex[2], 16);
+        if (r >= 10 && r > g + 2 && r > b + 2) {
+          return true;
+        }
+      } else if (hex.length === 6 || hex.length === 8) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        if (r >= 120 && r > g + 35 && r > b + 35) {
+          return true;
+        }
+      }
+    } else if (colorVal.startsWith('rgb')) {
+      const rgbNumbers = colorVal.match(/\d+/g);
+      if (rgbNumbers && rgbNumbers.length >= 3) {
+        const r = parseInt(rgbNumbers[0], 10);
+        const g = parseInt(rgbNumbers[1], 10);
+        const b = parseInt(rgbNumbers[2], 10);
+        if (r >= 120 && r > g + 35 && r > b + 35) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+};
+
+const hasRedAncestorOrSelf = (element: Element): boolean => {
+  let curr: Element | null = element;
+  while (curr) {
+    if (isElementRed(curr)) {
+      return true;
+    }
+    const tag = curr.tagName.toLowerCase();
+    if (tag === 'body' || tag === 'html') {
+      break;
+    }
+    curr = curr.parentElement;
+  }
+  return false;
+};
+
+const isElementBold = (el: Element): boolean => {
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'b' || tag === 'strong' || tag === 'th') {
+    return true;
+  }
+  const inlineStyle = el.getAttribute('style') || '';
+  const classAttr = el.getAttribute('class') || '';
+  const lowerStyle = inlineStyle.toLowerCase();
+  const lowerClass = classAttr.toLowerCase();
+
+  return (
+    lowerStyle.includes('font-weight: bold') ||
+    lowerStyle.includes('font-weight:bold') ||
+    lowerStyle.includes('font-weight:700') ||
+    lowerStyle.includes('font-weight: 700') ||
+    lowerStyle.includes('font-weight:800') ||
+    lowerStyle.includes('font-weight: 800') ||
+    lowerStyle.includes('font-weight:900') ||
+    lowerStyle.includes('font-weight: 900') ||
+    lowerClass.includes('font-bold') ||
+    lowerClass.includes('font-semibold')
+  );
+};
+
+const hasBoldAncestorOrSelf = (element: Element): boolean => {
+  let curr: Element | null = element;
+  while (curr) {
+    if (isElementBold(curr)) {
+      return true;
+    }
+    const tag = curr.tagName.toLowerCase();
+    if (tag === 'body' || tag === 'html') {
+      break;
+    }
+    curr = curr.parentElement;
+  }
+  return false;
+};
+
+const extractDatesFromHtml = (htmlContent: string | null | undefined): ExtractedDates => {
+  if (!htmlContent) return { startDate: null, lastDate: null };
+  
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    
+    let startDate: string | null = null;
+    let lastDate: string | null = null;
+
+    const startKeywords = [
+      /apply\s*online\s*(?:start|begin|date)/i,
+      /application\s*(?:begin|start|commencement|open|from|opening)/i,
+      /registration\s*(?:begin|start|date|open|from)/i,
+      /starting\s*date/i,
+      /form\s*(?:begin|start|from|open)/i,
+      /notification\s*(?:date|release|issued)/i,
+      /apply\s*(?:date|start|begin|from)/i,
+      /begin\s*date/i,
+      /opening\s*date/i,
+      /commencement\s*date/i,
+      /start\s*date/i,
+      /शुरुआती\s*तारीख/i,
+      /प्रारंभिक\s*तिथि/i,
+      /प्रारम्भिक\s*तिथि/i,
+      /आवेदन\s*(?:शुरू|प्रारंभ|आरंभ|तिथि|शुरु|प्रारम्भ)/i,
+      /रजिस्ट्रेशन\s*(?:शुरू|प्रारंभ|आरंभ|तिथि|शुरु|प्रारम्भ)/i,
+      /प्रारम्भ\s*की\s*तिथि/i,
+      /शुरू\s*होने\s*की\s*तिथि/i,
+      /प्रारंभ\s*होने\s*की\s*तिथि/i,
+    ];
+
+    const lastKeywords = [
+      /last\s*date\s*for\s*(?:apply|online|registration|submission|form|applying|submit)/i,
+      /last\s*date\s*to\s*(?:apply|register|submit|fill|complete)/i,
+      /online\s*application\s*(?:end|close|last|expiry)/i,
+      /registration\s*(?:last|end|close)\s*date/i,
+      /apply\s*last\s*date/i,
+      /application\s*last\s*date/i,
+      /last\s*date/i,
+      /closing\s*date/i,
+      /end\s*date/i,
+      /expiry\s*date/i,
+      /आवेदन\s*की\s*(?:अंतिम|अन्तिम|आखिरी|आखरी)\s*तिथि/i,
+      /रजिस्ट्रेशन\s*की\s*(?:अंतिम|अन्तिम|आखिरी|आखरी)\s*तिथि/i,
+      /(?:अंतिम|अन्तिम|आखिरी|आखरी)\s*तिथि/i,
+      /(?:अंतिम|अन्तिम|आखिरी|आखरी)\s*तारीख/i,
+      /समाप्ति\s*तिथि/i,
+    ];
+
+    // Priority 1: Multi-column or adjacent column row search
+    const rows = Array.from(doc.querySelectorAll('tr'));
+    for (const row of rows) {
+      const cells = Array.from(row.querySelectorAll('td, th'));
+      if (cells.length >= 2) {
+        for (let i = 0; i < cells.length; i++) {
+          const cellText = cleanText(cells[i].textContent || '');
+          if (!cellText) continue;
+
+          // Check for startDate keyword
+          if (!startDate && startKeywords.some(kw => kw.test(cellText))) {
+            const matchedKw = startKeywords.find(kw => kw.test(cellText));
+            if (matchedKw) {
+              const matchResults = cellText.match(matchedKw);
+              if (matchResults) {
+                const index = cellText.toLowerCase().indexOf(matchResults[0].toLowerCase());
+                const potentialDateText = cellText.substring(index + matchResults[0].length);
+                const extracted = extractDateText(potentialDateText);
+                if (extracted) {
+                  startDate = extracted;
+                }
+              }
+            }
+
+            // If not found in the same cell, check subsequent cells in this row
+            if (!startDate) {
+              for (let j = i + 1; j < cells.length; j++) {
+                const nextText = cleanText(cells[j].textContent || '');
+                if (!nextText) continue;
+                if (/^[:\-–—\s]+$/.test(nextText)) continue;
+                const extracted = extractDateText(nextText);
+                if (extracted) {
+                  startDate = extracted;
+                  break;
+                }
+              }
+            }
+          }
+
+          // Check for lastDate keyword
+          if (!lastDate && lastKeywords.some(kw => kw.test(cellText))) {
+            const matchedKw = lastKeywords.find(kw => kw.test(cellText));
+            if (matchedKw) {
+              const matchResults = cellText.match(matchedKw);
+              if (matchResults) {
+                const index = cellText.toLowerCase().indexOf(matchResults[0].toLowerCase());
+                const potentialDateText = cellText.substring(index + matchResults[0].length);
+                const extracted = extractDateText(potentialDateText);
+                if (extracted) {
+                  lastDate = extracted;
+                }
+              }
+            }
+
+            // If not found in the same cell, check subsequent cells in this row
+            if (!lastDate) {
+              for (let j = i + 1; j < cells.length; j++) {
+                const nextText = cleanText(cells[j].textContent || '');
+                if (!nextText) continue;
+                if (/^[:\-–—\s]+$/.test(nextText)) continue;
+                const extracted = extractDateText(nextText);
+                if (extracted) {
+                  lastDate = extracted;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Priority 2: Text matching in individual blocks
+    const elements = Array.from(doc.querySelectorAll('td, th, p, li, span, div, b, strong'));
+    for (const el of elements) {
+      const text = cleanText(el.textContent || '');
+      if (!text || text.length > 200) continue;
+
+      if (!startDate) {
+        for (const kw of startKeywords) {
+          if (kw.test(text)) {
+            const matchKw = text.match(kw);
+            if (matchKw) {
+              const index = text.toLowerCase().indexOf(matchKw[0].toLowerCase());
+              if (index !== -1) {
+                const afterText = text.substring(index + matchKw[0].length);
+                const extracted = extractDateText(afterText);
+                if (extracted) {
+                  startDate = extracted;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (!lastDate) {
+        for (const kw of lastKeywords) {
+          if (kw.test(text)) {
+            const matchKw = text.match(kw);
+            if (matchKw) {
+              const index = text.toLowerCase().indexOf(matchKw[0].toLowerCase());
+              if (index !== -1) {
+                const afterText = text.substring(index + matchKw[0].length);
+                const extracted = extractDateText(afterText);
+                if (extracted) {
+                  lastDate = extracted;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback Scan Layer 1: If lastDate is STILL not found, scan specifically for elements that are BOTH RED and BOLD
+    if (!lastDate) {
+      try {
+        const allDocElements = Array.from(doc.querySelectorAll('td, th, p, li, span, div, b, strong, font'));
+        for (const el of allDocElements) {
+          const text = cleanText(el.textContent || '');
+          if (text && text.length > 5 && text.length < 80) {
+            const dateMatch = extractDateText(text);
+            if (dateMatch) {
+              const lowerText = text.toLowerCase();
+              const hasStartKeyword = /start|begin|commence|शुरू|प्रारंभ|आरंभ|शुरु|प्रारम्भ/i.test(lowerText);
+              if (!hasStartKeyword) {
+                if (hasRedAncestorOrSelf(el) && hasBoldAncestorOrSelf(el)) {
+                  lastDate = dateMatch;
+                  break; // Found our red & bold lastDate fallback!
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error in fallback red & bold lastDate extraction:", e);
+      }
+    }
+
+    // Fallback Scan Layer 2: If lastDate is STILL not found, scan specifically for elements colored RED (even if not bold)
+    if (!lastDate) {
+      try {
+        const allDocElements = Array.from(doc.querySelectorAll('td, th, p, li, span, div, b, strong, font'));
+        for (const el of allDocElements) {
+          const text = cleanText(el.textContent || '');
+          if (text && text.length > 5 && text.length < 80) {
+            const dateMatch = extractDateText(text);
+            if (dateMatch) {
+              const lowerText = text.toLowerCase();
+              const hasStartKeyword = /start|begin|commence|शुरू|प्रारंभ|आरंभ|शुरु|प्रारम्भ/i.test(lowerText);
+              if (!hasStartKeyword) {
+                if (hasRedAncestorOrSelf(el)) {
+                  lastDate = dateMatch;
+                  break; // Found our red lastDate fallback!
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error in fallback red lastDate extraction:", e);
+      }
+    }
+
+    // Fallback Scan Layer 1 (Start Date): If startDate is STILL not found, scan for elements that are BOTH RED and BOLD
+    if (!startDate) {
+      try {
+        const allDocElements = Array.from(doc.querySelectorAll('td, th, p, li, span, div, b, strong, font'));
+        for (const el of allDocElements) {
+          const text = cleanText(el.textContent || '');
+          if (text && text.length > 5 && text.length < 80) {
+            const dateMatch = extractDateText(text);
+            if (dateMatch) {
+              const lowerText = text.toLowerCase();
+              const hasStartKeyword = /start|begin|commence|शुरू|प्रारंभ|आरंभ|शुरु|प्रारम्भ/i.test(lowerText);
+              if (hasStartKeyword) {
+                if (hasRedAncestorOrSelf(el) && hasBoldAncestorOrSelf(el)) {
+                  startDate = dateMatch;
+                  break; // Found our red & bold startDate fallback!
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error in fallback red & bold startDate extraction:", e);
+      }
+    }
+
+    // Fallback Scan Layer 2 (Start Date): If startDate is STILL not found, scan for elements colored RED representing start date
+    if (!startDate) {
+      try {
+        const allDocElements = Array.from(doc.querySelectorAll('td, th, p, li, span, div, b, strong, font'));
+        for (const el of allDocElements) {
+          const text = cleanText(el.textContent || '');
+          if (text && text.length > 5 && text.length < 80) {
+            const dateMatch = extractDateText(text);
+            if (dateMatch) {
+              const lowerText = text.toLowerCase();
+              const hasStartKeyword = /start|begin|commence|शुरू|प्रारंभ|आरंभ|शुरु|प्रारम्भ/i.test(lowerText);
+              if (hasStartKeyword) {
+                if (hasRedAncestorOrSelf(el)) {
+                  startDate = dateMatch;
+                  break; // Found our red startDate fallback!
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error in fallback red startDate extraction:", e);
+      }
+    }
+
+    return { startDate, lastDate };
+  } catch (err) {
+    console.error("Error extracting dates from HTML:", err);
+    return { startDate: null, lastDate: null };
+  }
+};
+
+const PostDatesDisplay = ({ post }: { post: any }) => {
+  const [loading, setLoading] = useState(false);
+  const [dates, setDates] = useState<ExtractedDates>({ startDate: null, lastDate: null });
+
+  useEffect(() => {
+    const hasHtml = (post.tables_html && post.tables_html.length > 5) || (post.tables_html_hi && post.tables_html_hi.length > 5);
+    if (hasHtml) {
+      const enDates = extractDatesFromHtml(post.tables_html);
+      const hiDates = extractDatesFromHtml(post.tables_html_hi);
+      setDates({
+        startDate: enDates.startDate || hiDates.startDate,
+        lastDate: enDates.lastDate || hiDates.lastDate,
+      });
+      return;
+    }
+
+    setLoading(true);
+    getPostBySlug(post.slug || post.id)
+      .then((fullPost) => {
+        if (fullPost) {
+          const enDates = extractDatesFromHtml(fullPost.tables_html);
+          const hiDates = extractDatesFromHtml(fullPost.tables_html_hi);
+          setDates({
+            startDate: enDates.startDate || hiDates.startDate,
+            lastDate: enDates.lastDate || hiDates.lastDate,
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching full post for dates display:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [post]);
+
+  const { startDate, lastDate } = dates;
+  const enteredLastDate = post.last_date_text || post.last_date_text_hi;
+
+  if (loading) {
+    return (
+      <div className="flex gap-2 mt-1.5 text-xs text-muted-foreground animate-pulse items-center">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
+        <span>Extracting exact dates...</span>
+      </div>
+    );
+  }
+
+  if (!startDate && !lastDate && !enteredLastDate) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-1.5 font-sans">
+      {startDate && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[11px] font-bold">
+          <span className="w-1 h-1 rounded-full bg-green-500" />
+          <span>Apply Start: {startDate}</span>
+        </div>
+      )}
+      {lastDate && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded text-[11px] font-bold">
+          <span className="w-1 h-1 rounded-full bg-red-500" />
+          <span>Last Date (Extracted): {lastDate}</span>
+        </div>
+      )}
+      {enteredLastDate && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded text-[11px] font-bold">
+          <span className="w-1 h-1 rounded-full bg-blue-500" />
+          <span>Last Date Box: {enteredLastDate}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ============ POSTS TAB (with search + category filter + date) ============
 const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts: any[]; onDelete: (id: string) => void; navigate: (path: string) => void; categories: any[]; formatDate: (d: string) => string }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -940,6 +1454,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
                 <div>
                   <div className="font-bold text-primary text-base">{post.name_of_post}</div>
                   <div className="text-sm text-muted-foreground mb-1">{post.post_date}</div>
+                  <PostDatesDisplay post={post} />
                   {(() => {
                     const slug = post.slug || post.id;
                     const links = categoryLinks.filter(l => {

@@ -214,17 +214,19 @@ export const getPosts = async () => {
   try {
     const q = query(collection(db, 'posts'));
     const snap = await getDocs(q);
-    const posts = snap.docs.map(d => {
-      const data = d.data() as Record<string, any>;
-      return {
-        id: d.id,
-        ...data,
-        tables_html: decompressHtml(data.tables_html),
-        tables_html_hi: decompressHtml(data.tables_html_hi),
-        created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
-        updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
-      } as Record<string, any>;
-    });
+    const posts = snap.docs
+      .map(d => {
+        const data = d.data() as Record<string, any>;
+        return {
+          id: d.id,
+          ...data,
+          tables_html: decompressHtml(data.tables_html),
+          tables_html_hi: decompressHtml(data.tables_html_hi),
+          created_at: data.created_at?.toDate?.()?.toISOString?.() || data.created_at || '',
+          updated_at: data.updated_at?.toDate?.()?.toISOString?.() || data.updated_at || '',
+        } as Record<string, any>;
+      })
+      .filter(p => !p.id.includes('_chunk_') && p.name_of_post);
     
     // We explicitly DO NOT load chunks here to prevent OOM errors on Vercel SSG process
     // when processing thousands of large posts. Chunks are loaded individually by loaders.
