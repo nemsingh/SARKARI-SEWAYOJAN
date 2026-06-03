@@ -1,16 +1,14 @@
 import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Clock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface DateTimePickerProps {
   date: Date | undefined
@@ -20,125 +18,171 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, setDate, placeholder = "Pick a date", customTrigger }: DateTimePickerProps) {
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(date)
-  const [hours, setHours] = React.useState<string>(date ? format(date, "hh") : "12")
-  const [minutes, setMinutes] = React.useState<string>(date ? format(date, "mm") : "00")
-  const [ampm, setAmpm] = React.useState<string>(date ? format(date, "a") : "AM")
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [localDate, setLocalDate] = React.useState<string>("")
+  const [localTime, setLocalTime] = React.useState<string>("")
 
   React.useEffect(() => {
-    if (date) {
-      setSelectedDate(date)
-      setHours(format(date, "hh"))
-      setMinutes(format(date, "mm"))
-      setAmpm(format(date, "a"))
+    if (date && !isNaN(date.getTime())) {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      setLocalDate(`${year}-${month}-${day}`)
+
+      const hours = String(date.getHours()).padStart(2, "0")
+      const minutes = String(date.getMinutes()).padStart(2, "0")
+      setLocalTime(`${hours}:${minutes}`)
+    } else {
+      setLocalDate("")
+      setLocalTime("")
     }
   }, [date])
 
-  const handleDateSelect = (newDate: Date | undefined) => {
-    if (!newDate) {
-      setSelectedDate(undefined)
+  const parseLocalParts = (dateStr: string, timeStr: string): Date => {
+    const today = new Date()
+    let year = today.getFullYear()
+    let monthIndex = today.getMonth()
+    let day = today.getDate()
+
+    if (dateStr) {
+      const parts = dateStr.split("-").map(Number)
+      if (parts.length === 3) {
+        year = parts[0]
+        monthIndex = parts[1] - 1
+        day = parts[2]
+      }
+    }
+
+    let h = 12
+    let m = 0
+    if (timeStr) {
+      const parts = timeStr.split(":").map(Number)
+      if (parts.length === 2) {
+        h = parts[0]
+        m = parts[1]
+      }
+    }
+
+    return new Date(year, monthIndex, day, h, m, 0)
+  }
+
+  const handleDateChange = (newDateStr: string) => {
+    setLocalDate(newDateStr)
+    if (!newDateStr) {
       setDate(undefined)
       return
     }
-    
-    const updatedDate = new Date(newDate)
-    
-    let h = parseInt(hours, 10)
-    if (ampm === "PM" && h < 12) h += 12
-    if (ampm === "AM" && h === 12) h = 0
-    
-    updatedDate.setHours(h)
-    updatedDate.setMinutes(parseInt(minutes, 10))
-    updatedDate.setSeconds(0)
-    
-    setSelectedDate(updatedDate)
-    setDate(updatedDate)
+    const updated = parseLocalParts(newDateStr, localTime)
+    setDate(updated)
   }
 
-  const handleTimeChange = (type: "hours" | "minutes" | "ampm", value: string) => {
-    if (!selectedDate) return
+  const handleTimeChange = (newTimeStr: string) => {
+    setLocalTime(newTimeStr)
+    const updated = parseLocalParts(localDate, newTimeStr)
+    setDate(updated)
+  }
 
-    const newDate = new Date(selectedDate)
-    const currentHours = newDate.getHours()
+  const handleClear = () => {
+    setLocalDate("")
+    setLocalTime("")
+    setDate(undefined)
+    setIsOpen(false)
+  }
+
+  const formatDisplayString = (d: Date | undefined): string => {
+    if (!d || isNaN(d.getTime())) return placeholder
+    const monthsEn = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    const day = d.getDate()
+    const month = monthsEn[d.getMonth()]
+    const year = d.getFullYear()
     
-    if (type === "hours") {
-      setHours(value)
-      let h = parseInt(value, 10)
-      if (ampm === "PM" && h < 12) h += 12
-      if (ampm === "AM" && h === 12) h = 0
-      newDate.setHours(h)
-    } else if (type === "minutes") {
-      setMinutes(value)
-      newDate.setMinutes(parseInt(value, 10))
-    } else if (type === "ampm") {
-      setAmpm(value)
-      if (value === "PM" && currentHours < 12) {
-        newDate.setHours(currentHours + 12)
-      } else if (value === "AM" && currentHours >= 12) {
-        newDate.setHours(currentHours - 12)
-      }
-    }
+    let hours = d.getHours()
+    const minutes = d.getMinutes().toString().padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
     
-    setSelectedDate(newDate)
-    setDate(newDate)
+    hours = hours % 12
+    hours = hours ? hours : 12
+    
+    return `${day} ${month} ${year} | ${hours}:${minutes} ${ampm}`
   }
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {customTrigger ? customTrigger : (
           <Button
-            variant={"outline"}
+            variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              (!date || isNaN(date.getTime())) && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "dd MMMM yyyy | hh:mm a") : <span>{placeholder}</span>}
+            {formatDisplayString(date)}
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleDateSelect}
-          initialFocus
-        />
-        <div className="p-3 border-t border-border flex items-center gap-2 justify-center">
-          <Select value={hours} onValueChange={(v) => handleTimeChange("hours", v)}>
-            <SelectTrigger className="w-[70px]">
-              <SelectValue placeholder="HH" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => {
-                const val = h.toString().padStart(2, "0")
-                return <SelectItem key={val} value={val}>{val}</SelectItem>
-              })}
-            </SelectContent>
-          </Select>
-          <span>:</span>
-          <Select value={minutes} onValueChange={(v) => handleTimeChange("minutes", v)}>
-            <SelectTrigger className="w-[70px]">
-              <SelectValue placeholder="MM" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 60 }, (_, i) => i).map((m) => {
-                const val = m.toString().padStart(2, "0")
-                return <SelectItem key={val} value={val}>{val}</SelectItem>
-              })}
-            </SelectContent>
-          </Select>
-          <Select value={ampm} onValueChange={(v) => handleTimeChange("ampm", v)}>
-            <SelectTrigger className="w-[70px]">
-              <SelectValue placeholder="AM/PM" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="AM">AM</SelectItem>
-              <SelectItem value="PM">PM</SelectItem>
-            </SelectContent>
-          </Select>
+      <PopoverContent className="w-auto p-0 z-50 shadow-xl border border-border" align="start">
+        <div className="p-4 bg-popover rounded-md space-y-4 w-[280px]">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-primary mb-1">
+              <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Select Date</span>
+            </div>
+            <Input
+              type="date"
+              value={localDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-full bg-background border-border text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-primary mb-1">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Select Time</span>
+            </div>
+            <Input
+              type="time"
+              value={localTime}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              className="w-full bg-background border-border text-sm"
+            />
+          </div>
+          <div className="flex gap-2 pt-2 border-t border-border">
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline"
+              className="flex-1 text-xs font-semibold" 
+              onClick={() => {
+                const now = new Date()
+                setDate(now)
+                setIsOpen(false)
+              }}
+            >
+              Current
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="px-2.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={handleClear}
+            >
+              Clear
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              className="flex-1 text-xs font-semibold" 
+              onClick={() => setIsOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

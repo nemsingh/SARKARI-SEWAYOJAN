@@ -1183,40 +1183,45 @@ const AdminPostEditor = () => {
               const isTables = !!anchor.closest('.post-tables-content');
               
               const currentHref = anchor.getAttribute('href') || (anchor as HTMLAnchorElement).href || '';
-              const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
-              if (shouldVisit) {
-                window.open(currentHref, '_blank');
-              } else {
-                const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
-                if (newHref !== null) {
-                  if (newHref.trim() === '') {
-                    const childNodes = Array.from(anchor.childNodes);
-                    const parent = anchor.parentNode;
-                    if (parent) {
-                        childNodes.forEach(child => parent.insertBefore(child, anchor));
-                        parent.removeChild(anchor);
+              const container = e.currentTarget;
+              
+              setTimeout(() => {
+                const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
+                if (shouldVisit) {
+                  window.open(currentHref, '_blank');
+                } else {
+                  const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
+                  if (newHref !== null) {
+                    if (newHref.trim() === '') {
+                      const childNodes = Array.from(anchor.childNodes);
+                      const parent = anchor.parentNode;
+                      if (parent) {
+                          childNodes.forEach(child => parent.insertBefore(child, anchor));
+                          parent.removeChild(anchor);
+                      }
+                    } else {
+                      anchor.setAttribute('href', newHref);
+                      if (!anchor.getAttribute('target')) {
+                         anchor.setAttribute('target', '_blank');
+                      }
                     }
-                  } else {
-                    anchor.setAttribute('href', newHref);
-                    if (!anchor.getAttribute('target')) {
-                       anchor.setAttribute('target', '_blank');
+                    
+                    if (isShortInfo) {
+                       const cell = container.querySelector('.short-info-cell');
+                       if (cell) setShortInfo(cell.innerHTML);
+                    } else if (isTables) {
+                       const cell = container.querySelector('.post-tables-content');
+                       if (cell) {
+                          setTablesHtml(cell.innerHTML);
+                          setTables(syncTablesFromHtml(cell.innerHTML));
+                       }
                     }
-                  }
-                  
-                  if (isShortInfo) {
-                     const cell = e.currentTarget.querySelector('.short-info-cell');
-                     if (cell) setShortInfo(cell.innerHTML);
-                  } else if (isTables) {
-                     const cell = e.currentTarget.querySelector('.post-tables-content');
-                     if (cell) {
-                       setTablesHtml(cell.innerHTML);
-                       setTables(syncTablesFromHtml(cell.innerHTML));
-                     }
                   }
                 }
-              }
+              }, 10);
             }
           }}>
+
             <table className="post-summary-table w-full mb-5 border-collapse">
               <tbody>
                 <tr>

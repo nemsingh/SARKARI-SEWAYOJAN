@@ -366,6 +366,12 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const getColLetter = (c: number) => String.fromCharCode(65 + c);
   const getCellId = (r: number, c: number) => `${getColLetter(c)}${r + 1}`;
 
+  const getLiveHtml = (r: number, c: number, fallback: string): string => {
+    if (!gridRef.current) return fallback;
+    const td = gridRef.current.querySelector(`td[data-row="${r}"][data-col="${c}"]`) as HTMLElement;
+    return td ? td.innerHTML : fallback;
+  };
+
   const updateGrid = useCallback((updater: (grid: CellData[][]) => CellData[][]) => {
     setGrid(prev => updater(prev));
   }, []);
@@ -625,9 +631,19 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         if (selection && selection.rangeCount > 0) {
            savedSelectionRange.current = selection.getRangeAt(0).cloneRange();
         }
+
+        // Restore focus to original active input if necessary (keeps typing fluent)
+        if (activeElem && activeElem !== td && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'SELECT')) {
+          activeElem.focus();
+        } else {
+          // Keep selection highlighted visual for user
+          if (selection && range) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
         
         // Update cell content
-        skipHtmlUpdateForCell.current = { row: activeCell.row, col: activeCell.col };
         updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
         if (activeCell) {
           setFormulaValue(td.innerText);
@@ -1521,7 +1537,39 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               <option value="Times New Roman">Times New Roman</option>
               <option value="Georgia">Georgia</option>
             </select>
-            <input type="number" value={currentFontSize} onChange={e => setCurrentFontSize(e.target.value)} onBlur={() => { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); }} onKeyDown={e => { if (e.key === 'Enter') { if (!applyRichTextFormat('fontSizePx', currentFontSize + 'px')) applyToSelection('fontSize', currentFontSize + 'px'); } }} className="w-11 px-1 text-sm border border-border bg-background" />
+            <input 
+              type="number" 
+              value={currentFontSize} 
+              onChange={e => {
+                const newVal = e.target.value;
+                setCurrentFontSize(newVal);
+                if (newVal && !isNaN(parseInt(newVal))) {
+                  const sizePx = newVal + 'px';
+                  if (!applyRichTextFormat('fontSizePx', sizePx)) {
+                    applyToSelection('fontSize', sizePx);
+                  }
+                }
+              }} 
+              onBlur={() => { 
+                if (currentFontSize) {
+                  const sizePx = currentFontSize + 'px';
+                  if (!applyRichTextFormat('fontSizePx', sizePx)) {
+                    applyToSelection('fontSize', sizePx);
+                  }
+                }
+              }} 
+              onKeyDown={e => { 
+                if (e.key === 'Enter') { 
+                  if (currentFontSize) {
+                    const sizePx = currentFontSize + 'px';
+                    if (!applyRichTextFormat('fontSizePx', sizePx)) {
+                      applyToSelection('fontSize', sizePx);
+                    }
+                  }
+                } 
+              }} 
+              className="w-11 px-1 text-sm border border-border bg-background" 
+            />
             <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = (parseInt(currentFontSize) || 18) + 1; setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-sm font-bold" title="Increase Font Size">A&#8593;</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = Math.max(1, (parseInt(currentFontSize) || 18) - 1); setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-xs font-bold" title="Decrease Font Size">A&#8595;</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className={`px-2 cursor-pointer border border-transparent font-bold hover:bg-border ${activeFormats.bold || activeCellData?.fontWeight === 'bold' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>B</button>
@@ -1650,7 +1698,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             }} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border">🔗 Link</button>
             <div className="relative group">
               <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border" title="Add bullet list item">• List ▼</button>
-              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+              <div className="absolute left-0 top-full pt-1 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50 before:content-[''] before:absolute before:top-[-8px] before:left-0 before:right-0 before:h-[8px]">
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('disc')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">• Disc</button>
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('circle')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">◦ Circle</button>
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertBullet('square')} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">▪ Square</button>
@@ -1666,7 +1714,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           <div className="flex gap-1 items-center h-10">
             <div className="relative group">
               <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border font-bold text-green-700" title="Insert">➕ Insert ▼</button>
-              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+              <div className="absolute left-0 top-full pt-1 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50 before:content-[''] before:absolute before:top-[-8px] before:left-0 before:right-0 before:h-[8px]">
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertRow(true)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Row Above</button>
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertRow(false)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Row Below</button>
                 <button onMouseDown={e => e.preventDefault()} onClick={() => insertCol(true)} className="block w-full text-left px-3 py-1 text-sm hover:bg-muted">Column Left</button>
@@ -1675,7 +1723,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
             </div>
             <div className="relative group">
               <button onMouseDown={e => e.preventDefault()} className="px-2 cursor-pointer border border-transparent bg-transparent text-sm hover:bg-border font-bold text-red-600" title="Delete">❌ Delete ▼</button>
-              <div className="absolute left-0 top-full mt-0.5 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50">
+              <div className="absolute left-0 top-full pt-1 bg-background border border-border rounded shadow-lg hidden group-hover:block z-50 before:content-[''] before:absolute before:top-[-8px] before:left-0 before:right-0 before:h-[8px]">
                 <button onMouseDown={e => e.preventDefault()} onClick={deleteRow} className="block w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-muted">Delete Row</button>
                 <button onMouseDown={e => e.preventDefault()} onClick={deleteCol} className="block w-full text-left px-3 py-1 text-sm text-red-600 hover:bg-muted">Delete Column</button>
               </div>
@@ -1831,29 +1879,46 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                         if (anchor) {
                           e.preventDefault();
                           e.stopPropagation();
+                          
+                          const tdElement = e.currentTarget as HTMLElement;
+                          const originalHtml = tdElement.innerHTML;
                           const currentHref = anchor.getAttribute('href') || (anchor as HTMLAnchorElement).href || '';
-                          const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
-                          if (shouldVisit) {
-                            window.open(currentHref, '_blank');
-                          } else {
-                            const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
-                            if (newHref !== null) {
-                              if (newHref.trim() === '') {
-                                const childNodes = Array.from(anchor.childNodes);
-                                const parent = anchor.parentNode;
-                                if (parent) {
-                                    childNodes.forEach(child => parent.insertBefore(child, anchor));
-                                    parent.removeChild(anchor);
+                          
+                          setTimeout(() => {
+                            const shouldVisit = window.confirm(`Current Link: ${currentHref}\n\nDo you want to OPEN this link in a new tab?\n(Click Cancel to edit the URL instead)`);
+                            if (shouldVisit) {
+                              window.open(currentHref, '_blank');
+                              // Restore exact original HTML and save state to keep it bulletproof
+                              tdElement.innerHTML = originalHtml;
+                              updateCell(ri, ci, { text: originalHtml });
+                            } else {
+                              const newHref = prompt('Update Link URL (leave empty to remove link):', currentHref);
+                              if (newHref !== null) {
+                                const temp = document.createElement('div');
+                                temp.innerHTML = originalHtml;
+                                const tempAnchor = temp.querySelector('a');
+                                if (tempAnchor) {
+                                  if (newHref.trim() === '') {
+                                    const childNodes = Array.from(tempAnchor.childNodes);
+                                    childNodes.forEach(child => tempAnchor.parentNode?.insertBefore(child, tempAnchor));
+                                    tempAnchor.parentNode?.removeChild(tempAnchor);
+                                  } else {
+                                    tempAnchor.setAttribute('href', newHref);
+                                    if (!tempAnchor.getAttribute('target')) {
+                                       tempAnchor.setAttribute('target', '_blank');
+                                    }
+                                  }
                                 }
+                                const finalHtml = temp.innerHTML;
+                                tdElement.innerHTML = finalHtml;
+                                updateCell(ri, ci, { text: finalHtml });
                               } else {
-                                anchor.setAttribute('href', newHref);
-                                if (!anchor.getAttribute('target')) {
-                                   anchor.setAttribute('target', '_blank');
-                                }
+                                // Restore original HTML if cancelled
+                                tdElement.innerHTML = originalHtml;
+                                updateCell(ri, ci, { text: originalHtml });
                               }
-                              updateCell(ri, ci, { text: (e.currentTarget as HTMLElement).innerHTML });
                             }
-                          }
+                          }, 10);
                         }
                       }}
                       onMouseDown={() => handleMouseDown(ri, ci)}
@@ -2007,9 +2072,10 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                            }, 50);
                         }
                       }}
-                      {...((skipHtmlUpdateForCell.current?.row === ri && skipHtmlUpdateForCell.current?.col === ci) 
-                        ? {} 
-                        : { dangerouslySetInnerHTML: { __html: cell.text } })}
+                      {...((activeCell && activeCell.row === ri && activeCell.col === ci)
+                        ? {}
+                        : { dangerouslySetInnerHTML: { __html: cell.text } }
+                      )}
                     />
                   );
                 })}
