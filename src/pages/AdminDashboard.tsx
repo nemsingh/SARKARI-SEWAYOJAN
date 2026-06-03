@@ -85,7 +85,7 @@ const AdminDashboard = () => {
       }
     };
     return (
-      <button onClick={toggle} className="p-2 rounded-full hover:bg-black/10 transition-colors mr-2" title="Switch Theme">
+      <button onClick={toggle} className="p-2 rounded-full hover:bg-black/10 transition-all active:scale-90 duration-100 mr-2" title="Switch Theme">
         {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
       </button>
     );
@@ -727,8 +727,8 @@ const CategoryCard = ({
         <div className="flex gap-1">
           {index !== undefined && totalCats !== undefined && (
             <div className="flex bg-slate-100 rounded mr-2 overflow-hidden shadow-sm">
-              <button onClick={() => onMoveCategory(cat.id, 'up')} disabled={index === 0} className={`px-2 py-1 font-bold ${index === 0 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600'}`}>↑</button>
-              <button onClick={() => onMoveCategory(cat.id, 'down')} disabled={index === totalCats - 1} className={`px-2 py-1 font-bold ${index === totalCats - 1 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600'}`}>↓</button>
+              <button onClick={() => onMoveCategory(cat.id, 'up')} disabled={index === 0} className={`px-2 py-1 font-bold transition-all duration-100 ${index === 0 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-90 active:bg-blue-200'}`}>↑</button>
+              <button onClick={() => onMoveCategory(cat.id, 'down')} disabled={index === totalCats - 1} className={`px-2 py-1 font-bold transition-all duration-100 ${index === totalCats - 1 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-90 active:bg-blue-200'}`}>↓</button>
             </div>
           )}
           {!editingName && <Button variant="outline" size="sm" onClick={() => { setNewName(cat.name); setEditingName(true); }}>Edit</Button>}
@@ -791,7 +791,7 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
             <button
               onClick={() => !isFirst && onMoveLink(link.id, categoryId, 'up')}
               disabled={isFirst}
-              className={`flex items-center gap-1 px-2 py-1 rounded font-bold text-sm leading-none transition-all ${isFirst ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 cursor-pointer hover:scale-110'}`}
+              className={`flex items-center gap-1 px-2 py-1 rounded font-bold text-sm leading-none transition-all duration-100 ${isFirst ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-100 cursor-pointer hover:scale-110 active:scale-95'}`}
               title="Move up one step"
             >
               <span className="text-lg">↑</span>
@@ -800,7 +800,7 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
             <button
               onClick={() => !isFirst && onMoveLink(link.id, categoryId, 'top')}
               disabled={isFirst}
-              className={`flex items-center gap-1 px-2 py-1 rounded font-bold text-sm leading-none transition-all ${isFirst ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-orange-600 hover:bg-orange-100 cursor-pointer hover:scale-110'}`}
+              className={`flex items-center gap-1 px-2 py-1 rounded font-bold text-sm leading-none transition-all duration-100 ${isFirst ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-orange-600 hover:bg-orange-100 cursor-pointer hover:scale-110 active:scale-95'}`}
               title="Move to top"
             >
               <span className="text-lg">⤒</span>
@@ -1417,7 +1417,7 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
               placeholder="Search posts..."
               className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-sm bg-transparent"
             />
-            <button className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
+            <button className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background active:scale-90 transition-all duration-100 hover:bg-slate-100 dark:hover:bg-slate-800" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
               <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-primary stroke-[2.5] fill-none">
                 <circle cx="11" cy="11" r="7" />
                 <line x1="16.5" y1="16.5" x2="21" y2="21" />
