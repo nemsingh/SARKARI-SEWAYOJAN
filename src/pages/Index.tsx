@@ -251,6 +251,96 @@ const Index = () => {
       ))}
 
       {activeFilter === 'Home' && (
+        <div id="live-info-banner" className="w-full max-w-5xl mx-auto px-4 mt-0 mb-1">
+          <div className="live-banner-container w-full rounded-2xl pt-2.5 pb-2 px-4 transition-all duration-300 relative overflow-hidden bg-white dark:bg-slate-900 border-0 text-center shadow-lg">
+            
+            {/* Embedded styles for live blink/glow, robust dark mode & Bhagwa theme support */}
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes live-dot-ping {
+                0% { transform: scale(1); opacity: 1; }
+                70% { transform: scale(2.6); opacity: 0; }
+                100% { transform: scale(2.6); opacity: 0; }
+              }
+              @keyframes instant-dot-blink {
+                0%, 49.9% { opacity: 1; }
+                50%, 100% { opacity: 0.3; }
+              }
+              .live-led-dot {
+                animation: live-dot-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+              }
+              .live-led-center {
+                animation: instant-dot-blink 0.4s infinite;
+              }
+              
+              /* Scoped theme classes supporting custom backgrounds & responsive styles */
+              .live-banner-container {
+                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+                border: none !important;
+              }
+              html.dark .live-banner-container {
+                background: linear-gradient(135deg, #090e1a 0%, #0c1524 100%);
+                border: none !important;
+              }
+              .theme-bhagwa .live-banner-container {
+                background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%) !important;
+                border: none !important;
+                box-shadow: 0 10px 30px rgba(241, 141, 27, 0.08) !important;
+              }
+            `}} />
+
+            {/* Title & Core Platform Statement */}
+            <h2 className="text-[17px] md:text-[20px] leading-relaxed text-slate-800 dark:text-slate-100 mb-1 font-normal">
+              <strong className="font-extrabold text-[#0b3d91] dark:text-sky-400 theme-box-text">
+                (Sarkari Sewayojan™ website since 2022) Trusted Platform for Government Job Updates
+              </strong>{" "}
+              – Latest Government Job Updates, Online Forms, Results, Admit Cards, Answer Keys, Syllabus & More.
+            </h2>
+
+            {/* Supportive Sub-statement */}
+            <p className="text-[14px] md:text-[16px] text-slate-600 dark:text-slate-400 mb-1.5 font-medium max-w-3xl mx-auto">
+              Fast, reliable and easy-to-understand information for all your Sarkari job needs in one place.
+            </p>
+
+            {/* Crucial Disclaimer Alert Block */}
+            <div className="mb-1.5 max-w-4xl mx-auto">
+              <p className="inline-block px-3 py-1 bg-rose-500/10 dark:bg-rose-500/5 text-rose-600 dark:text-rose-400 text-[11px] md:text-[12px] rounded-lg border border-rose-500/25 font-bold leading-normal">
+                Sarkari Sewayojan™ is a private website and not affiliated with any government organization.
+              </p>
+            </div>
+
+            {/* Highly interactive and attractive centered fast-blinking Live button as requested */}
+            <div className="flex flex-col items-center justify-center pt-0.5">
+              <div 
+                className="group relative inline-flex items-center gap-2.5 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-extrabold text-[12px] md:text-[14px] px-5 py-2 rounded-full shadow-[0_6px_20px_rgba(239,68,68,0.4)] hover:shadow-[0_10px_25px_rgba(239,68,68,0.5)] transition-all duration-300 transform hover:scale-[1.03] cursor-pointer"
+                id="live-portal-badge"
+              >
+                {/* Embedded fast pulsing modern LED circular signal */}
+                <span className="relative flex h-3 w-3 mr-0.5">
+                  <span className="live-led-dot absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
+                  <span className="live-led-center relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                </span>
+                
+                {/* Static Live text */}
+                <span className="tracking-wide uppercase font-black select-none text-white">
+                  LIVE UPDATES
+                </span>
+
+                {/* Subtle sheen highlight inside button */}
+                <div className="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full"></div>
+              </div>
+
+              {/* Little server status note */}
+              <p className="text-[10px] md:text-[11px] text-slate-400 dark:text-slate-500 mt-1.5 font-mono flex items-center gap-1.5 select-none animate-pulse">
+                <span className="inline-block w-1 h-1 rounded-full bg-emerald-500"></span>
+                Live server ping: 24ms • Connection encrypted
+              </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {activeFilter === 'Home' && (
         <TabletGrid items={tabletItems} searchQuery={appliedSearch} />
       )}
 
