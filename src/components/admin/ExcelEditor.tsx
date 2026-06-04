@@ -242,6 +242,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const gridRef = useRef<HTMLTableElement>(null);
   const savedSelectionRange = useRef<Range | null>(null);
   const skipHtmlUpdateForCell = useRef<{row: number, col: number} | null>(null);
+  const isFormatting = useRef(false);
 
   const [historyState, setHistoryState] = useState<{ history: CellData[][][], index: number }>({
     history: [],
@@ -302,6 +303,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const saveSelection = useCallback(() => {
+    if (isFormatting.current) return;
     if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'SELECT') return;
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0 && activeCell) {
@@ -409,8 +411,19 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     }
   }, [updateGrid]);
 
+  const syncActiveCellToGrid = useCallback(() => {
+    if (activeCell) {
+      const activeTd = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
+      if (activeTd) {
+        const text = activeTd.innerHTML;
+        updateCell(activeCell.row, activeCell.col, { text });
+      }
+    }
+  }, [activeCell, updateCell]);
+
   // Mouse handlers
   const handleMouseDown = (row: number, col: number) => {
+    syncActiveCellToGrid();
     setIsMouseDown(true);
     setStartCell({ row, col });
     setSelectedCells([{ row, col }]);
@@ -470,6 +483,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent, row: number, col: number) => {
+    syncActiveCellToGrid();
     e.preventDefault();
     setIsMouseDown(true);
     setStartCell({ row, col });
@@ -549,112 +563,119 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
     const td = gridRef.current?.querySelector(`td[data-row="${activeCell.row}"][data-col="${activeCell.col}"]`) as HTMLElement;
     if (!td) return false;
 
-    const selection = window.getSelection();
-    let range: Range | null = null;
-    const activeElem = document.activeElement as HTMLElement;
+    isFormatting.current = true;
+    try {
+      const selection = window.getSelection();
+      let range: Range | null = null;
+      const activeElem = document.activeElement as HTMLElement;
 
-    if (selection && selection.rangeCount > 0) {
-      const currentRange = selection.getRangeAt(0);
-      if (td.contains(currentRange.commonAncestorContainer)) {
-        range = currentRange;
+      if (selection && selection.rangeCount > 0) {
+        const currentRange = selection.getRangeAt(0);
+        if (td.contains(currentRange.commonAncestorContainer)) {
+          range = currentRange;
+        }
       }
-    }
 
-    if (!range && savedSelectionRange.current && td.contains(savedSelectionRange.current.commonAncestorContainer)) {
-      range = savedSelectionRange.current;
-    }
+      if (!range && savedSelectionRange.current && td.contains(savedSelectionRange.current.commonAncestorContainer)) {
+        range = savedSelectionRange.current;
+      }
 
-    // Only apply rich text format if we have an active cell
-    // handle 'whole cell' formatting when nothing is selected, and ensure selection is preserved/restored
-    const isCollapsed = !range || range.collapsed;
-    
-    if (activeElem !== td) {
-      td.focus({ preventScroll: true });
-    }
+      // Only apply rich text format if we have an active cell
+      // handle 'whole cell' formatting when nothing is selected, and ensure selection is preserved/restored
+      const isCollapsed = !range || range.collapsed;
+      
+      if (activeElem !== td) {
+        td.focus({ preventScroll: true });
+      }
 
-    if (isCollapsed) {
-       // If nothing is selected, select the whole content first
-       const newRange = document.createRange();
-       newRange.selectNodeContents(td);
-       if (selection) {
+      if (isCollapsed) {
+         // If nothing is selected, select the whole content first
+         const newRange = document.createRange();
+         newRange.selectNodeContents(td);
+         if (selection) {
+           selection.removeAllRanges();
+           selection.addRange(newRange);
+           range = newRange;
+         }
+      } else if (range && selection) {
+         // Ensure the correct range is focused/selected
          selection.removeAllRanges();
-         selection.addRange(newRange);
-         range = newRange;
-       }
-    } else if (range && selection) {
-       // Ensure the correct range is focused/selected
-       selection.removeAllRanges();
-       selection.addRange(range);
-    }
-
-    if (range) {
-      try {
-        document.execCommand('styleWithCSS', false, 'true');
-        
-        if (command === 'createLink') {
-           document.execCommand(command, false, value);
-           const links = td.querySelectorAll('a');
-           links.forEach(a => {
-             if (!a.getAttribute('target')) {
-               a.setAttribute('target', '_blank');
-               a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
-             }
-           });
-        } else if (command === 'fontSizePx') {
-           document.execCommand('styleWithCSS', false, 'false');
-           document.execCommand('fontSize', false, '7');
-           document.execCommand('styleWithCSS', false, 'true');
-           
-           const fonts = td.querySelectorAll('font[size="7"]') as NodeListOf<HTMLElement>;
-           fonts.forEach(f => {
-             f.removeAttribute('size');
-             f.style.fontSize = value || '18px';
-           });
-           
-           const spans = td.querySelectorAll('span') as NodeListOf<HTMLElement>;
-           spans.forEach(s => {
-             if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
-               s.style.fontSize = value || '18px';
-             }
-           });
-        } else if (command === 'fontNameCustom') {
-           document.execCommand('fontName', false, value);
-        } else if (command === 'removeFormat') {
-           document.execCommand('removeFormat', false, value);
-        } else if (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight' || command === 'justifyFull') {
-           document.execCommand(command, false, value);
-        } else {
-           document.execCommand(command, false, value);
-        }
-
-        // Update our saved selection to the newly updated live selection maintained by the browser
-        if (selection && selection.rangeCount > 0) {
-           savedSelectionRange.current = selection.getRangeAt(0).cloneRange();
-        }
-
-        // Restore focus to original active input if necessary (keeps typing fluent)
-        if (activeElem && activeElem !== td && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'SELECT')) {
-          activeElem.focus();
-        } else {
-          // Keep selection highlighted visual for user
-          if (selection && range) {
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        }
-        
-        // Update cell content
-        updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
-        if (activeCell) {
-          setFormulaValue(td.innerText);
-        }
-        return true;
-      } catch (e) {
-        console.error('Rich text formatting error:', e);
-        return false;
+         selection.addRange(range);
       }
+
+      if (range) {
+        try {
+          document.execCommand('styleWithCSS', false, 'true');
+          
+          if (command === 'createLink') {
+             document.execCommand(command, false, value);
+             const links = td.querySelectorAll('a');
+             links.forEach(a => {
+               if (!a.getAttribute('target')) {
+                 a.setAttribute('target', '_blank');
+                 a.setAttribute('style', `color:${grid[activeCell.row][activeCell.col].color};text-decoration:underline;`);
+               }
+             });
+          } else if (command === 'fontSizePx') {
+             document.execCommand('styleWithCSS', false, 'false');
+             document.execCommand('fontSize', false, '7');
+             document.execCommand('styleWithCSS', false, 'true');
+             
+             const fonts = td.querySelectorAll('font[size="7"]') as NodeListOf<HTMLElement>;
+             fonts.forEach(f => {
+               f.removeAttribute('size');
+               f.style.fontSize = value || '18px';
+             });
+             
+             const spans = td.querySelectorAll('span') as NodeListOf<HTMLElement>;
+             spans.forEach(s => {
+               if (s.style.fontSize === 'xxx-large' || s.style.fontSize === '48px' || s.style.fontSize === '-webkit-xxx-large') {
+                 s.style.fontSize = value || '18px';
+               }
+             });
+          } else if (command === 'fontNameCustom') {
+             document.execCommand('fontName', false, value);
+          } else if (command === 'removeFormat') {
+             document.execCommand('removeFormat', false, value);
+          } else if (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight' || command === 'justifyFull') {
+             document.execCommand(command, false, value);
+          } else {
+             document.execCommand(command, false, value);
+          }
+
+          // Update our saved selection to the newly updated live selection maintained by the browser
+          if (selection && selection.rangeCount > 0) {
+             savedSelectionRange.current = selection.getRangeAt(0).cloneRange();
+          }
+
+          // Restore focus to original active input if necessary (keeps typing fluent)
+          if (activeElem && activeElem !== td && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'SELECT')) {
+            activeElem.focus();
+          } else {
+            // Keep selection highlighted visual for user
+            if (selection && range) {
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+          }
+          
+          // Update cell content
+          updateCell(activeCell.row, activeCell.col, { text: td.innerHTML });
+          if (activeCell) {
+            setFormulaValue(td.innerText);
+          }
+          return true;
+        } catch (e) {
+          console.error('Rich text formatting error:', e);
+          return false;
+        }
+      }
+      return false;
+    } finally {
+      setTimeout(() => {
+        isFormatting.current = false;
+      }, 100);
     }
-    return false;
   };
 
   const pasteData = () => {
@@ -710,38 +731,45 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const applyToSelection = (prop: keyof CellData, value: string) => {
-    updateGrid(g => {
-      const newGrid = g.map(r => [...r]);
-      selectedCells.forEach(({ row, col }) => {
-        const cell = { ...newGrid[row][col] };
-        if (['fontWeight', 'fontStyle', 'textDecoration'].includes(prop)) {
-          (cell as any)[prop] = (cell as any)[prop] === value ? 'normal' : value;
-        } else {
-          (cell as any)[prop] = value;
-        }
-        newGrid[row][col] = cell;
+    isFormatting.current = true;
+    try {
+      updateGrid(g => {
+        const newGrid = g.map(r => [...r]);
+        selectedCells.forEach(({ row, col }) => {
+          const cell = { ...newGrid[row][col] };
+          if (['fontWeight', 'fontStyle', 'textDecoration'].includes(prop)) {
+            (cell as any)[prop] = (cell as any)[prop] === value ? 'normal' : value;
+          } else {
+            (cell as any)[prop] = value;
+          }
+          newGrid[row][col] = cell;
 
-        // Clear inline conflicting spans when an entire cell format changes
-        if (prop === 'fontSize' || prop === 'fontFamily' || prop === 'color') {
-          const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
-          if (td) {
-            const spans = td.querySelectorAll('span, font, div, p');
-            let modified = false;
-            spans.forEach(el => {
-              const htmlEl = el as HTMLElement;
-              if (prop === 'fontSize') { htmlEl.style.fontSize = ''; htmlEl.removeAttribute('size'); modified = true; }
-              if (prop === 'fontFamily') { htmlEl.style.fontFamily = ''; htmlEl.removeAttribute('face'); modified = true; }
-              if (prop === 'color') { htmlEl.style.color = ''; htmlEl.removeAttribute('color'); modified = true; }
-            });
-            if (modified) {
-              skipHtmlUpdateForCell.current = { row, col };
-              newGrid[row][col].text = td.innerHTML;
+          // Clear inline conflicting spans when an entire cell format changes
+          if (prop === 'fontSize' || prop === 'fontFamily' || prop === 'color') {
+            const td = gridRef.current?.querySelector(`td[data-row="${row}"][data-col="${col}"]`) as HTMLElement;
+            if (td) {
+              const spans = td.querySelectorAll('span, font, div, p');
+              let modified = false;
+              spans.forEach(el => {
+                const htmlEl = el as HTMLElement;
+                if (prop === 'fontSize') { htmlEl.style.fontSize = ''; htmlEl.removeAttribute('size'); modified = true; }
+                if (prop === 'fontFamily') { htmlEl.style.fontFamily = ''; htmlEl.removeAttribute('face'); modified = true; }
+                if (prop === 'color') { htmlEl.style.color = ''; htmlEl.removeAttribute('color'); modified = true; }
+              });
+              if (modified) {
+                skipHtmlUpdateForCell.current = { row, col };
+                newGrid[row][col].text = td.innerHTML;
+              }
             }
           }
-        }
+        });
+        return newGrid;
       });
-      return newGrid;
-    });
+    } finally {
+      setTimeout(() => {
+        isFormatting.current = false;
+      }, 100);
+    }
   };
 
   const resetGrid = useCallback(() => {
@@ -1062,6 +1090,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const focusDOMCell = (r: number, c: number) => {
+    syncActiveCellToGrid();
     setActiveCellState({row: r, col: c});
     setSelectedCells([{row: r, col: c}]);
     setTimeout(() => {
@@ -1089,6 +1118,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   const isActive = (row: number, col: number) => activeCell?.row === row && activeCell?.col === col;
 
   const handleColHeaderClick = (colIndex: number) => {
+    syncActiveCellToGrid();
     const cells: { row: number; col: number }[] = [];
     for (let r = 0; r < TOTAL_ROWS; r++) {
       if (!grid[r][colIndex].hidden) cells.push({ row: r, col: colIndex });
@@ -1101,6 +1131,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
   };
 
   const handleRowHeaderClick = (rowIndex: number) => {
+    syncActiveCellToGrid();
     const cells: { row: number; col: number }[] = [];
     for (let c = 0; c < TOTAL_COLS; c++) {
       if (!grid[rowIndex][c].hidden) cells.push({ row: rowIndex, col: c });
@@ -1530,7 +1561,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
         {/* Font */}
         <div className="border-r border-border pr-2.5 flex flex-col items-center">
           <div className="flex gap-1 items-center h-10 flex-wrap">
-            <select value={currentFont} onChange={e => { setCurrentFont(e.target.value); if (!applyRichTextFormat('fontNameCustom', e.target.value)) applyToSelection('fontFamily', e.target.value); }} className="px-1 text-sm border border-border bg-background">
+            <select value={currentFont} onChange={e => { syncActiveCellToGrid(); setCurrentFont(e.target.value); if (!applyRichTextFormat('fontNameCustom', e.target.value)) applyToSelection('fontFamily', e.target.value); }} className="px-1 text-sm border border-border bg-background">
               <option value="Arial">Arial</option>
               <option value="Calibri">Calibri</option>
               <option value="Verdana">Verdana</option>
@@ -1541,6 +1572,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               type="number" 
               value={currentFontSize} 
               onChange={e => {
+                syncActiveCellToGrid();
                 const newVal = e.target.value;
                 setCurrentFontSize(newVal);
                 if (newVal && !isNaN(parseInt(newVal))) {
@@ -1551,6 +1583,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                 }
               }} 
               onBlur={() => { 
+                syncActiveCellToGrid();
                 if (currentFontSize) {
                   const sizePx = currentFontSize + 'px';
                   if (!applyRichTextFormat('fontSizePx', sizePx)) {
@@ -1560,6 +1593,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               }} 
               onKeyDown={e => { 
                 if (e.key === 'Enter') { 
+                  syncActiveCellToGrid();
                   if (currentFontSize) {
                     const sizePx = currentFontSize + 'px';
                     if (!applyRichTextFormat('fontSizePx', sizePx)) {
@@ -1570,11 +1604,11 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
               }} 
               className="w-11 px-1 text-sm border border-border bg-background" 
             />
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = (parseInt(currentFontSize) || 18) + 1; setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-sm font-bold" title="Increase Font Size">A&#8593;</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { const newSize = Math.max(1, (parseInt(currentFontSize) || 18) - 1); setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-xs font-bold" title="Decrease Font Size">A&#8595;</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className={`px-2 cursor-pointer border border-transparent font-bold hover:bg-border ${activeFormats.bold || activeCellData?.fontWeight === 'bold' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>B</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className={`px-2 cursor-pointer border border-transparent italic hover:bg-border ${activeFormats.italic || activeCellData?.fontStyle === 'italic' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>I</button>
-            <button onMouseDown={e => e.preventDefault()} onClick={() => { if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className={`px-2 cursor-pointer border border-transparent underline hover:bg-border ${activeFormats.underline || activeCellData?.textDecoration === 'underline' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>U</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { syncActiveCellToGrid(); const newSize = (parseInt(currentFontSize) || 18) + 1; setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-sm font-bold" title="Increase Font Size">A&#8593;</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { syncActiveCellToGrid(); const newSize = Math.max(1, (parseInt(currentFontSize) || 18) - 1); setCurrentFontSize(newSize.toString()); if (!applyRichTextFormat('fontSizePx', newSize + 'px')) applyToSelection('fontSize', newSize + 'px'); }} className="px-1.5 cursor-pointer border border-transparent bg-transparent hover:bg-border text-xs font-bold" title="Decrease Font Size">A&#8595;</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { syncActiveCellToGrid(); if (!applyRichTextFormat('bold')) applyToSelection('fontWeight', 'bold'); }} className={`px-2 cursor-pointer border border-transparent font-bold hover:bg-border ${activeFormats.bold || activeCellData?.fontWeight === 'bold' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>B</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { syncActiveCellToGrid(); if (!applyRichTextFormat('italic')) applyToSelection('fontStyle', 'italic'); }} className={`px-2 cursor-pointer border border-transparent italic hover:bg-border ${activeFormats.italic || activeCellData?.fontStyle === 'italic' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>I</button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => { syncActiveCellToGrid(); if (!applyRichTextFormat('underline')) applyToSelection('textDecoration', 'underline'); }} className={`px-2 cursor-pointer border border-transparent underline hover:bg-border ${activeFormats.underline || activeCellData?.textDecoration === 'underline' ? 'bg-border shadow-inner' : 'bg-transparent'}`}>U</button>
             <button onMouseDown={e => e.preventDefault()} onClick={() => { 
               if (!applyRichTextFormat('removeFormat')) { 
                 // Clear cell-level formatting
@@ -1752,7 +1786,7 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
           value={formulaValue}
           onChange={e => handleFormulaChange(e.target.value)}
           placeholder="Formula bar..."
-          className="flex-1 border-none outline-none text-base bg-transparent"
+          className="formula-bar-input flex-1 border-none outline-none text-base bg-transparent"
         />
       </div>
 
@@ -1924,18 +1958,15 @@ const ExcelEditor = ({ onAddTable, onUpdateTable, onCancelEdit, initialHtml, isE
                       onMouseDown={() => handleMouseDown(ri, ci)}
                       onMouseOver={() => handleMouseOver(ri, ci)}
                       onTouchStart={(e) => handleTouchStart(e, ri, ci)}
-                      onKeyDown={(e) => { handleKeyDownCell(e, ri, ci); updateSelectionRect(); }}
-                      onInput={e => {
-                        if (activeCell && activeCell.row === ri && activeCell.col === ci) {
-                          setFormulaValue((e.target as HTMLElement).innerText);
+                      onKeyDown={(e) => {
+                        handleKeyDownCell(e, ri, ci);
+                        const navigationKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape', 'Delete', 'Backspace'];
+                        if (navigationKeys.includes(e.key)) {
                           updateSelectionRect();
-                          
-                          // Use autoAdjustCols so the width is correctly measured (ignoring word-wrap)
-                          requestAnimationFrame(() => {
-                            autoAdjustCols([ci]);
-                            autoAdjustRows([ri]);
-                          });
                         }
+                      }}
+                      onInput={e => {
+                        handleCellInput(ri, ci, (e.target as HTMLElement).innerHTML);
                       }}
                       onBlur={e => {
                         skipHtmlUpdateForCell.current = { row: ri, col: ci };
