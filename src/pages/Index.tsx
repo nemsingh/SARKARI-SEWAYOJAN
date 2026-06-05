@@ -207,6 +207,7 @@ const Index = () => {
         "@id": "https://sarkarisewayojan.com/#website",
         "url": "https://sarkarisewayojan.com/",
         "name": "Sarkari Sewayojan",
+        "alternateName": ["Sarkari Result", "Sarkari Exam", "Sewayojan", "Rojgar Result", "Sarkari Sewayojan 2026"],
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://sarkarisewayojan.com/?search={search_term_string}",
@@ -217,6 +218,7 @@ const Index = () => {
         "@type": "Organization",
         "@id": "https://sarkarisewayojan.com/#organization",
         "name": "Sarkari Sewayojan",
+        "alternateName": ["Sarkari Result", "Sarkari Exam", "Sewayojan", "Rojgar Result"],
         "url": "https://sarkarisewayojan.com/",
         "logo": {
           "@type": "ImageObject",
@@ -227,12 +229,12 @@ const Index = () => {
   };
 
   const pageTitle = activeFilter === 'Home' 
-    ? "Sarkari Sewayojan | Sarkari Result, Sarkari Exam, Latest Govt Jobs Portal"
-    : `${activeFilter} Jobs - Sarkari Sewayojan | Sarkari Result, Sarkari Exam`;
+    ? "Sarkari Result | Sarkari Sewayojan | Sewayojan, Rojgar Result, Sarkari Exam 2026"
+    : `${activeFilter} Jobs - Sarkari Result, Sarkari Sewayojan | Sarkari Exam`;
 
   const pageDescription = activeFilter === 'Home'
-    ? "Sarkari Sewayojan is India's No.1 Govt Jobs Portal. Get latest Sarkari Result, Sarkari Exam, Free Job Alert, Railway, Bank, SSC, UPSSSC, and Police Jobs updates instantly."
-    : `Get the latest updates, online forms, and Sarkari Result for ${activeFilter} jobs on Sarkari Sewayojan. Stay updated with Sarkari Exam notifications.`;
+    ? "Sarkari Sewayojan is India's No.1 Sarkari Result Portal. Find latest Sarkari Exam, Sewayojan, Rojgar Result, Free Job Alert, Railway, Bank, SSC, and Police Updates."
+    : `Latest Online Form & Sarkari Result for ${activeFilter} Jobs on Sarkari Sewayojan. Stay updated with Sarkari Exam and Rojgar Result notifications.`;
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden font-sans">

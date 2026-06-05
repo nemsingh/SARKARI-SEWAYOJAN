@@ -245,28 +245,49 @@ async function generate() {
       // fallback to current date
     }
 
+    let imageXml = '';
+    if (post.media_urls && Array.isArray(post.media_urls) && post.media_urls.length > 0) {
+      try {
+        const cleanImgTitle = (post.name_of_post || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+        const cleanImgUrl = (post.media_urls[0] || '').replace(/&/g, '&amp;');
+        imageXml = `
+      <image:image>
+        <image:loc>${cleanImgUrl}</image:loc>
+        <image:title>${cleanImgTitle}</image:title>
+      </image:image>`;
+      } catch (err) {
+        // Safe fallback
+      }
+    }
+
     sitemapUrls += `
-      <url>
-        <loc>${baseUrl}/post/${post.slug || post.id}</loc>
-        <lastmod>${lastmod}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.8</priority>
-      </url>
+    <url>
+      <loc>${baseUrl}/post/${post.slug || post.id}</loc>
+      <lastmod>${lastmod}</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>0.8</priority>${imageXml}
+    </url>
     `;
   }
 
   for (const cat of categories) {
     sitemapUrls += `
-      <url>
-        <loc>${baseUrl}/category/${encodeURIComponent(cat.name)}</loc>
-        <changefreq>daily</changefreq>
-        <priority>0.7</priority>
-      </url>
+    <url>
+      <loc>${baseUrl}/category/${encodeURIComponent(cat.name)}</loc>
+      <changefreq>daily</changefreq>
+      <priority>0.7</priority>
+    </url>
     `;
   }
 
   const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   ${sitemapUrls}
 </urlset>`;
 

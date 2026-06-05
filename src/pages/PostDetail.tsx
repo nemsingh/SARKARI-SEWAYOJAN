@@ -363,9 +363,9 @@ const PostDetail = () => {
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
       {post && (
         <SEO 
-          title={`${postTitle} - Sarkari Sewayojan`}
+          title={`${postTitle} - Sarkari Sewayojan | Sarkari Result`}
           description={postDescription}
-          keywords={`${postTitle}, ${postTitle} online form, ${postTitle} recruitment, sarkari result`}
+          keywords={`${postTitle}, ${postTitle} online form, ${postTitle} recruitment, sarkari result, sarkari exam, rojgar result, sewayojan`}
           schema={schema}
           url={`https://sarkarisewayojan.com/post/${post.slug || post.id}`}
           image={mediaUrls.length > 0 ? mediaUrls[0] : undefined}

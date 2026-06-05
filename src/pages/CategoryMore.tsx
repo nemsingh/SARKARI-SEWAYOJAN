@@ -174,9 +174,9 @@ const CategoryMore = () => {
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
       <SEO 
-        title={`${categoryName} - Sarkari Sewayojan`}
-        description={`All latest updates, forms, and details for ${categoryName} on Sarkari Sewayojan.`}
-        keywords={`${categoryName}, ${categoryName} online form, ${categoryName} result, ${categoryName} admit card`}
+        title={`${categoryName} - Sarkari Result | Sarkari Sewayojan`}
+        description={`All latest updates, online forms, and Sarkari Result keys for ${categoryName} on Sarkari Sewayojan.`}
+        keywords={`${categoryName}, ${categoryName} online form, ${categoryName} result, ${categoryName} admit card, sarkari result, sarkari exam, rojgar result, sewayojan`}
         url={`https://sarkarisewayojan.com/category/${encodeURIComponent(categoryName)}`}
       />
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
