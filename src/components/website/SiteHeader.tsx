@@ -6,7 +6,7 @@ interface SiteHeaderProps {
 }
 
 const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
-  const defaultLogo = "https://res.cloudinary.com/dokzm0ban/image/upload/v1772811965/Sarkari_Sewayojan_a6lcdm.png";
+  const defaultLogo = "/logo_icon.png";
   const [isThemeBhagwa, setIsThemeBhagwa] = useState(true);
 
   useEffect(() => {
