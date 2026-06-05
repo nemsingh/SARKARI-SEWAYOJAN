@@ -4,7 +4,30 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
   // In development, directly hit Firebase to ensure live preview works after Admin edits.
   if (import.meta.env.DEV) {
     console.log(`[DEV MODE] Fetching live data from Firebase for ${url}`);
-    return await fallbackFetch();
+    try {
+      return await fallbackFetch();
+    } catch (e) {
+      console.warn(`[DEV MODE] Live Firebase fetch failed for ${url}. Attempting to fall back to pre-generated static JSON.`, e);
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            console.log(`[DEV MODE] Successfully loaded static fallback data for ${url}`);
+            return data;
+          }
+        }
+      } catch (staticErr) {
+        console.error(`[DEV MODE] Static JSON fallback also failed for ${url}:`, staticErr);
+      }
+      
+      // If static JSON is also unavailable, return a safe minimal empty structure instead of crashing the layout
+      if (url.includes('data.json')) {
+        return { categories: [], category_links: [], tablet_items: [], posts: [], settings_flat: {} };
+      }
+      return null;
+    }
   }
 
   // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.

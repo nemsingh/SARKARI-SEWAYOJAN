@@ -229,7 +229,7 @@ const Index = () => {
   };
 
   const pageTitle = activeFilter === 'Home' 
-    ? "Sarkari Result | Sarkari Sewayojan | Sewayojan, Rojgar Result, Sarkari Exam 2026"
+    ? "Sarkari Sewayojan | Sarkari Result | Sewayojan, Rojgar Result, Sarkari Exam 2026"
     : `${activeFilter} Jobs - Sarkari Result, Sarkari Sewayojan | Sarkari Exam`;
 
   const pageDescription = activeFilter === 'Home'
