@@ -131,8 +131,8 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
       {/* DMCA Badge */}
       {!isHomePage && (
         <div className="flex justify-center mb-4">
-          <a href="//www.dmca.com/Protection/Status.aspx?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" title="DMCA.com Protection Status" className="dmca-badge">
-            <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-07.png?ID=fbf51709-e4ca-4d86-9bef-1b7e98731d7e" alt="DMCA.com Protection Status" />
+          <a href="//www.dmca.com/Protection/Status.aspx?ID=f84f7277-3fc4-4862-9035-b4137a5e17f6" title="DMCA.com Protection Status" className="dmca-badge">
+            <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-07.png?ID=f84f7277-3fc4-4862-9035-b4137a5e17f6" alt="DMCA.com Protection Status" />
           </a>
         </div>
       )}
