@@ -1,12 +1,172 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import jsdom from 'jsdom';
 
 // Mock localStorage for Node.js
 (global as any).localStorage = {
   getItem: () => null,
   setItem: () => {},
   removeItem: () => {},
+};
+
+const { JSDOM } = jsdom;
+(global as any).DOMParser = class {
+  parseFromString(html: string, type: string) {
+    const dom = new JSDOM(html);
+    return dom.window.document as any;
+  }
+} as any;
+
+const cleanText = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/[\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const extractDateText = (text: string): string | null => {
+  if (!text) return null;
+  const cleaned = cleanText(text);
+  // eslint-disable-next-line no-misleading-character-class
+  const finalVal = cleaned.replace(/^[:\-–—\s\u200b•|ः।●]+/, '').replace(/[:\-–—\s|ः।●]+$/, '').trim();
+  if (!finalVal) return null;
+
+  const hasDate = /\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/i.test(finalVal) || 
+                  /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)/i.test(finalVal);
+  
+  if (hasDate) {
+    if (finalVal.length < 55) return finalVal;
+  }
+  
+  const matchNumeric = finalVal.match(/\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/i);
+  if (matchNumeric) return matchNumeric[0];
+
+  const matchAlpha = finalVal.match(/\b\d{1,2}(?:st|nd|rd|th)?[\s./-]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)[a-z]*[\s./-]*\d{2,4}\b/i);
+  if (matchAlpha) return matchAlpha[0];
+
+  const matchAlphaRev = finalVal.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)[a-z]*[\s./-]*\d{1,2}(?:st|nd|rd|th)?[\s./-]*\d{2,4}\b/i);
+  if (matchAlphaRev) return matchAlphaRev[0];
+
+  if (finalVal.length < 25 && /\d/.test(finalVal)) {
+    return finalVal;
+  }
+
+  return null;
+};
+
+const parseCleanDate = (cleanStr: string | null | undefined): Date | null => {
+  if (!cleanStr) return null;
+  
+  let s = cleanStr.toLowerCase().trim();
+  s = s.replace(/\|/g, ' ');
+  
+  const hindiToEnglishMonths: Record<string, string> = {
+    'जनवरी': 'january',
+    'फ़रवरी': 'february',
+    'फरवरी': 'february',
+    'मार्च': 'march',
+    'अप्रैल': 'april',
+    'मई': 'may',
+    'जून': 'june',
+    'जुलाई': 'july',
+    'अगस्त': 'august',
+    'सितंबर': 'september',
+    'सितम्बर': 'september',
+    'अक्टूबर': 'october',
+    'अक्तूबर': 'october',
+    'नवंबर': 'november',
+    'नवम्बर': 'november',
+    'दिसंबर': 'december',
+    'दिसम्बर': 'december'
+  };
+
+  for (const [hindi, english] of Object.entries(hindiToEnglishMonths)) {
+    if (s.includes(hindi)) {
+      s = s.replace(new RegExp(hindi, 'g'), english);
+    }
+  }
+
+  // Handle formats like: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmyMatch = s.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1; // 0-indexed month
+    let year = parseInt(dmyMatch[3], 10);
+    if (year < 100) {
+      year += 2000;
+    }
+    const parsedDate = new Date(year, month, day);
+    if (!isNaN(parsedDate.getTime())) {
+      parsedDate.setHours(23, 59, 59, 999);
+      return parsedDate;
+    }
+  }
+
+  // Support suffix matching, e.g. "31st May" -> "31 May"
+  s = s.replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, '$1');
+
+  // Strip non-standard characters from start/end before parsing to help standard new Date()
+  // eslint-disable-next-line no-misleading-character-class
+  let cleanAlpha = s.replace(/^[:\-–—\s\u200b•|ः।●]+/, '').replace(/[:\-–—\s|ः।●]+$/, '').trim();
+  
+  // Extract pure date substring if there is trailing noise like "(until 11:00 PM)"
+  const matchAlpha = cleanAlpha.match(/\b\d{1,2}[\s./-]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{2,4}\b/i);
+  if (matchAlpha) {
+    cleanAlpha = matchAlpha[0];
+  } else {
+    const matchAlphaRev = cleanAlpha.match(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{1,2}[\s./-]*\d{2,4}\b/i);
+    if (matchAlphaRev) {
+      cleanAlpha = matchAlphaRev[0];
+    }
+  }
+
+  const tryStandard = new Date(cleanAlpha);
+  if (!isNaN(tryStandard.getTime())) {
+    tryStandard.setHours(23, 59, 59, 999);
+    return tryStandard;
+  }
+
+  return null;
+};
+
+const extractDatesFromHtml = (htmlContent: string | null | undefined) => {
+  if (!htmlContent) return { startDate: null, lastDate: null };
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  let startDate: string | null = null;
+  let lastDate: string | null = null;
+
+  const startKeywords = [/apply\s*online\s*(?:start|begin|date)/i, /application\s*(?:begin|start)/i];
+  const lastKeywords = [/last\s*date/i, /closing\s*date/i, /(?:अंतिम|अन्तिम|आखिरी|आखरी)\s*तिथि/i];
+
+  const rows = Array.from(doc.querySelectorAll('tr'));
+  for (const row of rows) {
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    if (cells.length >= 2) {
+      for (let i = 0; i < cells.length; i++) {
+        const cellText = cleanText(cells[i].textContent || '');
+        if (!cellText) continue;
+
+        if (!startDate && startKeywords.some(kw => kw.test(cellText))) {
+          for (let j = i + 1; j < cells.length; j++) {
+            const nextText = cleanText(cells[j].textContent || '');
+            const extracted = extractDateText(nextText);
+            if (extracted) { startDate = extracted; break; }
+          }
+        }
+        if (!lastDate && lastKeywords.some(kw => kw.test(cellText))) {
+          for (let j = i + 1; j < cells.length; j++) {
+            const nextText = cleanText(cells[j].textContent || '');
+            const extracted = extractDateText(nextText);
+            if (extracted) { lastDate = extracted; break; }
+          }
+        }
+      }
+    }
+  }
+  return { startDate, lastDate };
 };
 
 import { getCategories, getCategoryLinks, getTabletItems, getPosts, getSiteSettingsFlat } from '../src/lib/firebaseService';
@@ -37,22 +197,59 @@ async function generate() {
     withRetry(() => getSiteSettingsFlat()),
   ]);
 
-  // Fix or remove broken category links
+  // Fix or remove broken category links and auto-expire "New" flag for Latest Jobs
   const postSlugs = posts.map(p => p.slug);
   const postIds = posts.map(p => p.id);
+  
+  const latestJobsCat = categories.find((c: any) => 
+    c.name && 
+    (c.name.toLowerCase().includes('latest') || c.name.toLowerCase().includes('letest')) && 
+    c.name.toLowerCase().includes('job')
+  );
+
   const categoryLinks = initialCategoryLinks.map(l => {
-    if (l.url && l.url.startsWith('/post/')) {
-      const slug = l.url.replace('/post/', '');
+    const updatedLink = { ...l };
+    
+    // 1. URL fixing
+    if (updatedLink.url && updatedLink.url.startsWith('/post/')) {
+      const slug = updatedLink.url.replace('/post/', '');
       if (!postSlugs.includes(slug) && !postIds.includes(slug)) {
         const match = posts.find(p => p.slug && p.slug.startsWith(slug));
         if (match) {
-          return { ...l, url: `/post/${match.slug}` };
+          updatedLink.url = `/post/${match.slug}`;
+        } else {
+          // Mark as broken if no match found
+          updatedLink._broken = true;
         }
-        // Mark as broken if no match found
-        return { ...l, _broken: true };
       }
     }
-    return l;
+
+    // 2. Auto-expire "New" flag for Latest Jobs
+    if (!updatedLink._broken && latestJobsCat && updatedLink.category_id === latestJobsCat.id && updatedLink.is_new) {
+      if (updatedLink.url) {
+        const match = updatedLink.url.match(/\/post\/(.+)/);
+        const slug = match ? match[1] : null;
+        if (slug) {
+          const post = posts.find((p: any) => p.slug === slug || p.id === slug);
+          if (post) {
+            // Check if there is a last date text
+            const lastDateStr = post.last_date_text || post.last_date_text_hi || 
+                                (post.tables_html ? extractDatesFromHtml(post.tables_html).lastDate : null) || 
+                                (post.tables_html_hi ? extractDatesFromHtml(post.tables_html_hi).lastDate : null);
+            if (lastDateStr) {
+              const cleaned = extractDateText(lastDateStr) || lastDateStr;
+              const parsedDate = parseCleanDate(cleaned);
+              if (parsedDate && parsedDate.getTime() < Date.now()) {
+                updatedLink.is_new = false;
+                console.log(`[Build Auto-Expire] Marked expired "New" badge for link: "${updatedLink.title}" (Date: ${parsedDate.toLocaleDateString()})`);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return updatedLink;
   }).filter(l => !l._broken);
 
   const validTabletItems = tabletItems.map(t => {

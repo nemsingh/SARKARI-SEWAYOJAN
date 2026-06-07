@@ -81,20 +81,25 @@ export const deleteCategory = async (id: string) => {
 
 // ============ CATEGORY LINKS ============
 export const getCategoryLinks = async () => {
-  const q = query(collection(db, 'category_links'));
-  const snap = await getDocs(q);
-  const links = snap.docs.map(d => {
-    const data = d.data() as any;
-    let ts = data.link_timestamp;
-    if (typeof ts === 'undefined') {
-      ts = data.created_at?.toMillis ? data.created_at.toMillis() : 0;
-    }
-    // If the old item had display_order, subtract it so older items keep rough relative order (smaller display_order = higher priority natively, so we give them a slight boost)
-    if (typeof ts === 'undefined') ts = 0;
-    return { id: d.id, ...data, link_timestamp: ts };
-  });
-  // Sort descending by timestamp (newest or intentionally bumped to top)
-  return links.sort((a, b) => b.link_timestamp - a.link_timestamp);
+  try {
+    const q = query(collection(db, 'category_links'));
+    const snap = await getDocs(q);
+    const links = snap.docs.map(d => {
+      const data = d.data() as any;
+      let ts = data.link_timestamp;
+      if (typeof ts === 'undefined') {
+        ts = data.created_at?.toMillis ? data.created_at.toMillis() : 0;
+      }
+      // If the old item had display_order, subtract it so older items keep rough relative order (smaller display_order = higher priority natively, so we give them a slight boost)
+      if (typeof ts === 'undefined') ts = 0;
+      return { id: d.id, ...data, link_timestamp: ts };
+    });
+    // Sort descending by timestamp (newest or intentionally bumped to top)
+    return links.sort((a, b) => b.link_timestamp - a.link_timestamp);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'category_links');
+    return [];
+  }
 };
 
 export const addCategoryLink = async (data: {
@@ -136,10 +141,15 @@ export const deleteCategoryLinksByCategoryId = async (categoryId: string) => {
 
 // ============ TABLET ITEMS ============
 export const getTabletItems = async () => {
-  const q = query(collection(db, 'tablet_items'));
-  const snap = await getDocs(q);
-  const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-  return items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  try {
+    const q = query(collection(db, 'tablet_items'));
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    return items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'tablet_items');
+    return [];
+  }
 };
 
 export const addTabletItem = async (title: string, subtitle: string, url: string, displayOrder: number) => {
@@ -476,23 +486,33 @@ export const deletePost = async (id: string) => {
 
 // ============ SITE SETTINGS ============
 export const getSiteSettings = async () => {
-  const snap = await getDocs(collection(db, 'site_settings'));
-  const settings: Record<string, any> = {};
-  snap.docs.forEach(d => {
-    const data = d.data();
-    settings[data.key] = { id: d.id, key: data.key, value: data.value };
-  });
-  return settings;
+  try {
+    const snap = await getDocs(collection(db, 'site_settings'));
+    const settings: Record<string, any> = {};
+    snap.docs.forEach(d => {
+      const data = d.data();
+      settings[data.key] = { id: d.id, key: data.key, value: data.value };
+    });
+    return settings;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'site_settings');
+    return {};
+  }
 };
 
 export const getSiteSettingsFlat = async () => {
-  const snap = await getDocs(collection(db, 'site_settings'));
-  const settings: Record<string, string> = {};
-  snap.docs.forEach(d => {
-    const data = d.data();
-    settings[data.key] = data.value;
-  });
-  return settings;
+  try {
+    const snap = await getDocs(collection(db, 'site_settings'));
+    const settings: Record<string, string> = {};
+    snap.docs.forEach(d => {
+      const data = d.data();
+      settings[data.key] = data.value;
+    });
+    return settings;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'site_settings_flat');
+    return {};
+  }
 };
 
 export const updateSiteSetting = async (key: string, value: string, existingId?: string) => {

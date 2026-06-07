@@ -5,6 +5,7 @@ interface CategoryLink {
   is_new?: boolean;
   last_date_text?: string | null;
   actual_last_date_text?: string | null;
+  link_timestamp?: number;
 }
 
 interface CategoryBoxProps {
@@ -21,7 +22,87 @@ const getValidUrl = (url: string | null) => {
   return `/post/${url}`;
 };
 
+const isLinkExpired = (lastDateText: string | null | undefined): boolean => {
+  if (!lastDateText) return false;
+  
+  let s = lastDateText.toLowerCase().trim();
+  s = s.replace(/\|/g, ' ');
+  
+  const hindiToEnglishMonths: Record<string, string> = {
+    'जनवरी': 'january',
+    'फ़रवरी': 'february',
+    'फरवरी': 'february',
+    'मार्च': 'march',
+    'अप्रैल': 'april',
+    'मई': 'may',
+    'जून': 'june',
+    'जुलाई': 'july',
+    'अगस्त': 'august',
+    'सितंबर': 'september',
+    'सितम्बर': 'september',
+    'अक्टूबर': 'october',
+    'अक्तूबर': 'october',
+    'नवंबर': 'november',
+    'नवम्बर': 'november',
+    'दिसंबर': 'december',
+    'दिसम्बर': 'december'
+  };
+
+  for (const [hindi, english] of Object.entries(hindiToEnglishMonths)) {
+    if (s.includes(hindi)) {
+      s = s.replace(new RegExp(hindi, 'g'), english);
+    }
+  }
+
+  // Handle formats like: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmyMatch = s.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1; // 0-indexed month
+    let year = parseInt(dmyMatch[3], 10);
+    if (year < 100) {
+      year += 2000;
+    }
+    const parsedDate = new Date(year, month, day);
+    if (!isNaN(parsedDate.getTime())) {
+      parsedDate.setHours(23, 59, 59, 999);
+      return parsedDate.getTime() < Date.now();
+    }
+  }
+
+  // Support suffix matching, e.g. "31st May" -> "31 May"
+  s = s.replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, '$1');
+
+  // Strip non-standard characters from start/end before parsing to help standard new Date()
+  // eslint-disable-next-line no-misleading-character-class
+  let cleanAlpha = s.replace(/^[:\-–—\s\u200b•|ः।●]+/, '').replace(/[:\-–—\s|ः।●]+$/, '').trim();
+  
+  // Extract pure date substring if there is trailing noise like "(until 11:00 PM)"
+  const matchAlpha = cleanAlpha.match(/\b\d{1,2}[\s./-]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{2,4}\b/i);
+  if (matchAlpha) {
+    cleanAlpha = matchAlpha[0];
+  } else {
+    const matchAlphaRev = cleanAlpha.match(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{1,2}[\s./-]*\d{2,4}\b/i);
+    if (matchAlphaRev) {
+      cleanAlpha = matchAlphaRev[0];
+    }
+  }
+
+  const tryStandard = new Date(cleanAlpha);
+  if (!isNaN(tryStandard.getTime())) {
+    tryStandard.setHours(23, 59, 59, 999);
+    return tryStandard.getTime() < Date.now();
+  }
+
+  return false;
+};
+
 const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
+  const isLatestJobs = name && (
+    (name.toLowerCase().includes('latest') || name.toLowerCase().includes('letest')) && 
+    name.toLowerCase().includes('job')
+  );
+
   let actualMax = maxVisible;
   if (maxVisible >= 25 && maxVisible < 100 && links.length > 25) {
     let linesCount = 0;
@@ -48,28 +129,41 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
         {name}
       </div>
       <ul className="list-none p-0 mt-2.5 flex-1">
-        {visibleLinks.map(link => (
-          <li key={link.id} className="category-link-item mb-2.5">
-            <div className="flex items-center text-primary font-medium text-[19px] group">
-              <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
-              {link.url ? (
-                <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
-                  {link.title}
-                </a>
-              ) : (
-                link.title
-              )}
-              {link.is_new && (
-                <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
-              )}
-            </div>
-            {(link.last_date_text || link.actual_last_date_text) && (
-              <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
-                {link.last_date_text || link.actual_last_date_text}
+        {visibleLinks.map(link => {
+          const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 7;
+          let isExpired = false;
+          if (isLatestJobs) {
+            isExpired = isLinkExpired(link.last_date_text || link.actual_last_date_text);
+          } else if (link.link_timestamp) {
+            const msSinceCreated = Date.now() - link.link_timestamp;
+            const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+            isExpired = msSinceCreated > msInExpiryDays;
+          }
+          const showNewBadge = link.is_new && !isExpired;
+
+          return (
+            <li key={link.id} className="category-link-item mb-2.5">
+              <div className="flex items-center text-primary font-medium text-[19px] group">
+                <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
+                {link.url ? (
+                  <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
+                    {link.title}
+                  </a>
+                ) : (
+                  link.title
+                )}
+                {showNewBadge && (
+                  <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
+                )}
               </div>
-            )}
-          </li>
-        ))}
+              {(link.last_date_text || link.actual_last_date_text) && (
+                <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
+                  {link.last_date_text || link.actual_last_date_text}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {hasMore && (
         <div className="mt-auto pt-4 flex justify-end">

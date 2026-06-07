@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -116,10 +116,69 @@ const AdminDashboard = () => {
       getSiteSettings(),
     ]);
     
+    // Auto-expire "New" badges for "Latest Jobs" category links
+    const nextCl = [...cl];
+    
+    // Find the Latest Jobs category (various spellings)
+    const latestJobsCat = c.find((cat: any) => 
+      (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest')) && 
+      cat.name.toLowerCase().includes('job')
+    );
+
+    const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 7;
+    const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+    for (let i = 0; i < nextCl.length; i++) {
+      const link = nextCl[i];
+      if (!link.is_new) continue;
+
+      const isLatestJobs = latestJobsCat && link.category_id === latestJobsCat.id;
+
+      if (isLatestJobs) {
+        if (link.url) {
+          const match = link.url.match(/\/post\/(.+)/);
+          const slug = match ? match[1] : null;
+          if (slug) {
+            const post = p.find((postItem: any) => postItem.slug === slug || postItem.id === slug);
+            if (post) {
+              const lastDateStr = post.last_date_text || post.last_date_text_hi || 
+                                  extractDatesFromHtml(post.tables_html).lastDate || 
+                                  extractDatesFromHtml(post.tables_html_hi).lastDate;
+              if (lastDateStr) {
+                const cleanedStr = extractDateText(lastDateStr) || lastDateStr;
+                const parsedDate = parseCleanDate(cleanedStr);
+                if (parsedDate && parsedDate.getTime() < Date.now()) {
+                  try {
+                    await updateCategoryLink(link.id, { is_new: false });
+                    nextCl[i] = { ...link, is_new: false };
+                  } catch (e) {
+                    console.error(`Failed to auto-expire link ${link.id}:`, e);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // For other categories (Result, Admit Card, Answer Key, etc.)
+        if (link.link_timestamp) {
+          const msSinceCreated = Date.now() - link.link_timestamp;
+          if (msSinceCreated > msInExpiryDays) {
+            try {
+              await updateCategoryLink(link.id, { is_new: false });
+              nextCl[i] = { ...link, is_new: false };
+            } catch (e) {
+              console.error(`Failed to auto-expire general category link ${link.id}:`, e);
+            }
+          }
+        }
+      }
+    }
+
     // Cleanup broken category links
     const postSlugs = p.map(post => post.slug);
     const postIds = p.map(post => post.id);
-    const brokenLinks = cl.filter(link => {
+    const brokenLinks = nextCl.filter(link => {
       if (link.url && link.url.startsWith('/post/')) {
         const slug = link.url.replace('/post/', '');
         return !postSlugs.includes(slug) && !postIds.includes(slug);
@@ -129,11 +188,15 @@ const AdminDashboard = () => {
 
     if (brokenLinks.length > 0) {
       await Promise.all(brokenLinks.map(link => deleteCategoryLink(link.id)));
-      // Refetch links after cleanup
+      // Refetch links after cleanup, syncing our auto-expired updates
       const updatedLinks = await getCategoryLinks();
-      setCategoryLinks(updatedLinks);
+      const finalLinks = updatedLinks.map((ul: any) => {
+        const matched = nextCl.find((nc: any) => nc.id === ul.id);
+        return matched ? { ...ul, is_new: matched.is_new } : ul;
+      });
+      setCategoryLinks(finalLinks);
     } else {
-      setCategoryLinks(cl);
+      setCategoryLinks(nextCl);
     }
 
     setCategories(c);
@@ -174,12 +237,44 @@ const AdminDashboard = () => {
   };
 
   const handleAddLink = async (categoryId: string, title: string, url: string, isNew: boolean, lastDateText: string) => {
+    let finalIsNew = isNew;
+    if (isNew) {
+      const cat = categories.find(c => c.id === categoryId);
+      const isLatestJobsCat = cat && (
+        cat.name.toLowerCase().includes('latest') || 
+        cat.name.toLowerCase().includes('letest')
+      ) && cat.name.toLowerCase().includes('job');
+
+      if (isLatestJobsCat && url) {
+        const match = url.match(/\/post\/(.+)/);
+        const slug = match ? match[1] : null;
+        if (slug) {
+          const post = posts.find(p => p.slug === slug || p.id === slug);
+          if (post) {
+            const lastDateStr = post.last_date_text || post.last_date_text_hi || 
+                                extractDatesFromHtml(post.tables_html).lastDate || 
+                                extractDatesFromHtml(post.tables_html_hi).lastDate;
+            if (lastDateStr) {
+              const cleanedStr = extractDateText(lastDateStr) || lastDateStr;
+              const parsedDate = parseCleanDate(cleanedStr);
+              if (parsedDate && parsedDate.getTime() < Date.now()) {
+                const confirmForce = window.confirm(`Warning: Is post ki Last Date (${lastDateStr}) nikal chuki hai.\n\nKya aap ab bhi is par 'New' ka tag lagana chahte hain?`);
+                if (!confirmForce) {
+                  finalIsNew = false;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     await addCategoryLink({
       category_id: categoryId,
       title,
       url,
       link_timestamp: Date.now(),
-      is_new: isNew,
+      is_new: finalIsNew,
       last_date_text: lastDateText || null,
     });
     await fetchAll();
@@ -195,6 +290,40 @@ const AdminDashboard = () => {
   };
 
   const handleToggleLinkNew = async (id: string, currentVal: boolean) => {
+    if (!currentVal) {
+      const link = categoryLinks.find(l => l.id === id);
+      if (link) {
+        const cat = categories.find(c => c.id === link.category_id);
+        const isLatestJobsCat = cat && (
+          cat.name.toLowerCase().includes('latest') || 
+          cat.name.toLowerCase().includes('letest')
+        ) && cat.name.toLowerCase().includes('job');
+
+        if (isLatestJobsCat && link.url) {
+          const match = link.url.match(/\/post\/(.+)/);
+          const slug = match ? match[1] : null;
+          if (slug) {
+            const post = posts.find(p => p.slug === slug || p.id === slug);
+            if (post) {
+              const lastDateStr = post.last_date_text || post.last_date_text_hi || 
+                                  extractDatesFromHtml(post.tables_html).lastDate || 
+                                  extractDatesFromHtml(post.tables_html_hi).lastDate;
+              if (lastDateStr) {
+                const cleanedStr = extractDateText(lastDateStr) || lastDateStr;
+                const parsedDate = parseCleanDate(cleanedStr);
+                if (parsedDate && parsedDate.getTime() < Date.now()) {
+                  const confirmForce = window.confirm(`Warning: Is post ki Last Date (${lastDateStr}) nikal chuki hai.\n\nKya aap ab bhi is par 'New' ka tag lagana chahte hain?`);
+                  if (!confirmForce) {
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     await updateCategoryLink(id, { is_new: !currentVal });
     await fetchAll();
     toast({ title: currentVal ? 'New badge removed' : 'New badge added' });
@@ -466,7 +595,7 @@ const AdminDashboard = () => {
 
           {/* POSTS */}
           <TabsContent value="posts">
-            <PostsTab posts={posts} onDelete={handleDeletePost} navigate={navigate} categories={categories} formatDate={formatDate} />
+            <PostsTab posts={posts} categoryLinks={categoryLinks} onDelete={handleDeletePost} navigate={navigate} categories={categories} formatDate={formatDate} />
           </TabsContent>
         </Tabs>
       </div>
@@ -645,6 +774,16 @@ const CategoryLinksTab = ({
 
   const filteredCategories = filterCat === 'all' ? categories : categories.filter(c => c.id === filterCat);
 
+  // Pre-compute Map of slug/ID to Post for O(1) matching speed in CategoryCard and LinkRows
+  const postsMap = useMemo(() => {
+    const map = new Map<string, any>();
+    posts.forEach(p => {
+      if (p.slug) map.set(p.slug, p);
+      if (p.id) map.set(p.id, p);
+    });
+    return map;
+  }, [posts]);
+
   return (
     <div className="space-y-6">
       <div className="flex gap-2 items-center flex-wrap">
@@ -670,7 +809,7 @@ const CategoryLinksTab = ({
             index={filterCat === 'all' ? index : undefined}
             totalCats={categories.length}
             links={categoryLinks.filter(l => l.category_id === cat.id)}
-            posts={posts}
+            postsMap={postsMap}
             onDelete={() => onDeleteCategory(cat.id)}
             onUpdateName={(name) => onUpdateCategory(cat.id, name)}
             onMoveCategory={onMoveCategory}
@@ -690,9 +829,9 @@ const CategoryLinksTab = ({
 
 // ============ CATEGORY CARD (with edit name) ============
 const CategoryCard = ({
-  cat, index, totalCats, links, posts, onDelete, onUpdateName, onMoveCategory, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
+  cat, index, totalCats, links, postsMap, onDelete, onUpdateName, onMoveCategory, onAddLink, onDeleteLink, onToggleLinkNew, onUpdateLinkLastDate, onUpdateLink, onMoveLink, formatDate,
 }: {
-  cat: any; index?: number; totalCats?: number; links: any[]; posts: any[];
+  cat: any; index?: number; totalCats?: number; links: any[]; postsMap: Map<string, any>;
   onDelete: () => void;
   onUpdateName: (name: string) => void;
   onMoveCategory: (catId: string, direction: 'up' | 'down') => void;
@@ -727,8 +866,8 @@ const CategoryCard = ({
         <div className="flex gap-1">
           {index !== undefined && totalCats !== undefined && (
             <div className="flex bg-slate-100 rounded mr-2 overflow-hidden shadow-sm">
-              <button onClick={() => onMoveCategory(cat.id, 'up')} disabled={index === 0} className={`px-2 py-1 font-bold transition-all duration-100 ${index === 0 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-90 active:bg-blue-200'}`}>↑</button>
-              <button onClick={() => onMoveCategory(cat.id, 'down')} disabled={index === totalCats - 1} className={`px-2 py-1 font-bold transition-all duration-100 ${index === totalCats - 1 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-90 active:bg-blue-200'}`}>↓</button>
+              <button onClick={() => onMoveCategory(cat.id, 'up')} disabled={index === 0} className={`px-2 py-1 font-bold transition-all duration-100 ${index === 0 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-95 active:bg-blue-200'}`}>↑</button>
+              <button onClick={() => onMoveCategory(cat.id, 'down')} disabled={index === totalCats - 1} className={`px-2 py-1 font-bold transition-all duration-100 ${index === totalCats - 1 ? 'opacity-30' : 'hover:bg-blue-100 text-blue-600 active:scale-95 active:bg-blue-200'}`}>↓</button>
             </div>
           )}
           {!editingName && <Button variant="outline" size="sm" onClick={() => { setNewName(cat.name); setEditingName(true); }}>Edit</Button>}
@@ -739,7 +878,7 @@ const CategoryCard = ({
       <div className="space-y-4 mt-5 border-t-2 border-dashed border-slate-300 pt-5">
         {links.map((link, idx) => (
           <div key={link.id} className="border-b border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
-            <LinkRow link={link} posts={posts} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
+            <LinkRow link={link} postsMap={postsMap} onDelete={onDeleteLink} onToggleNew={onToggleLinkNew} onUpdateLastDate={onUpdateLinkLastDate} onUpdate={onUpdateLink} onMoveLink={onMoveLink} categoryId={cat.id} isFirst={idx === 0} formatDate={formatDate} />
           </div>
         ))}
       </div>
@@ -748,9 +887,9 @@ const CategoryCard = ({
 };
 
 // ============ LINK ROW (with edit + date + reorder) ============
-const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMoveLink, categoryId, isFirst, formatDate }: {
+const LinkRow = ({ link, postsMap, onDelete, onToggleNew, onUpdateLastDate, onUpdate, onMoveLink, categoryId, isFirst, formatDate }: {
   link: any;
-  posts: any[];
+  postsMap: Map<string, any>;
   onDelete: (id: string) => void;
   onToggleNew: (id: string, current: boolean) => void;
   onUpdateLastDate: (id: string, text: string) => void;
@@ -815,8 +954,8 @@ const LinkRow = ({ link, posts, onDelete, onToggleNew, onUpdateLastDate, onUpdat
                 if (link.url) {
                   const match = link.url.match(/\/post\/(.+)/);
                   const slug = match ? match[1] : null;
-                  if (slug && posts) {
-                    const post = posts.find((p: any) => p.slug === slug || p.id === slug);
+                  if (slug && postsMap) {
+                    const post = postsMap.get(slug);
                     if (post) {
                       return <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">Post: {post.name_of_post}</span>;
                     }
@@ -1288,7 +1427,82 @@ const extractDatesFromHtml = (htmlContent: string | null | undefined): Extracted
   }
 };
 
-const PostDatesDisplay = ({ post }: { post: any }) => {
+const parseCleanDate = (cleanStr: string | null | undefined): Date | null => {
+  if (!cleanStr) return null;
+  
+  let s = cleanStr.toLowerCase().trim();
+  s = s.replace(/\|/g, ' ');
+  
+  const hindiToEnglishMonths: Record<string, string> = {
+    'जनवरी': 'january',
+    'फ़रवरी': 'february',
+    'फरवरी': 'february',
+    'मार्च': 'march',
+    'अप्रैल': 'april',
+    'मई': 'may',
+    'जून': 'june',
+    'जुलाई': 'july',
+    'अगस्त': 'august',
+    'सितंबर': 'september',
+    'सितम्बर': 'september',
+    'अक्टूबर': 'october',
+    'अक्तूबर': 'october',
+    'नवंबर': 'november',
+    'नवम्बर': 'november',
+    'दिसंबर': 'december',
+    'दिसम्बर': 'december'
+  };
+
+  for (const [hindi, english] of Object.entries(hindiToEnglishMonths)) {
+    if (s.includes(hindi)) {
+      s = s.replace(new RegExp(hindi, 'g'), english);
+    }
+  }
+
+  // Handle formats like: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmyMatch = s.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1; // 0-indexed month
+    let year = parseInt(dmyMatch[3], 10);
+    if (year < 100) {
+      year += 2000;
+    }
+    const parsedDate = new Date(year, month, day);
+    if (!isNaN(parsedDate.getTime())) {
+      parsedDate.setHours(23, 59, 59, 999);
+      return parsedDate;
+    }
+  }
+
+  // Support suffix matching, e.g. "31st May" -> "31 May"
+  s = s.replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, '$1');
+
+  // Strip non-standard characters from start/end before parsing to help standard new Date()
+  // eslint-disable-next-line no-misleading-character-class
+  let cleanAlpha = s.replace(/^[:\-–—\s\u200b•|ः।●]+/, '').replace(/[:\-–—\s|ः।●]+$/, '').trim();
+  
+  // Extract pure date substring if there is trailing noise like "(until 11:00 PM)"
+  const matchAlpha = cleanAlpha.match(/\b\d{1,2}[\s./-]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{2,4}\b/i);
+  if (matchAlpha) {
+    cleanAlpha = matchAlpha[0];
+  } else {
+    const matchAlphaRev = cleanAlpha.match(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{1,2}[\s./-]*\d{2,4}\b/i);
+    if (matchAlphaRev) {
+      cleanAlpha = matchAlphaRev[0];
+    }
+  }
+
+  const tryStandard = new Date(cleanAlpha);
+  if (!isNaN(tryStandard.getTime())) {
+    tryStandard.setHours(23, 59, 59, 999);
+    return tryStandard;
+  }
+
+  return null;
+};
+
+const PostDatesDisplay = ({ post, searchQuery = '', startDateFilter = '', lastDateFilter = '' }: { post: any; searchQuery?: string; startDateFilter?: string; lastDateFilter?: string }) => {
   const [loading, setLoading] = useState(false);
   const [dates, setDates] = useState<ExtractedDates>({ startDate: null, lastDate: null });
 
@@ -1345,19 +1559,19 @@ const PostDatesDisplay = ({ post }: { post: any }) => {
       {startDate && (
         <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[11px] font-bold">
           <span className="w-1 h-1 rounded-full bg-green-500" />
-          <span>Apply Start: {startDate}</span>
+          <span>Apply Start: {highlightAllMatches(startDate, searchQuery, startDateFilter, lastDateFilter)}</span>
         </div>
       )}
       {lastDate && (
         <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded text-[11px] font-bold">
           <span className="w-1 h-1 rounded-full bg-red-500" />
-          <span>Last Date (Extracted): {lastDate}</span>
+          <span>Last Date (Extracted): {highlightAllMatches(lastDate, searchQuery, startDateFilter, lastDateFilter)}</span>
         </div>
       )}
       {enteredLastDate && (
         <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded text-[11px] font-bold">
           <span className="w-1 h-1 rounded-full bg-blue-500" />
-          <span>Last Date Box: {enteredLastDate}</span>
+          <span>Last Date Box: {highlightAllMatches(enteredLastDate, searchQuery, startDateFilter, lastDateFilter)}</span>
         </div>
       )}
     </div>
@@ -1365,14 +1579,240 @@ const PostDatesDisplay = ({ post }: { post: any }) => {
 };
 
 // ============ POSTS TAB (with search + category filter + date) ============
-const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts: any[]; onDelete: (id: string) => void; navigate: (path: string) => void; categories: any[]; formatDate: (d: string) => string }) => {
+const getDateMatchingRegexp = (dateStr: string): RegExp | null => {
+  if (!dateStr) return null;
+  try {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = day.toString();
+    const dd = day < 10 ? '0' + day : day.toString();
+    const m = month.toString();
+    const mm = month < 10 ? '0' + month : month.toString();
+    const yyyy = year.toString();
+    const yy = year.toString().substring(2);
+
+    const monthsEngLong = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthsEngShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthsHindi = ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
+    const alternateMonthsHindi: Record<number, string[]> = {
+      1: ["फरवरी"],
+      8: ["सितम्बर"],
+      9: ["अक्तूबर"],
+      10: ["नवम्बर"],
+      11: ["दिसम्बर"]
+    };
+
+    const engLong = monthsEngLong[month - 1];
+    const engShort = monthsEngShort[month - 1];
+    const hindi = monthsHindi[month - 1];
+
+    const regexPieces: string[] = [];
+
+    // 1. Numeric matches (e.g. 7/6/2026, 07-06-2026, 7.6.26)
+    regexPieces.push(`\\b0?${d}[./-]0?${m}[./-]${yyyy}\\b`);
+    regexPieces.push(`\\b0?${d}[./-]0?${m}[./-]${yy}\\b`);
+
+    // 2. Word matches
+    const suffixPattern = "(?:st|nd|rd|th)?";
+    const mNames = [engLong, engShort, hindi];
+    const altHindi = alternateMonthsHindi[month - 1];
+    if (altHindi) {
+      mNames.push(...altHindi);
+    }
+
+    mNames.forEach(mName => {
+      // Day space/dash Month space/dash Year
+      regexPieces.push(`\\b0?${d}${suffixPattern}\\s*[./-]?\\s*${mName}\\s*[./-]?\\s*${yyyy}\\b`);
+      regexPieces.push(`\\b0?${d}${suffixPattern}\\s*[./-]?\\s*${mName}\\s*[./-]?\\s*${yy}\\b`);
+      
+      // Month space Day comma Year (e.g. June 7, 2026 or June 07 2026)
+      regexPieces.push(`\\b${mName}\\s+0?${d}${suffixPattern}\\s*,?\\s*${yyyy}\\b`);
+      regexPieces.push(`\\b${mName}\\s+0?${d}${suffixPattern}\\s*,?\\s*${yy}\\b`);
+      
+      // Standalone Month Day or Day Month
+      regexPieces.push(`\\b0?${d}${suffixPattern}\\s+${mName}\\b`);
+      regexPieces.push(`\\b${mName}\\s+0?${d}${suffixPattern}\\b`);
+    });
+
+    // Replace standard word boundary \b with unicode compatibility checks for Hindi characters
+    const normalizedPieces = regexPieces.map(piece => {
+      if (/[\u0900-\u097F]/.test(piece)) {
+        return piece.replace(/\\b/g, '(?:^|[^a-zA-Z0-9\\u0900-\\u097F])');
+      }
+      return piece;
+    });
+
+    return new RegExp(`(${normalizedPieces.join('|')})`, 'gi');
+  } catch (e) {
+    console.error("Error building date regex", e);
+    return null;
+  }
+};
+
+const highlightAllMatches = (text: string, search: string, startFilterDate: string, lastFilterDate: string) => {
+  if (!text) return '';
+  
+  const matchers: { regex: RegExp; className: string }[] = [];
+  
+  if (search && search.trim()) {
+    const escapedSearch = search.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    matchers.push({
+      regex: new RegExp(`(${escapedSearch})`, 'gi'),
+      className: "bg-yellow-250 dark:bg-yellow-600/40 text-yellow-950 dark:text-yellow-105 px-0.5 rounded shadow-sm font-bold animate-pulse"
+    });
+  }
+  
+  if (startFilterDate) {
+    const rStart = getDateMatchingRegexp(startFilterDate);
+    if (rStart) {
+      matchers.push({
+        regex: rStart,
+        className: "bg-green-150 dark:bg-green-700/40 text-green-950 dark:text-green-105 border border-green-300 font-extrabold shadow"
+      });
+    }
+  }
+  
+  if (lastFilterDate) {
+    const rLast = getDateMatchingRegexp(lastFilterDate);
+    if (rLast) {
+      matchers.push({
+        regex: rLast,
+        className: "bg-red-155 dark:bg-red-700/40 text-red-950 dark:text-red-105 border border-red-300 font-extrabold shadow"
+      });
+    }
+  }
+  
+  if (matchers.length === 0) return text;
+  
+  interface MatchInterval {
+    start: number;
+    end: number;
+    className: string;
+    text: string;
+  }
+  
+  const matches: MatchInterval[] = [];
+  
+  matchers.forEach(m => {
+    let match;
+    m.regex.lastIndex = 0;
+    const globalRegex = new RegExp(m.regex.source, m.regex.flags.includes('g') ? m.regex.flags : m.regex.flags + 'g');
+    while ((match = globalRegex.exec(text)) !== null) {
+      if (match[0].length === 0) break;
+      matches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        className: m.className,
+        text: match[0]
+      });
+    }
+  });
+  
+  if (matches.length === 0) return text;
+  
+  matches.sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start;
+    return (b.end - b.start) - (a.end - a.start);
+  });
+  
+  const nonOverlapping: MatchInterval[] = [];
+  let currentEnd = 0;
+  
+  matches.forEach(m => {
+    if (m.start >= currentEnd) {
+      nonOverlapping.push(m);
+      currentEnd = m.end;
+    }
+  });
+  
+  if (nonOverlapping.length === 0) return text;
+  
+  const elements: any[] = [];
+  let lastIndex = 0;
+  
+  nonOverlapping.forEach((m, idx) => {
+    if (m.start > lastIndex) {
+      elements.push(text.substring(lastIndex, m.start));
+    }
+    elements.push(
+      <mark key={`hl-${idx}`} className={`${m.className} px-1 rounded`}>
+        {text.substring(m.start, m.end)}
+      </mark>
+    );
+    lastIndex = m.end;
+  });
+  
+  if (lastIndex < text.length) {
+    elements.push(text.substring(lastIndex));
+  }
+  
+  return <>{elements}</>;
+};
+
+const highlightMatchedText = (text: string, search: string) => {
+  return highlightAllMatches(text, search, '', '');
+};
+
+const isDateMatched = (filterDate: string, targetDateStr: string | null | undefined): boolean => {
+  if (!filterDate) return true;
+  if (!targetDateStr) return false;
+  const regex = getDateMatchingRegexp(filterDate);
+  if (regex && regex.test(targetDateStr)) {
+    return true;
+  }
+  const parsedTarget = parseCleanDate(targetDateStr);
+  if (parsedTarget) {
+    try {
+      const [y, m, d] = filterDate.split('-').map(Number);
+      return parsedTarget.getFullYear() === y && (parsedTarget.getMonth() + 1) === m && parsedTarget.getDate() === d;
+    } catch (e) {
+      return false;
+    }
+  }
+  return false;
+};
+
+const PostsTab = ({ posts, categoryLinks, onDelete, navigate, categories, formatDate }: { posts: any[]; categoryLinks: any[]; onDelete: (id: string) => void; navigate: (path: string) => void; categories: any[]; formatDate: (d: string) => string }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCat, setFilterCat] = useState('all');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [lastDateFilter, setLastDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(30);
+  const [activeMatchIndex, setActiveMatchIndex] = useState<number>(-1);
 
-  const [categoryLinks, setCategoryLinks] = useState<any[]>([]);
+  // Reset page when filtering or searching to prevent landing on empty pages
   useEffect(() => {
-    getCategoryLinks().then(setCategoryLinks);
-  }, []);
+    setCurrentPage(1);
+    if (searchQuery || startDateFilter || lastDateFilter) {
+      setActiveMatchIndex(0);
+    } else {
+      setActiveMatchIndex(-1);
+    }
+  }, [searchQuery, filterCat, startDateFilter, lastDateFilter]);
+
+  // Pre-compute O(1) categorization map to reduce complexity from O(P * L) to O(P + L)
+  const postSlugToLinksMap = useMemo(() => {
+    const map = new Map<string, any[]>();
+    categoryLinks.forEach(l => {
+      if (!l.url) return;
+      const match = l.url.match(/\/post\/(.+)/);
+      const linkSlug = match ? match[1] : null;
+      if (linkSlug) {
+        if (!map.has(linkSlug)) {
+          map.set(linkSlug, []);
+        }
+        map.get(linkSlug)!.push(l);
+      }
+    });
+    return map;
+  }, [categoryLinks]);
+
+  // Pre-compute O(1) categories Map for category names
+  const categoriesMap = useMemo(() => {
+    const map = new Map<string, any>();
+    categories.forEach(c => map.set(c.id, c));
+    return map;
+  }, [categories]);
 
   let filteredPosts = posts;
 
@@ -1401,113 +1841,300 @@ const PostsTab = ({ posts, onDelete, navigate, categories, formatDate }: { posts
     });
   }
 
+  if (startDateFilter || lastDateFilter) {
+    filteredPosts = filteredPosts.filter(p => {
+      const enDates = extractDatesFromHtml(p.tables_html);
+      const hiDates = extractDatesFromHtml(p.tables_html_hi);
+      const pStart = enDates.startDate || hiDates.startDate;
+      const pLast = enDates.lastDate || hiDates.lastDate;
+      const pEntered = p.last_date_text || p.last_date_text_hi;
+
+      const isStartMatched = startDateFilter ? isDateMatched(startDateFilter, pStart) : true;
+      const isLastMatched = lastDateFilter ? (isDateMatched(lastDateFilter, pLast) || isDateMatched(lastDateFilter, pEntered)) : true;
+
+      return isStartMatched && isLastMatched;
+    });
+  }
+
+  const handleNextMatch = () => {
+    if (filteredPosts.length === 0) return;
+    setActiveMatchIndex(prev => {
+      const nextIdx = (prev + 1) % filteredPosts.length;
+      return nextIdx;
+    });
+  };
+
+  const handlePrevMatch = () => {
+    if (filteredPosts.length === 0) return;
+    setActiveMatchIndex(prev => {
+      const prevIdx = (prev - 1 + filteredPosts.length) % filteredPosts.length;
+      return prevIdx;
+    });
+  };
+
+  // Scroll active matching post card into view smoothly (and change page if needed)
+  useEffect(() => {
+    if (activeMatchIndex >= 0 && activeMatchIndex < filteredPosts.length) {
+      const activePost = filteredPosts[activeMatchIndex];
+      if (activePost) {
+        if (itemsPerPage !== 'all') {
+          const targetPage = Math.floor(activeMatchIndex / (itemsPerPage as number)) + 1;
+          if (currentPage !== targetPage) {
+            setCurrentPage(targetPage);
+            return; // Let the page transition render the DOM, then subsequent triggers will handle scrolling
+          }
+        }
+
+        const timer = setTimeout(() => {
+          const el = document.getElementById(`post-card-${activePost.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 80);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [activeMatchIndex, currentPage, itemsPerPage, filteredPosts]);
+
+  // Paginate posts list to prevent heavy browser DOM rendering lag
+  const limitValue = itemsPerPage === 'all' ? filteredPosts.length : itemsPerPage;
+  const totalPages = Math.ceil(filteredPosts.length / (limitValue || 1));
+  const paginatedPosts = useMemo(() => {
+    if (itemsPerPage === 'all') return filteredPosts;
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredPosts.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredPosts, currentPage, itemsPerPage]);
+
   return (
     <div className="bg-background rounded-2xl p-6" style={{ boxShadow: 'var(--box-shadow-strong)' }}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-primary">Posts</h2>
-        <Button onClick={() => navigate('/admin/post/new')}>+ Create New Post</Button>
-      </div>
-      <div className="mb-4 flex gap-3 flex-wrap items-end">
-        <div className="flex-1 min-w-[250px]">
-          <div className="w-full max-w-md bg-background rounded-full p-1 border border-border flex items-center" style={{ boxShadow: '2px 2px 6px rgba(0,0,0,0.1)' }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search posts..."
-              className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-sm bg-transparent"
-            />
-            <button className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background active:scale-90 transition-all duration-100 hover:bg-slate-100 dark:hover:bg-slate-800" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
-              <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-primary stroke-[2.5] fill-none">
-                <circle cx="11" cy="11" r="7" />
-                <line x1="16.5" y1="16.5" x2="21" y2="21" />
-              </svg>
-            </button>
-          </div>
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-30 bg-background -mx-6 px-6 -mt-6 pt-6 pb-4 border-b-2 border-dashed border-slate-300 rounded-t-2xl shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-primary">Posts</h2>
+          <Button onClick={() => navigate('/admin/post/new')}>+ Create New Post</Button>
         </div>
-        <div>
-          <label className="text-base font-bold text-primary block mb-1">Filter by Category</label>
-          <select
-            value={filterCat}
-            onChange={e => setFilterCat(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg bg-background text-primary text-sm"
-          >
-            <option value="all">All Posts</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-      {(searchQuery || filterCat !== 'all') && (
-        <div className="mb-3 flex items-center gap-2 flex-wrap">
-          {searchQuery && <span className="text-sm text-muted-foreground">Search: <strong className="text-primary">"{searchQuery}"</strong></span>}
-          {filterCat !== 'all' && <span className="text-sm text-muted-foreground">Category: <strong className="text-primary">{categories.find(c => c.id === filterCat)?.name}</strong></span>}
-          <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setFilterCat('all'); }}>Clear Filters</Button>
-        </div>
-      )}
-      <div className="space-y-4 mt-6 border-t-4 border-dashed border-slate-500 pt-6">
-        {filteredPosts.map(post => (
-          <div key={post.id} className="border-b-2 border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0">
-            <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="font-bold text-primary text-base">{post.name_of_post}</div>
-                  <div className="text-sm text-muted-foreground mb-1">{post.post_date}</div>
-                  <PostDatesDisplay post={post} />
-                  {(() => {
-                    const slug = post.slug || post.id;
-                    const links = categoryLinks.filter(l => {
-                      if (!l.url) return false;
-                      const match = l.url.match(/\/post\/(.+)/);
-                      const linkSlug = match ? match[1] : null;
-                      return linkSlug === slug;
-                    });
-                    if (links.length > 0) {
-                      return (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {links.map((link: any, i: number) => {
-                            const cat = categories.find(c => c.id === link.category_id);
-                            return (
-                              <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-bold">
-                                Linked in: {cat ? cat.name : 'Unknown'} ({link.title})
-                              </span>
-                            );
-                          })}
-                        </div>
-                      );
+        <div className="mb-4 flex gap-3 flex-wrap items-end">
+          <div className="flex-1 min-w-[250px]">
+            <div className="w-full max-w-md bg-background rounded-full p-1 border border-border flex items-center" style={{ boxShadow: '2px 2px 6px rgba(0,0,0,0.1)' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                      handlePrevMatch();
+                    } else {
+                      handleNextMatch();
                     }
-                    return null;
-                  })()}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
-                <Button variant="outline" size="sm" onClick={async () => {
-                   const overlay = document.createElement('div');
-                   overlay.innerText = 'Preparing Preview...';
-                   Object.assign(overlay.style, { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '24px', fontWeight: 'bold' });
-                   document.body.appendChild(overlay);
-                   try {
-                     const fullPost = await getPostBySlug(post.slug || post.id);
-                     if (fullPost) {
-                       const { savePreviewData } = await import('@/lib/previewDb');
-                       try { await savePreviewData(JSON.parse(JSON.stringify(fullPost))); } catch(e) { console.error('Preview error', e); }
-                       localStorage.setItem('preview_post_slug', post.slug || post.id);
-                        try { localStorage.setItem('preview_post_data', JSON.stringify(fullPost)); } catch (e) { console.warn('Failed to set localStorage fallback preview:', e); }
-                     }
-                   } finally {
-                     document.body.removeChild(overlay);
-                     window.open(`/post/${encodeURIComponent(post.slug || post.id)}?preview=true`, '_blank');
-                   }
-                }}>Preview</Button>
-                <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
-              </div>
+                  }
+                }}
+                placeholder="Search posts (Enter for next, Shift+Enter for prev)..."
+                className="flex-1 border-none outline-none py-1.5 px-2.5 rounded-full text-sm bg-transparent"
+              />
+              <button className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center bg-background active:scale-90 transition-all duration-100 hover:bg-slate-100 dark:hover:bg-slate-800" style={{ boxShadow: '1px 1px 4px rgba(0,0,0,0.1)' }}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-primary stroke-[2.5] fill-none">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                </svg>
+              </button>
             </div>
           </div>
-        ))}
+          <div>
+            <label className="text-base font-bold text-primary block mb-1">Filter by Category</label>
+            <select
+              value={filterCat}
+              onChange={e => setFilterCat(e.target.value)}
+              className="px-3 py-2 border border-border rounded-lg bg-background text-primary text-sm font-medium"
+            >
+              <option value="all">All Posts</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-base font-bold text-emerald-700 dark:text-emerald-400 block mb-1">📅 Apply Start Date</label>
+            <input
+              type="date"
+              value={startDateFilter}
+              onChange={e => setStartDateFilter(e.target.value)}
+              className="px-3 py-1.5 border border-emerald-300 rounded-lg bg-background text-emerald-950 dark:text-emerald-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-medium"
+            />
+          </div>
+          <div>
+            <label className="text-base font-bold text-rose-700 dark:text-rose-400 block mb-1">📅 Last Date / Box</label>
+            <input
+              type="date"
+              value={lastDateFilter}
+              onChange={e => setLastDateFilter(e.target.value)}
+              className="px-3 py-1.5 border border-rose-300 rounded-lg bg-background text-rose-950 dark:text-rose-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 font-medium"
+            />
+          </div>
+          <div>
+            <label className="text-base font-bold text-primary block mb-1">Display Mode</label>
+            <select
+              value={itemsPerPage}
+              onChange={e => {
+                const val = e.target.value;
+                setItemsPerPage(val === 'all' ? 'all' : Number(val));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-border rounded-lg bg-background text-primary text-sm"
+            >
+              <option value={30}>30 Posts (Fast)</option>
+              <option value={100}>100 Posts</option>
+              <option value={300}>300 Posts</option>
+              <option value="all">Show All (Ctrl+F Friendly)</option>
+            </select>
+          </div>
+        </div>
+        {(searchQuery || filterCat !== 'all' || startDateFilter || lastDateFilter) && (
+          <div className="mb-0 flex items-center justify-between gap-2 flex-wrap bg-slate-100/50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-dashed border-slate-300">
+            <div className="flex items-center gap-3 flex-wrap">
+              {searchQuery && <span className="text-sm text-muted-foreground">Search: <strong className="text-primary">"{searchQuery}"</strong></span>}
+              {filterCat !== 'all' && <span className="text-sm text-muted-foreground">Category: <strong className="text-primary">{categoriesMap.get(filterCat)?.name}</strong></span>}
+              {startDateFilter && <span className="text-sm text-muted-foreground">Start Date: <strong className="text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-200">{startDateFilter}</strong></span>}
+              {lastDateFilter && <span className="text-sm text-muted-foreground">Last Date: <strong className="text-rose-700 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200">{lastDateFilter}</strong></span>}
+              <span className="text-xs bg-yellow-105 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200 font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1 border border-yellow-200">
+                📊 Matched Posts: {filteredPosts.length}
+              </span>
+              {(searchQuery || startDateFilter || lastDateFilter) && filteredPosts.length > 0 && (
+                <div className="inline-flex items-center gap-1 bg-yellow-100/80 dark:bg-yellow-950/40 p-1 rounded-lg border border-yellow-300 shadow-sm ml-1 select-none">
+                  <span className="text-xs text-yellow-900 dark:text-yellow-200 font-bold px-2 font-mono">
+                    Focus: {activeMatchIndex + 1} of {filteredPosts.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePrevMatch}
+                    title="Previous match (Up)"
+                    className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs bg-white dark:bg-slate-800 border border-slate-200 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-90 transition-all duration-100"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextMatch}
+                    title="Next match (Down)"
+                    className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs bg-white dark:bg-slate-800 border border-slate-200 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-90 transition-all duration-100"
+                  >
+                    ↓
+                  </button>
+                </div>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setFilterCat('all'); setStartDateFilter(''); setLastDateFilter(''); }}>Clear Filters</Button>
+          </div>
+        )}
+      </div>
+      <div className="space-y-4 mt-6">
+        {paginatedPosts.map((post, idx) => {
+          const absoluteIndex = itemsPerPage === 'all' ? idx : (currentPage - 1) * itemsPerPage + idx;
+          const isCurrentlyActiveMatch = activeMatchIndex === absoluteIndex;
+          return (
+            <div
+              key={post.id}
+              id={`post-card-${post.id}`}
+              className={`border-b-2 border-dashed border-slate-300 pb-4 last:border-b-0 last:pb-0 transition-all duration-300 ${
+                isCurrentlyActiveMatch
+                  ? 'ring-4 ring-yellow-400 dark:ring-yellow-500/80 rounded-xl p-2 bg-yellow-50/50 dark:bg-yellow-950/20 scale-[1.015] shadow-md border-indigo-400'
+                  : ''
+              }`}
+            >
+              <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="font-bold text-primary text-base">
+                      {highlightMatchedText(post.name_of_post || '', searchQuery)}
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-1">{post.post_date}</div>
+                    <PostDatesDisplay post={post} searchQuery={searchQuery} startDateFilter={startDateFilter} lastDateFilter={lastDateFilter} />
+                    {(() => {
+                      const slug = post.slug || post.id;
+                      const links = postSlugToLinksMap.get(slug) || [];
+                      if (links.length > 0) {
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {links.map((link: any, i: number) => {
+                              const cat = categoriesMap.get(link.category_id);
+                              return (
+                                <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-bold">
+                                  Linked in: {cat ? cat.name : 'Unknown'} ({link.title})
+                                </span>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
+                  <Button variant="outline" size="sm" onClick={async () => {
+                     const overlay = document.createElement('div');
+                     overlay.innerText = 'Preparing Preview...';
+                     Object.assign(overlay.style, { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '24px', fontWeight: 'bold' });
+                     document.body.appendChild(overlay);
+                     try {
+                       const fullPost = await getPostBySlug(post.slug || post.id);
+                       if (fullPost) {
+                         const { savePreviewData } = await import('@/lib/previewDb');
+                         try { await savePreviewData(JSON.parse(JSON.stringify(fullPost))); } catch(e) { console.error('Preview error', e); }
+                         localStorage.setItem('preview_post_slug', post.slug || post.id);
+                          try { localStorage.setItem('preview_post_data', JSON.stringify(fullPost)); } catch (e) { console.warn('Failed to set localStorage fallback preview:', e); }
+                       }
+                     } finally {
+                       document.body.removeChild(overlay);
+                       window.open(`/post/${encodeURIComponent(post.slug || post.id)}?preview=true`, '_blank');
+                     }
+                  }}>Preview</Button>
+                  <Button variant="destructive" size="sm" onClick={() => onDelete(post.id)}>Delete</Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
         {filteredPosts.length === 0 && <p className="text-muted-foreground text-center py-8 border-b-2 border-dashed border-slate-300 pb-4">{(searchQuery || filterCat !== 'all') ? 'No posts found.' : 'No posts yet. Create one!'}</p>}
       </div>
+
+      {/* Pagination Controls */}
+      {itemsPerPage === 'all' ? (
+        <div className="mt-6 border-t border-dashed border-slate-300 pt-4 flex justify-between items-center text-sm text-muted-foreground">
+          <span>Showing all {filteredPosts.length} posts. Browser search (Ctrl+F) will now find any of these posts instantly.</span>
+        </div>
+      ) : (
+        totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-dashed border-slate-300 pt-4 flex-wrap gap-4">
+            <span className="text-sm text-muted-foreground">
+              Showing {Math.min(filteredPosts.length, (currentPage - 1) * (itemsPerPage as number) + 1)}-{Math.min(filteredPosts.length, currentPage * (itemsPerPage as number))} of {filteredPosts.length} posts
+            </span>
+            <div className="flex gap-2 items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="px-3 py-1.5 text-sm bg-secondary text-primary font-bold rounded">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )
+      )}
     </div>
   );
 };
