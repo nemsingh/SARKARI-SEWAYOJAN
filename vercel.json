@@ -2,10 +2,10 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/admin-vikaskumar/:path*", "destination": "/admin.html" },
-    { "source": "/admin/:path*", "destination": "/admin.html" },
-    { "source": "/search/:path*", "destination": "/search.html" },
-    { "source": "/category/:path*", "destination": "/category_shell.html" },
-    { "source": "/:path*", "destination": "/index.html" }
+    { "source": "/admin-vikaskumar/:path*", "destination": "/admin" },
+    { "source": "/admin/:path*", "destination": "/admin" },
+    { "source": "/search/:path*", "destination": "/search" },
+    { "source": "/category/:path*", "destination": "/category_shell" },
+    { "source": "/:path*", "destination": "/" }
   ]
 }
