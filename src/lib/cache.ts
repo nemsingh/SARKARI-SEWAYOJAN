@@ -1,7 +1,7 @@
 const CACHE_PREFIX = 'ss_cache_';
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes - reduces Firebase reads significantly
 
-export const getCache = <T>(key: string): T | null => {
+export const getCache = <T>(key: string, customTtl?: number): T | null => {
   if (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__ && (window as any).__INITIAL_DATA__[key]) {
     return (window as any).__INITIAL_DATA__[key] as T;
   }
@@ -12,7 +12,8 @@ export const getCache = <T>(key: string): T | null => {
     const item = localStorage.getItem(CACHE_PREFIX + key);
     if (!item) return null;
     const { data, timestamp } = JSON.parse(item);
-    if (Date.now() - timestamp > CACHE_TTL) {
+    const ttl = customTtl !== undefined ? customTtl : CACHE_TTL;
+    if (Date.now() - timestamp > ttl) {
       localStorage.removeItem(CACHE_PREFIX + key);
       return null;
     }

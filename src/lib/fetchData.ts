@@ -1,33 +1,60 @@
 import * as firebaseService from './firebaseService';
+import { getCache, setCache } from './cache';
+
+const promiseCache = new Map<string, Promise<any>>();
+const DEV_CACHE_TTL = 30 * 1000; // 30 seconds
 
 export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Promise<any>) {
   // In development, directly hit Firebase to ensure live preview works after Admin edits.
   if (import.meta.env.DEV) {
-    console.log(`[DEV MODE] Fetching live data from Firebase for ${url}`);
-    try {
-      return await fallbackFetch();
-    } catch (e) {
-      console.warn(`[DEV MODE] Live Firebase fetch failed for ${url}. Attempting to fall back to pre-generated static JSON.`, e);
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await res.json();
-            console.log(`[DEV MODE] Successfully loaded static fallback data for ${url}`);
-            return data;
-          }
-        }
-      } catch (staticErr) {
-        console.error(`[DEV MODE] Static JSON fallback also failed for ${url}:`, staticErr);
-      }
-      
-      // If static JSON is also unavailable, return a safe minimal empty structure instead of crashing the layout
-      if (url.includes('data.json')) {
-        return { categories: [], category_links: [], tablet_items: [], posts: [], settings_flat: {} };
-      }
-      return null;
+    const cacheKey = `url_${url}`;
+    const cached = getCache<any>(cacheKey, DEV_CACHE_TTL);
+    if (cached) {
+      console.log(`[DEV MODE] Returning cached database data for ${url}`);
+      return cached;
     }
+
+    if (promiseCache.has(url)) {
+      console.log(`[DEV MODE] Merging concurrent duplicate fetch for ${url}`);
+      return promiseCache.get(url);
+    }
+
+    const promise = (async () => {
+      console.log(`[DEV MODE] Fetching live data from Firebase for ${url}`);
+      try {
+        const result = await fallbackFetch();
+        if (result) {
+          setCache(cacheKey, result);
+        }
+        return result;
+      } catch (e) {
+        console.warn(`[DEV MODE] Live Firebase fetch failed for ${url}. Attempting to fall back to pre-generated static JSON.`, e);
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const data = await res.json();
+              console.log(`[DEV MODE] Successfully loaded static fallback data for ${url}`);
+              return data;
+            }
+          }
+        } catch (staticErr) {
+          console.error(`[DEV MODE] Static JSON fallback also failed for ${url}:`, staticErr);
+        }
+        
+        // If static JSON is also unavailable, return a safe minimal empty structure instead of crashing the layout
+        if (url.includes('data.json')) {
+          return { categories: [], category_links: [], tablet_items: [], posts: [], settings_flat: {} };
+        }
+        return null;
+      } finally {
+        promiseCache.delete(url);
+      }
+    })();
+
+    promiseCache.set(url, promise);
+    return promise;
   }
 
   // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.
