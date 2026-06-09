@@ -633,22 +633,34 @@ const AdminPostEditor = () => {
       if (payloadSize > 850000) {
          console.log(`Payload size: ${(payloadSize/1024/1024).toFixed(2)} MB. Chunking will be applied automatically.`);
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("Could not calculate payload size", e);
     }
 
     try {
+      const addedOrUpdatedLinks: any[] = [];
+      const deletedLinkIds: string[] = [];
+      const updatedTabletItems: any[] = [];
+      let savedPost: any = null;
+
       if (isNew) {
         const result = await createPost(postData);
         let linksAdded = false;
         
+        savedPost = {
+          id: result.id,
+          ...postData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
         for (const link of categoryLinksData) {
           if (link.title.trim() && link.categoryId) {
             const linkDate = categoryLinksData.length > 1 ? (link.postDate || postDate) : postDate;
             const customDate = parseDateTime(linkDate, 'en');
             const customTimestamp = customDate ? customDate.getTime() : customTs;
             
-            await addCategoryLink({
+            const linkRef = await addCategoryLink({
               category_id: link.categoryId,
               title: link.title.trim(),
               url: `/post/${finalSlug || result.id}`,
@@ -657,6 +669,18 @@ const AdminPostEditor = () => {
               is_new: true,
               last_date_text: null,
             });
+
+            addedOrUpdatedLinks.push({
+              id: linkRef.id,
+              category_id: link.categoryId,
+              title: link.title.trim(),
+              url: `/post/${finalSlug || result.id}`,
+              link_timestamp: customTimestamp,
+              post_date: linkDate,
+              is_new: true,
+              last_date_text: null,
+            });
+
             linksAdded = true;
           }
         }
@@ -673,6 +697,13 @@ const AdminPostEditor = () => {
         const oldSlug = oldPost?.slug || id;
 
         await updatePost(id!, postData);
+
+        savedPost = {
+          id: id!,
+          ...postData,
+          created_at: oldPost?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
 
         const existingLinks = await getCategoryLinks();
         const existingLinksForPost = existingLinks.filter((l: any) => l.url === `/post/${oldSlug}`);
@@ -692,8 +723,28 @@ const AdminPostEditor = () => {
                 post_date: linkDate,
                 is_new: true
               });
+              addedOrUpdatedLinks.push({
+                id: link.id,
+                title: link.title.trim(),
+                category_id: link.categoryId,
+                url: `/post/${finalSlug}`,
+                link_timestamp: customTimestamp,
+                post_date: linkDate,
+                is_new: true,
+                last_date_text: link.last_date_text || null
+              });
             } else {
-              await addCategoryLink({
+              const linkRef = await addCategoryLink({
+                category_id: link.categoryId,
+                title: link.title.trim(),
+                url: `/post/${finalSlug}`,
+                link_timestamp: customTimestamp,
+                post_date: linkDate,
+                is_new: true,
+                last_date_text: null,
+              });
+              addedOrUpdatedLinks.push({
+                id: linkRef.id,
                 category_id: link.categoryId,
                 title: link.title.trim(),
                 url: `/post/${finalSlug}`,
@@ -711,21 +762,47 @@ const AdminPostEditor = () => {
           const stillExists = categoryLinksData.find(l => l.id === extLink.id);
           if (!stillExists) {
              await deleteCategoryLink(extLink.id);
+             deletedLinkIds.push(extLink.id);
           } else if (oldSlug !== finalSlug) {
-             await updateCategoryLink(extLink.id, { url: `/post/${finalSlug}`, is_new: true });
+             const updatedUrl = `/post/${finalSlug}`;
+             await updateCategoryLink(extLink.id, { url: updatedUrl, is_new: true });
+             addedOrUpdatedLinks.push({
+               ...extLink,
+               url: updatedUrl,
+               is_new: true
+             });
           }
         }
         
         if (oldSlug !== finalSlug) {
-          const tabletItems = await getTabletItems();
-          for (const item of tabletItems) {
+          const tItems = await getTabletItems();
+          for (const item of tItems) {
             if (item.url === `/post/${oldSlug}`) {
               await updateTabletItem(item.id, { url: `/post/${finalSlug}` });
+              updatedTabletItems.push({
+                ...item,
+                url: `/post/${finalSlug}`
+              });
             }
           }
         }
 
         toast({ title: 'Post updated!', description: 'Click "Publish Website" from the Dashboard to see changes live.' });
+      }
+
+      // Broadcast changes to other tabs/windows for immediate sync or automatic layout update
+      try {
+        const syncChannel = new BroadcastChannel('admin_sync');
+        syncChannel.postMessage({ 
+          type: 'SYNC_ITEM_UPDATE',
+          updatedPost: savedPost,
+          updatedLinks: addedOrUpdatedLinks,
+          deletedLinkIds: deletedLinkIds,
+          updatedTabletItems: updatedTabletItems
+        });
+        syncChannel.close();
+      } catch (e) {
+        console.warn('Sync broadcast warning:', e);
       }
     } catch (error: any) {
       console.error('Save error:', error);
@@ -816,6 +893,14 @@ const AdminPostEditor = () => {
 </html>`;
   };
 
+  const handleBack = () => {
+    if (window.opener || window.history.length <= 1) {
+      window.close();
+    } else {
+      navigate('/admin');
+    }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-primary font-bold">Loading...</div>;
 
   return (
@@ -830,7 +915,7 @@ const AdminPostEditor = () => {
           >
             {isThemeBhagwa ? <Sun className="w-6 h-6 text-black" /> : <Moon className="w-6 h-6 text-primary" />}
           </button>
-          <Button variant="outline" onClick={() => navigate('/admin')}>← Back</Button>
+          <Button variant="outline" onClick={handleBack}>← Back</Button>
           <Button onClick={handleSave} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Post'}</Button>
           <Button variant="outline" onClick={handleDownloadHtml}>📥 Download HTML</Button>
         </div>

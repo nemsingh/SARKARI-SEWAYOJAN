@@ -107,6 +107,100 @@ const AdminDashboard = () => {
     return () => unsubscribe();
   }, [navigate]);
 
+  // Real-time cross-tab synchronization when tasks or posts are created/edited in another tab
+  useEffect(() => {
+    let syncChannel: BroadcastChannel | null = null;
+    try {
+      syncChannel = new BroadcastChannel('admin_sync');
+      syncChannel.onmessage = (event) => {
+        if (!event.data) return;
+
+        if (event.data.type === 'SYNC_ITEM_UPDATE') {
+          const { updatedPost, updatedLinks, deletedLinkIds, updatedTabletItems } = event.data;
+
+          if (updatedPost) {
+            setPosts(prev => {
+              const index = prev.findIndex(p => p.id === updatedPost.id);
+              if (index > -1) {
+                const next = [...prev];
+                next[index] = {
+                  ...next[index],
+                  ...updatedPost,
+                  tables_html: updatedPost.tables_html,
+                  tables_html_hi: updatedPost.tables_html_hi
+                };
+                return next;
+              } else {
+                return [updatedPost, ...prev];
+              }
+            });
+          }
+
+          if (updatedLinks && updatedLinks.length > 0) {
+            setCategoryLinks(prev => {
+              const next = [...prev];
+              for (const link of updatedLinks) {
+                const index = next.findIndex(l => l.id === link.id);
+                if (index > -1) {
+                  next[index] = { ...next[index], ...link };
+                } else {
+                  next.push(link);
+                }
+              }
+              return next;
+            });
+          }
+
+          if (deletedLinkIds && deletedLinkIds.length > 0) {
+            setCategoryLinks(prev => prev.filter(l => !deletedLinkIds.includes(l.id)));
+          }
+
+          if (updatedTabletItems && updatedTabletItems.length > 0) {
+            setTabletItems(prev => {
+              const next = [...prev];
+              for (const item of updatedTabletItems) {
+                const index = next.findIndex(i => i.id === item.id);
+                if (index > -1) {
+                  next[index] = { ...next[index], ...item };
+                } else {
+                  next.push(item);
+                }
+              }
+              return next;
+            });
+          }
+        } else if (event.data.type === 'DELETE_ITEM_UPDATE') {
+          const { postId, postSlug } = event.data;
+          setPosts(prev => prev.filter(p => p.id !== postId));
+          if (postId || postSlug) {
+            setCategoryLinks(prev => prev.filter(l => {
+              if (!l.url) return true;
+              const match = l.url.match(/\/post\/(.+)/);
+              const linkSlug = match ? match[1] : (!l.url.startsWith('http') && !l.url.startsWith('/') ? l.url : null);
+              return linkSlug !== postSlug && linkSlug !== postId;
+            }));
+            setTabletItems(prev => prev.filter(t => {
+              if (!t.url) return true;
+              const match = t.url.match(/\/post\/(.+)/);
+              const linkSlug = match ? match[1] : (!t.url.startsWith('http') && !t.url.startsWith('/') ? t.url : null);
+              return linkSlug !== postSlug && linkSlug !== postId;
+            }));
+          }
+        } else if (event.data.type === 'REFRESH_ADMIN_DATA') {
+          fetchAll();
+        }
+      };
+    } catch (e) {
+      console.warn('BroadcastChannel not supported:', e);
+    }
+
+    return () => {
+      if (syncChannel) {
+        syncChannel.close();
+      }
+    };
+  }, []);
+
   const fetchAll = async () => {
     const [c, cl, t, p, s] = await Promise.all([
       getCategories(),
@@ -378,7 +472,38 @@ const AdminDashboard = () => {
           await Promise.all(linkedTabletItems.map(t => deleteTabletItemFn(t.id)));
         }
         await deletePostFn(id);
-        await fetchAll();
+
+        // Optimal local-state update (0 Reads!)
+        setPosts(prev => prev.filter(p => p.id !== id));
+        if (post) {
+          const slug = post.slug || post.id;
+          setCategoryLinks(prev => prev.filter(l => {
+            if (!l.url) return true;
+            const match = l.url.match(/\/post\/(.+)/);
+            const linkSlug = match ? match[1] : (!l.url.startsWith('http') && !l.url.startsWith('/') ? l.url : null);
+            return linkSlug !== slug && linkSlug !== post.id;
+          }));
+          setTabletItems(prev => prev.filter(t => {
+            if (!t.url) return true;
+            const match = t.url.match(/\/post\/(.+)/);
+            const linkSlug = match ? match[1] : (!t.url.startsWith('http') && !t.url.startsWith('/') ? t.url : null);
+            return linkSlug !== slug && linkSlug !== post.id;
+          }));
+        }
+
+        // Broadcast deletion event to other tabs
+        try {
+          const syncChannel = new BroadcastChannel('admin_sync');
+          syncChannel.postMessage({ 
+            type: 'DELETE_ITEM_UPDATE', 
+            postId: id,
+            postSlug: post?.slug || id
+          });
+          syncChannel.close();
+        } catch (e) {
+          console.warn('Sync broadcast warning:', e);
+        }
+
         toast({ title: 'Post & linked items deleted!' });
       } catch (err: any) {
         console.error("Delete POST error:", err);
@@ -771,8 +896,7 @@ const CategoryLinksTab = ({
   formatDate: (d: string) => string;
 }) => {
   const [filterCat, setFilterCat] = useState('all');
-
-  const filteredCategories = filterCat === 'all' ? categories : categories.filter(c => c.id === filterCat);
+  const [showOnlyWithLastDate, setShowOnlyWithLastDate] = useState(false);
 
   // Pre-compute Map of slug/ID to Post for O(1) matching speed in CategoryCard and LinkRows
   const postsMap = useMemo(() => {
@@ -784,23 +908,49 @@ const CategoryLinksTab = ({
     return map;
   }, [posts]);
 
+  // Compute filtered categories based on dropdown and Last Date Box filter
+  const filteredCategories = useMemo(() => {
+    let cats = filterCat === 'all' ? categories : categories.filter(c => c.id === filterCat);
+    if (showOnlyWithLastDate) {
+      cats = cats.filter(cat => {
+        const linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
+        return linksForCat.some(l => l.last_date_text && l.last_date_text.trim() !== '');
+      });
+    }
+    return cats;
+  }, [categories, filterCat, showOnlyWithLastDate, categoryLinks]);
+
   return (
     <div className="space-y-6">
       <div className="flex gap-2 items-center flex-wrap">
         <AddCategoryForm onAdd={onAddCategory} />
       </div>
-      <div className="flex items-center gap-2">
-        <label className="text-base font-bold text-primary">Filter Category:</label>
-        <select
-          value={filterCat}
-          onChange={e => setFilterCat(e.target.value)}
-          className="px-3 py-2 border border-border rounded-lg bg-background text-primary text-sm"
-        >
-          <option value="all">All Categories</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+      <div className="flex gap-4 items-center flex-wrap bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-dashed border-slate-300">
+        <div className="flex items-center gap-2">
+          <label className="text-base font-bold text-primary">Filter Category:</label>
+          <select
+            value={filterCat}
+            onChange={e => setFilterCat(e.target.value)}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-primary text-sm font-semibold"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-900">
+          <input
+            type="checkbox"
+            id="showOnlyWithLastDate"
+            checked={showOnlyWithLastDate}
+            onChange={e => setShowOnlyWithLastDate(e.target.checked)}
+            className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+          />
+          <label htmlFor="showOnlyWithLastDate" className="text-sm font-bold text-blue-700 dark:text-blue-400 cursor-pointer select-none flex items-center gap-1.5">
+            📅 Only Show Links with Last Date / Extended Box Entered
+          </label>
+        </div>
       </div>
       {filteredCategories.map((cat, index) => (
         <div key={cat.id} className="pb-8 mb-8 border-b-4 border-dashed border-slate-500 last:border-b-0 last:pb-0 last:mb-0">
@@ -808,7 +958,10 @@ const CategoryLinksTab = ({
             cat={cat}
             index={filterCat === 'all' ? index : undefined}
             totalCats={categories.length}
-            links={categoryLinks.filter(l => l.category_id === cat.id)}
+            links={(() => {
+              const linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
+              return showOnlyWithLastDate ? linksForCat.filter(l => l.last_date_text && l.last_date_text.trim() !== '') : linksForCat;
+            })()}
             postsMap={postsMap}
             onDelete={() => onDeleteCategory(cat.id)}
             onUpdateName={(name) => onUpdateCategory(cat.id, name)}
@@ -823,6 +976,15 @@ const CategoryLinksTab = ({
           />
         </div>
       ))}
+      {filteredCategories.length === 0 && (
+        <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-300">
+          <span className="text-muted-foreground font-semibold">
+            {showOnlyWithLastDate 
+              ? "No links match this filter with 'Last Date Box' filled." 
+              : "No categories or links found."}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -1817,7 +1979,21 @@ const PostsTab = ({ posts, categoryLinks, onDelete, navigate, categories, format
   let filteredPosts = posts;
 
   if (searchQuery) {
-    filteredPosts = filteredPosts.filter(p => p.name_of_post?.toLowerCase().includes(searchQuery.toLowerCase()) || p.post_date?.toLowerCase().includes(searchQuery.toLowerCase()));
+    filteredPosts = filteredPosts.filter(p => {
+      const nameMatch = p.name_of_post?.toLowerCase().includes(searchQuery.toLowerCase());
+      const dateMatch = p.post_date?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const slug = p.slug || p.id;
+      const links = postSlugToLinksMap.get(slug) || [];
+      const linkMatch = links.some((link: any) => {
+        const cat = categoriesMap.get(link.category_id);
+        const catName = cat ? cat.name : '';
+        return (link.title && link.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+               (catName && catName.toLowerCase().includes(searchQuery.toLowerCase()));
+      });
+      
+      return nameMatch || dateMatch || linkMatch;
+    });
   }
 
   if (filterCat !== 'all') {
@@ -1911,7 +2087,7 @@ const PostsTab = ({ posts, categoryLinks, onDelete, navigate, categories, format
       <div className="sticky top-0 z-30 bg-background -mx-6 px-6 -mt-6 pt-6 pb-4 border-b-2 border-dashed border-slate-300 rounded-t-2xl shadow-sm">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-primary">Posts</h2>
-          <Button onClick={() => navigate('/admin/post/new')}>+ Create New Post</Button>
+          <Button onClick={() => window.open('/admin/post/new', '_blank')}>+ Create New Post</Button>
         </div>
         <div className="mb-4 flex gap-3 flex-wrap items-end">
           <div className="flex-1 min-w-[250px]">
@@ -2058,9 +2234,10 @@ const PostsTab = ({ posts, categoryLinks, onDelete, navigate, categories, format
                           <div className="flex flex-wrap gap-1 mt-1">
                             {links.map((link: any, i: number) => {
                               const cat = categoriesMap.get(link.category_id);
+                              const catName = cat ? cat.name : 'Unknown';
                               return (
                                 <span key={i} className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-bold">
-                                  Linked in: {cat ? cat.name : 'Unknown'} ({link.title})
+                                  Linked in: {highlightMatchedText(catName, searchQuery)} ({highlightMatchedText(link.title || '', searchQuery)})
                                 </span>
                               );
                             })}
@@ -2072,7 +2249,7 @@ const PostsTab = ({ posts, categoryLinks, onDelete, navigate, categories, format
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/admin/post/${post.id}`)}>Edit</Button>
+                  <Button variant="outline" size="sm" onClick={() => window.open(`/admin/post/${post.id}`, '_blank')}>Edit</Button>
                   <Button variant="outline" size="sm" onClick={async () => {
                      const overlay = document.createElement('div');
                      overlay.innerText = 'Preparing Preview...';
