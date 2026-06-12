@@ -23,6 +23,7 @@ import {
   getPostBySlug,
   updatePost,
   updateSiteLastUpdated,
+  clearLocalAdminCache,
 } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -324,6 +325,20 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleForceRefresh = async () => {
+    setLoading(true);
+    clearLocalAdminCache();
+    try {
+      await fetchAll();
+      toast({ title: 'Cache Refreshed', description: 'Fresh data fetched from Firestore database successfully.' });
+    } catch (err: any) {
+      console.error("Cache Refresh Error:", err);
+      toast({ title: 'Error', description: 'Failed to refresh data from database: ' + (err.message || 'Unknown error'), variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateSetting = async (key: string, value: string) => {
     await updateSiteSetting(key, value, settings[key]?.id);
     await fetchAll();
@@ -544,6 +559,7 @@ const AdminDashboard = () => {
         <h1 className="text-2xl font-black text-primary">ADMIN PANEL - Sarkari Sewayojan</h1>
         <div className="flex gap-3 items-center">
           <ThemeToggle />
+          <Button variant="outline" onClick={handleForceRefresh} title="Clear local cache and load fresh data from Firestore database">🔄 Refresh Database Cache</Button>
           <Button variant="default" className="bg-green-600 hover:bg-green-700" onClick={handlePublish}>🚀 Publish Website</Button>
           <Button variant="outline" onClick={() => window.open('/', '_blank')}>⬅ Back to Website</Button>
           <Button variant="destructive" onClick={handleLogout}>Logout</Button>

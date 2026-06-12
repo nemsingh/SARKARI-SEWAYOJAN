@@ -2,7 +2,7 @@ import * as firebaseService from './firebaseService';
 import { getCache, setCache } from './cache';
 
 const promiseCache = new Map<string, Promise<any>>();
-const DEV_CACHE_TTL = 30 * 1000; // 30 seconds
+const DEV_CACHE_TTL = 30 * 60 * 1000; // 30 minutes - dramatically saves Firestore read quota in development mode
 
 export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Promise<any>) {
   // In development, directly hit Firebase to ensure live preview works after Admin edits.
@@ -36,6 +36,9 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
             if (contentType && contentType.includes('application/json')) {
               const data = await res.json();
               console.log(`[DEV MODE] Successfully loaded static fallback data for ${url}`);
+              if (data) {
+                setCache(cacheKey, data);
+              }
               return data;
             }
           }

@@ -41,13 +41,50 @@ const compressHtml = (html: string | null | undefined) => {
   return html;
 };
 
+// Local in-memory and localStorage cache for saving hundreds/thousands of Firestore reads
+const getLocalAdminCache = <T>(key: string): T | null => {
+  try {
+    const item = localStorage.getItem(`admin_db_cache_${key}`);
+    if (!item) return null;
+    const { data } = JSON.parse(item);
+    // Cache has NO auto-expiration now. It is 100% persistent until the user clicks manual Refresh.
+    return data as T;
+  } catch {
+    return null;
+  }
+};
+
+const setLocalAdminCache = (key: string, data: any) => {
+  try {
+    localStorage.setItem(`admin_db_cache_${key}`, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {
+    // ignore quotas/storage errors safely
+  }
+};
+
+export const clearLocalAdminCache = () => {
+  try {
+    ['categories', 'category_links', 'tablet_items', 'posts', 'site_settings'].forEach(key => {
+      localStorage.removeItem(`admin_db_cache_${key}`);
+    });
+  } catch {
+    // ignore
+  }
+};
+
 // ============ CATEGORIES ============
 export const getCategories = async () => {
+  const cached = getLocalAdminCache<any[]>('categories');
+  if (cached && cached.length > 0) {
+    return cached;
+  }
   try {
     const q = query(collection(db, 'categories'));
     const snap = await getDocs(q);
     const cats = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-    return cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    const sorted = cats.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setLocalAdminCache('categories', sorted);
+    return sorted;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'categories');
     return [];
@@ -61,6 +98,12 @@ export const addCategory = async (name: string, displayOrder: number) => {
       display_order: displayOrder,
       created_at: serverTimestamp(),
     });
+    const cached = getLocalAdminCache<any[]>('categories');
+    if (cached) {
+      const newCat = { id: res.id, name, display_order: displayOrder };
+      const nextCats = [...cached, newCat].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      setLocalAdminCache('categories', nextCats);
+    }
     clearCache();
     return res;
   } catch (error) {
@@ -71,16 +114,30 @@ export const addCategory = async (name: string, displayOrder: number) => {
 
 export const updateCategory = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'categories', id), data);
+  const cached = getLocalAdminCache<any[]>('categories');
+  if (cached) {
+    const nextCats = cached.map(cat => cat.id === id ? { ...cat, ...data } : cat)
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setLocalAdminCache('categories', nextCats);
+  }
   clearCache();
 };
 
 export const deleteCategory = async (id: string) => {
   await deleteDoc(doc(db, 'categories', id));
+  const cached = getLocalAdminCache<any[]>('categories');
+  if (cached) {
+    setLocalAdminCache('categories', cached.filter(cat => cat.id !== id));
+  }
   clearCache();
 };
 
 // ============ CATEGORY LINKS ============
 export const getCategoryLinks = async () => {
+  const cached = getLocalAdminCache<any[]>('category_links');
+  if (cached && cached.length > 0) {
+    return cached;
+  }
   try {
     const q = query(collection(db, 'category_links'));
     const snap = await getDocs(q);
@@ -90,12 +147,12 @@ export const getCategoryLinks = async () => {
       if (typeof ts === 'undefined') {
         ts = data.created_at?.toMillis ? data.created_at.toMillis() : 0;
       }
-      // If the old item had display_order, subtract it so older items keep rough relative order (smaller display_order = higher priority natively, so we give them a slight boost)
       if (typeof ts === 'undefined') ts = 0;
       return { id: d.id, ...data, link_timestamp: ts };
     });
-    // Sort descending by timestamp (newest or intentionally bumped to top)
-    return links.sort((a, b) => b.link_timestamp - a.link_timestamp);
+    const sorted = links.sort((a, b) => b.link_timestamp - a.link_timestamp);
+    setLocalAdminCache('category_links', sorted);
+    return sorted;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'category_links');
     return [];
@@ -117,17 +174,41 @@ export const addCategoryLink = async (data: {
     link_timestamp: ts,
     created_at: serverTimestamp(),
   });
+  const cached = getLocalAdminCache<any[]>('category_links');
+  if (cached) {
+    const newLink = { id: res.id, ...data, link_timestamp: ts };
+    const nextLinks = [newLink, ...cached].sort((a, b) => b.link_timestamp - a.link_timestamp);
+    setLocalAdminCache('category_links', nextLinks);
+  }
   clearCache();
   return res;
 };
 
 export const updateCategoryLink = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'category_links', id), data);
+  const cached = getLocalAdminCache<any[]>('category_links');
+  if (cached) {
+    const nextLinks = cached.map(link => {
+      if (link.id === id) {
+        const updated = { ...link, ...data };
+        if (data.link_timestamp !== undefined) {
+          updated.link_timestamp = data.link_timestamp;
+        }
+        return updated;
+      }
+      return link;
+    }).sort((a, b) => b.link_timestamp - a.link_timestamp);
+    setLocalAdminCache('category_links', nextLinks);
+  }
   clearCache();
 };
 
 export const deleteCategoryLink = async (id: string) => {
   await deleteDoc(doc(db, 'category_links', id));
+  const cached = getLocalAdminCache<any[]>('category_links');
+  if (cached) {
+    setLocalAdminCache('category_links', cached.filter(link => link.id !== id));
+  }
   clearCache();
 };
 
@@ -136,16 +217,26 @@ export const deleteCategoryLinksByCategoryId = async (categoryId: string) => {
   const snap = await getDocs(q);
   const deletes = snap.docs.map(d => deleteDoc(d.ref));
   await Promise.all(deletes);
+  const cached = getLocalAdminCache<any[]>('category_links');
+  if (cached) {
+    setLocalAdminCache('category_links', cached.filter(link => link.category_id !== categoryId));
+  }
   clearCache();
 };
 
 // ============ TABLET ITEMS ============
 export const getTabletItems = async () => {
+  const cached = getLocalAdminCache<any[]>('tablet_items');
+  if (cached && cached.length > 0) {
+    return cached;
+  }
   try {
     const q = query(collection(db, 'tablet_items'));
     const snap = await getDocs(q);
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-    return items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    const sorted = items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setLocalAdminCache('tablet_items', sorted);
+    return sorted;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'tablet_items');
     return [];
@@ -160,17 +251,33 @@ export const addTabletItem = async (title: string, subtitle: string, url: string
     display_order: displayOrder,
     created_at: serverTimestamp(),
   });
+  const cached = getLocalAdminCache<any[]>('tablet_items');
+  if (cached) {
+    const newItem = { id: res.id, title, subtitle, url, display_order: displayOrder };
+    const nextItems = [...cached, newItem].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setLocalAdminCache('tablet_items', nextItems);
+  }
   clearCache();
   return res;
 };
 
 export const updateTabletItem = async (id: string, data: Record<string, any>) => {
   await updateDoc(doc(db, 'tablet_items', id), data);
+  const cached = getLocalAdminCache<any[]>('tablet_items');
+  if (cached) {
+    const nextItems = cached.map(item => item.id === id ? { ...item, ...data } : item)
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setLocalAdminCache('tablet_items', nextItems);
+  }
   clearCache();
 };
 
 export const deleteTabletItem = async (id: string) => {
   await deleteDoc(doc(db, 'tablet_items', id));
+  const cached = getLocalAdminCache<any[]>('tablet_items');
+  if (cached) {
+    setLocalAdminCache('tablet_items', cached.filter(item => item.id !== id));
+  }
   clearCache();
 };
 
@@ -221,6 +328,10 @@ export const loadChunksForPost = async (id: string, postData: any) => {
 };
 
 export const getPosts = async () => {
+  const cached = getLocalAdminCache<any[]>('posts');
+  if (cached && cached.length > 0) {
+    return cached;
+  }
   try {
     const q = query(collection(db, 'posts'));
     const snap = await getDocs(q);
@@ -239,13 +350,13 @@ export const getPosts = async () => {
       .filter(p => !p.id.includes('_chunk_') && p.name_of_post);
     
     // We explicitly DO NOT load chunks here to prevent OOM errors on Vercel SSG process
-    // when processing thousands of large posts. Chunks are loaded individually by loaders.
-
-    return posts.sort((a, b) => {
+    const sorted = posts.sort((a, b) => {
       const dateA = a.post_timestamp || new Date(a.updated_at || a.created_at || 0).getTime();
       const dateB = b.post_timestamp || new Date(b.updated_at || b.created_at || 0).getTime();
       return dateB - dateA;
     });
+    setLocalAdminCache('posts', sorted);
+    return sorted;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'posts');
     return [];
@@ -350,6 +461,23 @@ export const createPost = async (data: Record<string, any>) => {
     }
   }
 
+  // Update posts cache
+  const cached = getLocalAdminCache<any[]>('posts');
+  if (cached) {
+    const newPost = {
+      id: docRef.id,
+      ...data,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const nextPosts = [newPost, ...cached].sort((a, b) => {
+      const dateA = a.post_timestamp || new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = b.post_timestamp || new Date(b.updated_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    setLocalAdminCache('posts', nextPosts);
+  }
+
   clearCache();
   return { id: docRef.id, ...data };
 };
@@ -432,6 +560,26 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
     }
   }
 
+  // Update posts cache
+  const cached = getLocalAdminCache<any[]>('posts');
+  if (cached) {
+    const nextPosts = cached.map(post => {
+      if (post.id === id) {
+        return {
+          ...post,
+          ...data,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return post;
+    }).sort((a, b) => {
+      const dateA = a.post_timestamp || new Date(a.updated_at || a.created_at || 0).getTime();
+      const dateB = b.post_timestamp || new Date(b.updated_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    setLocalAdminCache('posts', nextPosts);
+  }
+
   clearCache();
 };
 
@@ -478,6 +626,13 @@ export const deletePost = async (id: string) => {
     } catch (e) { /* ignore fallback errors */ }
 
     await deleteDoc(doc(db, 'posts', id));
+
+    // Update posts cache
+    const cached = getLocalAdminCache<any[]>('posts');
+    if (cached) {
+      setLocalAdminCache('posts', cached.filter(p => p.id !== id));
+    }
+
     clearCache();
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `posts/${id}`);
@@ -486,6 +641,10 @@ export const deletePost = async (id: string) => {
 
 // ============ SITE SETTINGS ============
 export const getSiteSettings = async () => {
+  const cached = getLocalAdminCache<Record<string, any>>('site_settings');
+  if (cached && Object.keys(cached).length > 0) {
+    return cached;
+  }
   try {
     const snap = await getDocs(collection(db, 'site_settings'));
     const settings: Record<string, any> = {};
@@ -493,6 +652,7 @@ export const getSiteSettings = async () => {
       const data = d.data();
       settings[data.key] = { id: d.id, key: data.key, value: data.value };
     });
+    setLocalAdminCache('site_settings', settings);
     return settings;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'site_settings');
@@ -501,26 +661,32 @@ export const getSiteSettings = async () => {
 };
 
 export const getSiteSettingsFlat = async () => {
-  try {
-    const snap = await getDocs(collection(db, 'site_settings'));
-    const settings: Record<string, string> = {};
-    snap.docs.forEach(d => {
-      const data = d.data();
-      settings[data.key] = data.value;
-    });
-    return settings;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'site_settings_flat');
-    return {};
-  }
+  // Save read operations by getting from the cached settings
+  const settings = await getSiteSettings();
+  const flat: Record<string, string> = {};
+  Object.keys(settings).forEach(k => {
+    flat[k] = settings[k].value;
+  });
+  return flat;
 };
 
 export const updateSiteSetting = async (key: string, value: string, existingId?: string) => {
+  let docId = existingId;
   if (existingId) {
     await updateDoc(doc(db, 'site_settings', existingId), { value, updated_at: serverTimestamp() });
   } else {
-    await addDoc(collection(db, 'site_settings'), { key, value, updated_at: serverTimestamp() });
+    const docRef = await addDoc(collection(db, 'site_settings'), { key, value, updated_at: serverTimestamp() });
+    docId = docRef.id;
   }
+
+  // Update settings cache
+  const cached = getLocalAdminCache<Record<string, any>>('site_settings');
+  if (cached) {
+    const nextSettings = { ...cached };
+    nextSettings[key] = { id: docId, key, value };
+    setLocalAdminCache('site_settings', nextSettings);
+  }
+
   clearCache();
 };
 
