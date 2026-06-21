@@ -3,7 +3,7 @@
  * Allows storing full-size database backups directly in browser storage (up to hundreds of MBs)
  */
 
-interface VaultBackup {
+export interface VaultBackup {
   id: string;
   timestamp: string;
   data: {
@@ -21,22 +21,30 @@ const DB_VERSION = 1;
 
 export const initVaultDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event: any) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+    try {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        reject(new Error('IndexedDB is not supported or accessible in this environment.'));
+        return;
       }
-    };
+      const request = window.indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onsuccess = (event: any) => {
-      resolve(event.target.result);
-    };
+      request.onupgradeneeded = (event: any) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
 
-    request.onerror = (event: any) => {
-      reject(event.target.error || new Error('Failed to open IndexedDB Vault'));
-    };
+      request.onsuccess = (event: any) => {
+        resolve(event.target.result);
+      };
+
+      request.onerror = (event: any) => {
+        reject(event.target.error || new Error('Failed to open IndexedDB Vault'));
+      };
+    } catch (e: any) {
+      reject(e || new Error('Security or general error accessing IndexedDB'));
+    }
   });
 };
 

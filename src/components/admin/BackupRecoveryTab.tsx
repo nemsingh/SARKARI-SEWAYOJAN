@@ -75,30 +75,8 @@ export const BackupRecoveryTab = () => {
     console.log(`[Backup System] ${msg}`);
   };
 
-  // Load configuration and existing local vault backup details on mount
-  useEffect(() => {
-    // 1. Load preferences from localStorage
-    const savedAutoVault = localStorage.getItem('sarkari_sewayojan_pref_autovault');
-    const savedAutoFile = localStorage.getItem('sarkari_sewayojan_pref_autofile');
-
-    if (savedAutoVault !== null) {
-      setAutoVaultEnabled(savedAutoVault === 'true');
-    }
-    if (savedAutoFile !== null) {
-      setAutoFileEnabled(savedAutoFile === 'true');
-    }
-
-    // 2. Fetch Vault backup statistics
-    fetchVaultDetails();
-
-    // 3. Trigger modern background validation safety backup cycle
-    triggerSafetyCycle(
-      savedAutoVault !== 'true', // check if disabled
-      savedAutoFile === 'true' // check if enabled
-    );
-  }, [triggerSafetyCycle]);
-
-  const fetchVaultDetails = async () => {
+  // 1. Fetch Vault backup statistics
+  const fetchVaultDetails = useCallback(async () => {
     try {
       const vBackup = await getBackupFromVault('latest_daily');
       if (vBackup && vBackup.data) {
@@ -121,9 +99,9 @@ export const BackupRecoveryTab = () => {
     } catch (err) {
       console.error('Error fetching vault info:', err);
     }
-  };
+  }, []);
 
-  // Modern background automated verification cycle (runs once every 24 hours)
+  // 2. Modern background automated verification cycle (runs once every 24 hours)
   const triggerSafetyCycle = useCallback(async (vaultDisabled: boolean, fileEnabled: boolean) => {
     try {
       const todayString = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
@@ -218,7 +196,30 @@ export const BackupRecoveryTab = () => {
       console.error('[Backup System] Background auto backup error:', e);
       logProgress(`बैकग्राउंड सुरक्षा चक्र एरर: ${e.message || String(e)}`);
     }
-  }, [toast]);
+  }, [toast, fetchVaultDetails]);
+
+  // 3. Load configuration and existing local vault backup details on mount
+  useEffect(() => {
+    // 1. Load preferences from localStorage
+    const savedAutoVault = localStorage.getItem('sarkari_sewayojan_pref_autovault');
+    const savedAutoFile = localStorage.getItem('sarkari_sewayojan_pref_autofile');
+
+    if (savedAutoVault !== null) {
+      setAutoVaultEnabled(savedAutoVault === 'true');
+    }
+    if (savedAutoFile !== null) {
+      setAutoFileEnabled(savedAutoFile === 'true');
+    }
+
+    // 2. Fetch Vault backup statistics
+    fetchVaultDetails();
+
+    // 3. Trigger modern background validation safety backup cycle
+    triggerSafetyCycle(
+      savedAutoVault !== 'true', // check if disabled
+      savedAutoFile === 'true' // check if enabled
+    );
+  }, [triggerSafetyCycle, fetchVaultDetails]);
 
   // Preference Settings updates
   const handleToggleAutoVault = (checked: boolean) => {
