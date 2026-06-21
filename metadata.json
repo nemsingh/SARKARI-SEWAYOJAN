@@ -1,5 +1,6 @@
 {
   "name": "Sarkari Sewayojan",
-  "description": "",
-  "requestFramePermissions": []
+  "description": "Sarkari Sewayojan - Government Jobs, Results, Admit Cards & Notifications Portal",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

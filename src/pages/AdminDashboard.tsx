@@ -270,29 +270,7 @@ const AdminDashboard = () => {
       }
     }
 
-    // Cleanup broken category links
-    const postSlugs = p.map(post => post.slug);
-    const postIds = p.map(post => post.id);
-    const brokenLinks = nextCl.filter(link => {
-      if (link.url && link.url.startsWith('/post/')) {
-        const slug = link.url.replace('/post/', '');
-        return !postSlugs.includes(slug) && !postIds.includes(slug);
-      }
-      return false;
-    });
-
-    if (brokenLinks.length > 0) {
-      await Promise.all(brokenLinks.map(link => deleteCategoryLink(link.id)));
-      // Refetch links after cleanup, syncing our auto-expired updates
-      const updatedLinks = await getCategoryLinks();
-      const finalLinks = updatedLinks.map((ul: any) => {
-        const matched = nextCl.find((nc: any) => nc.id === ul.id);
-        return matched ? { ...ul, is_new: matched.is_new } : ul;
-      });
-      setCategoryLinks(finalLinks);
-    } else {
-      setCategoryLinks(nextCl);
-    }
+    setCategoryLinks(nextCl);
 
     setCategories(c);
     setTabletItems(t);
@@ -1133,9 +1111,12 @@ const LinkRow = ({ link, postsMap, onDelete, onToggleNew, onUpdateLastDate, onUp
                   const match = link.url.match(/\/post\/(.+)/);
                   const slug = match ? match[1] : null;
                   if (slug && postsMap) {
-                    const post = postsMap.get(slug);
+                    const cleanSlug = slug.endsWith('/') ? slug.slice(0, -1) : slug;
+                    const post = postsMap.get(slug) || postsMap.get(cleanSlug);
                     if (post) {
                       return <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">Post: {post.name_of_post}</span>;
+                    } else {
+                      return <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold">⚠️ Post not found ({slug})</span>;
                     }
                   }
                 }
