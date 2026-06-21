@@ -24,6 +24,7 @@ import {
   updatePost,
   updateSiteLastUpdated,
   clearLocalAdminCache,
+  getSiteSettingsFlat,
 } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { BackupRecoveryTab } from '@/components/admin/BackupRecoveryTab';
+import { saveBackupToVault } from '@/lib/indexedDbBackup';
 
 // ============ CONFIRM DIALOG STATE ============
 interface ConfirmState {
@@ -58,6 +61,7 @@ const AdminDashboard = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState>({ open: false, title: '', description: '', onConfirm: () => {} });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -289,17 +293,101 @@ const AdminDashboard = () => {
       toast({ title: 'Error', description: 'Please configure BUILD WEBHOOK URL in Site Settings first.', variant: 'destructive' });
       return;
     }
+
+    setPublishing(true);
+    toast({ 
+      title: '⚠️ पब्लिश शुरू - ऑटो बैकअप तैयार हो रहा है!', 
+      description: 'कृपया प्रतीक्षा करें, आपके पूरे डेटाबेस की कॉपी संकलित कर JSON फाइल तैयार की जा रही है...',
+    });
+
     try {
+      console.log('[Publish Backup] Beginning snapshot of Firebase collections...');
+      
+      const [categoriesData, category_linksData, tablet_itemsData, settings_flatData, basicPosts] = await Promise.all([
+        getCategories(),
+        getCategoryLinks(),
+        getTabletItems(),
+        getSiteSettingsFlat(),
+        getPosts()
+      ]);
+
+      // Disaster protection check
+      if (categoriesData.length === 0 && basicPosts.length === 0) {
+        throw new Error('क्लाउड डेटाबेस खाली प्रतीत हो रहा है! सुरक्षा कारणों से ऑटो-बैकअप निरस्त किया गया।');
+      }
+
+      console.log(`[Publish Backup] Fetching details for ${basicPosts.length} posts...`);
+      const fullPosts: any[] = [];
+      let idx = 1;
+      for (const p of basicPosts) {
+        try {
+          const fullPost = await getPostBySlug(p.slug || p.id);
+          if (fullPost) {
+            fullPosts.push(fullPost);
+          } else {
+            fullPosts.push(p);
+          }
+        } catch (e) {
+          console.warn(`Could not load details for ${p.id}, using basic info`, e);
+          fullPosts.push(p);
+        }
+        idx++;
+      }
+
+      const backupObj = {
+        categories: categoriesData,
+        category_links: category_linksData,
+        tablet_items: tablet_itemsData,
+        posts: fullPosts,
+        settings_flat: settings_flatData,
+        backup_timestamp: new Date().toISOString(),
+        source: 'Sarkari_Sewayojan_Backup_on_Publish'
+      };
+
+      // A. Save to Browser Local Vault (IndexedDB)
+      await saveBackupToVault(backupObj, 'latest_daily');
+      
+      // B. Trigger automatic JSON file download
+      const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateString = new Date().toISOString().split('T')[0];
+      const timeString = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+      link.href = url;
+      link.download = `Sarkari_Sewayojan_Backup_Publish_${dateString}_${timeString}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('[Publish Backup] Auto backup successfully downloaded & stored in local vault.');
+
+      // Update last updated in Firebase
       await updateSiteLastUpdated();
       
+      // Trigger actual publish webhook
       const res = await fetch(webhookUrl, { method: 'POST' });
       if (res.ok) {
-        toast({ title: 'Success', description: 'Publish triggered successfully! Users will see updates immediately.' });
+        toast({ 
+          title: '🎉 पब्लिश सफल और बैकअप डाउनलोड पूर्ण!', 
+          description: 'वेबसाइट अपडेट हो गई है और आपके कंप्यूटर पर नए डेटा की JSON बैकअप फाइल सहेज ली गई है।',
+        });
       } else {
-        toast({ title: 'Error', description: 'Failed to trigger publish.', variant: 'destructive' });
+        toast({ 
+          title: '⚠️ पब्लिश विफलता', 
+          description: 'बैकअप फाइल तो सुरक्षित रूप से डाउनलोड हो गई है, लेकिन पब्लिश हुक सक्रिय करने में एरर आया।', 
+          variant: 'destructive' 
+        });
       }
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to trigger publish.', variant: 'destructive' });
+    } catch (err: any) {
+      console.error(err);
+      toast({ 
+        title: '⚠️ प्रक्रिया बाधित!', 
+        description: 'पब्लिश व बैकअप प्रक्रिया विफल रही: ' + (err.message || String(err)), 
+        variant: 'destructive' 
+      });
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -538,7 +626,24 @@ const AdminDashboard = () => {
         <div className="flex gap-3 items-center">
           <ThemeToggle />
           <Button variant="outline" onClick={handleForceRefresh} title="Clear local cache and load fresh data from Firestore database">🔄 Refresh Database Cache</Button>
-          <Button variant="default" className="bg-green-600 hover:bg-green-700" onClick={handlePublish}>🚀 Publish Website</Button>
+          <Button 
+            variant="default" 
+            className="bg-green-600 hover:bg-green-700 font-extrabold flex items-center gap-1.5" 
+            onClick={handlePublish}
+            disabled={publishing}
+          >
+            {publishing ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                पब्लिश और बैकअप हो रहा है...
+              </>
+            ) : (
+              '🚀 Publish Website'
+            )}
+          </Button>
           <Button variant="outline" onClick={() => window.open('/', '_blank')}>⬅ Back to Website</Button>
           <Button variant="destructive" onClick={handleLogout}>Logout</Button>
         </div>
@@ -551,6 +656,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="tablets">Table Items</TabsTrigger>
             <TabsTrigger value="categories">Category Links</TabsTrigger>
             <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="backup" className="bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 font-bold border-l-2 border-red-500">🛡️ Backup & Recovery</TabsTrigger>
           </TabsList>
 
           {/* SITE SETTINGS */}
@@ -715,6 +821,11 @@ const AdminDashboard = () => {
           {/* POSTS */}
           <TabsContent value="posts">
             <PostsTab posts={posts} categoryLinks={categoryLinks} onDelete={handleDeletePost} navigate={navigate} categories={categories} formatDate={formatDate} />
+          </TabsContent>
+
+          {/* BACKUP & RECOVERY */}
+          <TabsContent value="backup">
+            <BackupRecoveryTab />
           </TabsContent>
         </Tabs>
       </div>

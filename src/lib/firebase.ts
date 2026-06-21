@@ -2,7 +2,14 @@
 // These are publishable client-side keys (safe to include in frontend code)
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, initializeFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  doc, 
+  getDocFromServer,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC_Tl9QGjU2jXd_1F_dWxF7XoxhP_9ttyU",
@@ -19,11 +26,32 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-});
+// Check if running in browser
+const isBrowser = typeof window !== 'undefined';
+
+// Safe double-initialization guard utilizing globalThis
+const globalWithFirebase = globalThis as typeof globalThis & {
+  _firebaseDb?: any;
+};
+
+let firestoreInstance;
+if (globalWithFirebase._firebaseDb) {
+  firestoreInstance = globalWithFirebase._firebaseDb;
+} else {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
+    ...(isBrowser ? {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    } : {})
+  });
+  globalWithFirebase._firebaseDb = firestoreInstance;
+}
+
+// Initialize Firestore with extreme resilience settings (Long Polling + Offline Local Caching)
+export const db = firestoreInstance;
 
 export enum OperationType {
   CREATE = 'create',

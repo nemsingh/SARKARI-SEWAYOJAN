@@ -113,7 +113,11 @@ export const addCategory = async (name: string, displayOrder: number) => {
 };
 
 export const updateCategory = async (id: string, data: Record<string, any>) => {
-  await updateDoc(doc(db, 'categories', id), data);
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] updateCategory skipped: invalid or empty document ID');
+    return;
+  }
+  await setDoc(doc(db, 'categories', id), data, { merge: true });
   const cached = getLocalAdminCache<any[]>('categories');
   if (cached) {
     const nextCats = cached.map(cat => cat.id === id ? { ...cat, ...data } : cat)
@@ -124,6 +128,10 @@ export const updateCategory = async (id: string, data: Record<string, any>) => {
 };
 
 export const deleteCategory = async (id: string) => {
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] deleteCategory skipped: invalid or empty document ID');
+    return;
+  }
   await deleteDoc(doc(db, 'categories', id));
   const cached = getLocalAdminCache<any[]>('categories');
   if (cached) {
@@ -185,7 +193,11 @@ export const addCategoryLink = async (data: {
 };
 
 export const updateCategoryLink = async (id: string, data: Record<string, any>) => {
-  await updateDoc(doc(db, 'category_links', id), data);
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] updateCategoryLink skipped: invalid or empty document ID');
+    return;
+  }
+  await setDoc(doc(db, 'category_links', id), data, { merge: true });
   const cached = getLocalAdminCache<any[]>('category_links');
   if (cached) {
     const nextLinks = cached.map(link => {
@@ -204,6 +216,10 @@ export const updateCategoryLink = async (id: string, data: Record<string, any>) 
 };
 
 export const deleteCategoryLink = async (id: string) => {
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] deleteCategoryLink skipped: invalid or empty document ID');
+    return;
+  }
   await deleteDoc(doc(db, 'category_links', id));
   const cached = getLocalAdminCache<any[]>('category_links');
   if (cached) {
@@ -262,7 +278,11 @@ export const addTabletItem = async (title: string, subtitle: string, url: string
 };
 
 export const updateTabletItem = async (id: string, data: Record<string, any>) => {
-  await updateDoc(doc(db, 'tablet_items', id), data);
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] updateTabletItem skipped: invalid or empty document ID');
+    return;
+  }
+  await setDoc(doc(db, 'tablet_items', id), data, { merge: true });
   const cached = getLocalAdminCache<any[]>('tablet_items');
   if (cached) {
     const nextItems = cached.map(item => item.id === id ? { ...item, ...data } : item)
@@ -273,6 +293,10 @@ export const updateTabletItem = async (id: string, data: Record<string, any>) =>
 };
 
 export const deleteTabletItem = async (id: string) => {
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] deleteTabletItem skipped: invalid or empty document ID');
+    return;
+  }
   await deleteDoc(doc(db, 'tablet_items', id));
   const cached = getLocalAdminCache<any[]>('tablet_items');
   if (cached) {
@@ -483,6 +507,10 @@ export const createPost = async (data: Record<string, any>) => {
 };
 
 export const updatePost = async (id: string, data: Record<string, any>) => {
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.warn('[Firebase] updatePost skipped: invalid or empty document ID');
+    return;
+  }
   const postData = { ...data };
   
   const html: string | undefined = postData.tables_html !== undefined ? (compressHtml(postData.tables_html) as string) || '' : undefined;
@@ -508,10 +536,10 @@ export const updatePost = async (id: string, data: Record<string, any>) => {
   const oldDocSnap = await getDoc(doc(db, 'posts', id));
   const oldChunkCount = oldDocSnap.exists() ? (oldDocSnap.data().chunk_count || 0) : 0;
 
-  await updateDoc(doc(db, 'posts', id), {
+  await setDoc(doc(db, 'posts', id), {
     ...postData,
     updated_at: serverTimestamp(),
-  });
+  }, { merge: true });
   
   if (isChunked && html !== undefined && html_hi !== undefined) {
     const maxLen = Math.max(html.length, html_hi.length);
@@ -707,6 +735,193 @@ export const getSiteLastUpdated = async (): Promise<number> => {
 export const updateSiteLastUpdated = async () => {
   const docRef = doc(db, 'site_settings', 'last_updated');
   await setDoc(docRef, { timestamp: Date.now() }, { merge: true });
+};
+
+/**
+ * Super-resilient Database Restoration Engine
+ * Takes 100% database snapshot and restores it back to Firebase with precise chunking, IDs, and settings
+ */
+export const restoreDatabaseBackup = async (
+  data: {
+    categories: any[];
+    category_links: any[];
+    tablet_items: any[];
+    posts: any[];
+    settings_flat: Record<string, string>;
+  },
+  onProgress?: (progress: string) => void
+) => {
+  const log = onProgress || console.log;
+  const CHUNK_SIZE = 200000;
+
+  try {
+    // 1. Restore Categories
+    log('Categories restore process started...');
+    let batch = writeBatch(db);
+    let count = 0;
+    for (const cat of data.categories) {
+      const { id, ...fields } = cat;
+      const ref = doc(db, 'categories', id);
+      batch.set(ref, {
+        ...fields,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+      count++;
+      if (count >= 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+    log(`Successfully restored ${data.categories.length} Categories!`);
+
+    // 2. Restore Category Links
+    log('Category links restore process started...');
+    batch = writeBatch(db);
+    count = 0;
+    for (const link of data.category_links) {
+      const { id, ...fields } = link;
+      const ref = doc(db, 'category_links', id);
+      batch.set(ref, {
+        ...fields,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+      count++;
+      if (count >= 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+    log(`Successfully restored ${data.category_links.length} Category Links!`);
+
+    // 3. Restore Tablet Items
+    log('Tablet items restore process started...');
+    batch = writeBatch(db);
+    count = 0;
+    for (const item of data.tablet_items) {
+      const { id, ...fields } = item;
+      const ref = doc(db, 'tablet_items', id);
+      batch.set(ref, {
+        ...fields,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+      count++;
+      if (count >= 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+    log(`Successfully restored ${data.tablet_items.length} Tablet Items!`);
+
+    // 4. Restore Site Settings
+    log('Site settings restore process started...');
+    batch = writeBatch(db);
+    count = 0;
+    for (const [key, value] of Object.entries(data.settings_flat)) {
+      if (key === 'last_updated' || key === 'id') continue;
+      const ref = doc(db, 'site_settings', key);
+      batch.set(ref, {
+        key,
+        value,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+      count++;
+      if (count >= 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+    log('Successfully restored Site Settings!');
+
+    // 5. Restore Posts (with chunking support!)
+    log(`Restoring ${data.posts.length} Posts...`);
+    let postIndex = 0;
+    for (const post of data.posts) {
+      postIndex++;
+      log(`Restoring post [${postIndex}/${data.posts.length}]: "${post.name_of_post}"...`);
+      
+      const { id, tables_html, tables_html_hi, tables_html_compressed, tables_html_hi_compressed, ...postFields } = post;
+      
+      const html = (tables_html || '') as string;
+      const html_hi = (tables_html_hi || '') as string;
+      
+      const isChunked = (html.length + html_hi.length) > CHUNK_SIZE;
+      const chunkCount = isChunked ? Math.ceil(Math.max(html.length, html_hi.length) / CHUNK_SIZE) : 0;
+      
+      const postData = {
+        ...postFields,
+        tables_html: isChunked ? '' : html,
+        tables_html_hi: isChunked ? '' : html_hi,
+        is_chunked: isChunked,
+        chunk_count: chunkCount,
+        updated_at: serverTimestamp(),
+      };
+      
+      await setDoc(doc(db, 'posts', id), postData);
+      
+      if (isChunked) {
+        const maxLen = Math.max(html.length, html_hi.length);
+        let chunkIndex = 0;
+        let postBatch = writeBatch(db);
+        let writesInPostBatch = 0;
+        
+        for (let i = 0; i < maxLen; i += CHUNK_SIZE) {
+          if (writesInPostBatch >= 400) {
+            await postBatch.commit();
+            postBatch = writeBatch(db);
+            writesInPostBatch = 0;
+          }
+          const chunkRef = doc(db, 'posts', `${id}_chunk_${chunkIndex}`);
+          postBatch.set(chunkRef, {
+            index: chunkIndex,
+            html: html.substring(i, i + CHUNK_SIZE),
+            html_hi: html_hi.substring(i, i + CHUNK_SIZE),
+          });
+          writesInPostBatch++;
+          chunkIndex++;
+        }
+        
+        if (writesInPostBatch > 0) {
+          await postBatch.commit();
+        }
+      }
+    }
+    
+    log(`Successfully restored all ${data.posts.length} Posts!`);
+    await updateSiteLastUpdated();
+    
+    // Clear Local Storage Administration Cache so UI updates instantly
+    localStorage.removeItem('admin_db_cache_posts');
+    localStorage.removeItem('admin_db_cache_categories');
+    localStorage.removeItem('admin_db_cache_category_links');
+    localStorage.removeItem('admin_db_cache_site_settings');
+    clearLocalAdminCache('posts');
+    clearLocalAdminCache('categories');
+    clearLocalAdminCache('category_links');
+    clearLocalAdminCache('site_settings');
+    clearCache();
+    log('Database recovery completed completely!');
+    return true;
+  } catch (error: any) {
+    console.error('Failed to restore database backup:', error);
+    log(`Error during restore: ${error.message || String(error)}`);
+    throw error;
+  }
 };
 
 // Removed realtime listeners
