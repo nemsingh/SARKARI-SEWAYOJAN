@@ -665,7 +665,6 @@ const AdminDashboard = () => {
           <Button variant="destructive" onClick={handleLogout}>Logout</Button>
         </div>
       </div>
-
       <div className="max-w-[1200px] mx-auto p-6">
         <Tabs defaultValue="settings" className="w-full">
           <TabsList className="w-full flex flex-wrap mb-6">
