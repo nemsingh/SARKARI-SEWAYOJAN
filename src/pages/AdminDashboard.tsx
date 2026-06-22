@@ -289,15 +289,11 @@ const AdminDashboard = () => {
   const handlePublish = async () => {
     const webhookUrl = settings['build_webhook_url']?.value;
     if (!webhookUrl) {
-      toast({ title: 'Error', description: 'Please configure BUILD WEBHOOK URL in Site Settings first.', variant: 'destructive' });
+      console.error('Please configure BUILD WEBHOOK URL in Site Settings first.');
       return;
     }
 
     setPublishing(true);
-    toast({ 
-      title: '🚀 पब्लिश शुरू!', 
-      description: 'आपकी वेबसाइट पब्लिश हो रही है। कृपया प्रतीक्षा करें...',
-    });
 
     try {
       console.log('[Publish] Updating site_last_updated in Firestore...');
@@ -306,31 +302,13 @@ const AdminDashboard = () => {
       
       console.log('[Publish] Triggering build webhook...');
       // 2. Fetch compile webhook instantly (takes around a second)
-      const res = await fetch(webhookUrl, { method: 'POST' });
+      await fetch(webhookUrl, { method: 'POST' });
       
-      if (res.ok) {
-        toast({ 
-          title: '🚀 पब्लिश कमांड सफल!', 
-          description: 'वेबसाइट अपडेट शुरू हो चुकी है! आपके फ़ायरबेस के रीड्स बिल्कुल सुरक्षित हैं (कोई अतिरिक्त बैकअप रीड खर्च नहीं हुआ)।',
-        });
-      } else {
-        toast({ 
-          title: '⚠️ पब्लिश हुक रिस्पांस एरर', 
-          description: 'पब्लिश हुक से त्रुटि मिली। कृपया साइट सेटिंग्स में वेबहुक URL चेक करें।', 
-          variant: 'destructive' 
-        });
-      }
-
       // Turn off publishing loader so user is instantly free
       setPublishing(false);
 
     } catch (err: any) {
       console.error(err);
-      toast({ 
-        title: '⚠️ पब्लिश विफलता!', 
-        description: 'वेबसाइट को पब्लिश करने में त्रुटि: ' + (err.message || String(err)), 
-        variant: 'destructive' 
-      });
       setPublishing(false);
     }
   };
@@ -582,7 +560,7 @@ const AdminDashboard = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                पब्लिश और बैकअप हो रहा है...
+                Publishing...
               </>
             ) : (
               '🚀 Publish Website'

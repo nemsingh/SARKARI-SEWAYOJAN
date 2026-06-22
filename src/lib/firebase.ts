@@ -8,7 +8,8 @@ import {
   doc, 
   getDocFromServer,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  setLogLevel
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -49,6 +50,9 @@ if (globalWithFirebase._firebaseDb) {
   });
   globalWithFirebase._firebaseDb = firestoreInstance;
 }
+
+// Silence non-critical Firestore logs/warnings in application console
+setLogLevel('error');
 
 // Initialize Firestore with extreme resilience settings (Long Polling + Offline Local Caching)
 export const db = firestoreInstance;

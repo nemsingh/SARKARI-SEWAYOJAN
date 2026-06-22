@@ -130,16 +130,22 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
       </div>
       <ul className="list-none p-0 mt-2.5 flex-1">
         {visibleLinks.map(link => {
-          const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 7;
+          const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 5;
           let isExpired = false;
+          let showNewBadge = false;
+
           if (isLatestJobs) {
             isExpired = isLinkExpired(link.last_date_text || link.actual_last_date_text);
-          } else if (link.link_timestamp) {
-            const msSinceCreated = Date.now() - link.link_timestamp;
-            const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-            isExpired = msSinceCreated > msInExpiryDays;
+            // Latest Jobs category box parameters: automatically show 'New' badge if not expired
+            showNewBadge = !isExpired;
+          } else {
+            if (link.link_timestamp) {
+              const msSinceCreated = Date.now() - link.link_timestamp;
+              const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+              isExpired = msSinceCreated > msInExpiryDays;
+            }
+            showNewBadge = link.is_new && !isExpired;
           }
-          const showNewBadge = link.is_new && !isExpired;
 
           return (
             <li key={link.id} className="category-link-item mb-2.5">
