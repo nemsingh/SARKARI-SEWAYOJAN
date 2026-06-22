@@ -207,7 +207,7 @@ const Index = () => {
         "@id": "https://sarkarisewayojan.com/#website",
         "url": "https://sarkarisewayojan.com/",
         "name": "Sarkari Sewayojan",
-        "alternateName": ["Sarkari Result", "Sarkari Exam", "Sewayojan", "Rojgar Result", "Sarkari Sewayojan 2026"],
+        "alternateName": ["Sarkari Sewayojan Portal"],
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://sarkarisewayojan.com/?search={search_term_string}",
@@ -218,7 +218,7 @@ const Index = () => {
         "@type": "Organization",
         "@id": "https://sarkarisewayojan.com/#organization",
         "name": "Sarkari Sewayojan",
-        "alternateName": ["Sarkari Result", "Sarkari Exam", "Sewayojan", "Rojgar Result"],
+        "alternateName": ["Sarkari Sewayojan Team"],
         "url": "https://sarkarisewayojan.com/",
         "logo": {
           "@type": "ImageObject",

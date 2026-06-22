@@ -24,7 +24,6 @@ import {
   updatePost,
   updateSiteLastUpdated,
   clearLocalAdminCache,
-  getSiteSettingsFlat,
 } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { BackupRecoveryTab } from '@/components/admin/BackupRecoveryTab';
-import { saveBackupToVault } from '@/lib/indexedDbBackup';
+
 
 // ============ CONFIRM DIALOG STATE ============
 interface ConfirmState {
@@ -296,8 +295,8 @@ const AdminDashboard = () => {
 
     setPublishing(true);
     toast({ 
-      title: '⚠️ पब्लिश शुरू - ऑटो बैकअप तैयार हो रहा है!', 
-      description: 'कृपया प्रतीक्षा करें, आपकी वेबसाइट पब्लिश हो रही है और बैकग्राउंड में पूरे डेटाबेस की कॉपी संकलित हो रही है...',
+      title: '🚀 पब्लिश शुरू!', 
+      description: 'आपकी वेबसाइट पब्लिश हो रही है। कृपया प्रतीक्षा करें...',
     });
 
     try {
@@ -312,90 +311,18 @@ const AdminDashboard = () => {
       if (res.ok) {
         toast({ 
           title: '🚀 पब्लिश कमांड सफल!', 
-          description: 'वेबसाइट अपडेट शुरू हो गई है। बैकग्राउंड में डेटा संकलन चालू है, JSON बैकअप फाइल कुछ ही सेकंड में डाउनलोड होगी।',
+          description: 'वेबसाइट अपडेट शुरू हो चुकी है! आपके फ़ायरबेस के रीड्स बिल्कुल सुरक्षित हैं (कोई अतिरिक्त बैकअप रीड खर्च नहीं हुआ)।',
         });
       } else {
         toast({ 
           title: '⚠️ पब्लिश हुक रिस्पांस एरर', 
-          description: 'पब्लिश हुक से त्रुटि मिली, परंतु बैकग्राउंड में आपका आटोमैटिक डेटा बैकअप सहेजना जारी है...', 
+          description: 'पब्लिश हुक से त्रुटि मिली। कृपया साइट सेटिंग्स में वेबहुक URL चेक करें।', 
           variant: 'destructive' 
         });
       }
 
       // Turn off publishing loader so user is instantly free
       setPublishing(false);
-
-      // 3. Trigger heavy A-to-Z Database Backup compilation in the background asynchronously
-      setTimeout(async () => {
-        try {
-          console.log('[BG Backup] Starting complete background backup process...');
-          const [categoriesData, category_linksData, tablet_itemsData, settings_flatData, basicPosts] = await Promise.all([
-            getCategories(),
-            getCategoryLinks(),
-            getTabletItems(),
-            getSiteSettingsFlat(),
-            getPosts()
-          ]);
-
-          // Disaster protection check
-          if (categoriesData.length === 0 && basicPosts.length === 0) {
-            console.warn('[BG Backup] Cloud DB returned empty, backup aborted to avoid corrupting local store.');
-            return;
-          }
-
-          console.log(`[BG Backup] Fetching rich details for ${basicPosts.length} posts...`);
-          const fullPosts: any[] = [];
-          for (const p of basicPosts) {
-            try {
-              const fullPost = await getPostBySlug(p.slug || p.id);
-              fullPosts.push(fullPost || p);
-            } catch (e) {
-              console.warn(`Could not load details for ${p.id}, using basic info`, e);
-              fullPosts.push(p);
-            }
-          }
-
-          const backupObj = {
-            categories: categoriesData,
-            category_links: category_linksData,
-            tablet_items: tablet_itemsData,
-            posts: fullPosts,
-            settings_flat: settings_flatData,
-            backup_timestamp: new Date().toISOString(),
-            source: 'Sarkari_Sewayojan_Backup_on_Publish'
-          };
-
-          // A. Save to Browser Local Vault (IndexedDB)
-          await saveBackupToVault(backupObj, 'latest_daily');
-          
-          // B. Trigger automatic JSON file download
-          const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          const dateString = new Date().toISOString().split('T')[0];
-          const timeString = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
-          link.href = url;
-          link.download = `Sarkari_Sewayojan_Backup_Publish_${dateString}_${timeString}.json`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          console.log('[BG Backup] Background auto backup successfully downloaded & stored.');
-          
-          toast({ 
-            title: '💾 लाइव बैकअप डाउनलोड पूर्ण!', 
-            description: 'आपके कंप्यूटर पर नए डेटा की JSON बैकअप फाइल सफलतापूर्वक सेव हो गई है।',
-          });
-        } catch (bgErr: any) {
-          console.error('[BG Backup] Dynamic background data backup failed:', bgErr);
-          toast({
-            title: '⚠️ बैकअप संग्रह बाधित',
-            description: 'वेबसाइट पब्लिश हो गई है, लेकिन पूर्ण बैकअप फाइल डाउनलोड नहीं हो सकी: ' + (bgErr.message || String(bgErr)),
-            variant: 'destructive'
-          });
-        }
-      }, 50);
 
     } catch (err: any) {
       console.error(err);
