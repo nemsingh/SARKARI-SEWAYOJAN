@@ -9,7 +9,8 @@ import {
   getCategoryLinks,
   getTabletItems,
   getPosts,
-  getSiteSettingsFlat 
+  getSiteSettingsFlat,
+  clearLocalAdminCache
 } from '@/lib/firebaseService';
 import {
   saveBackupToVault,
@@ -121,6 +122,9 @@ export const BackupRecoveryTab = () => {
       console.log('[Backup System] Auto safety check started: No backup found for today. Initiating safe background backup...');
       logProgress('स्मार्ट दैनिक सुरक्षा चक्र: बैकग्राउंड में सुरक्षित डेटा संकलन शुरू हो रहा है...');
 
+      // Clear the local admin cache to ensure we fetch 100% fresh, real-time data from Firestore
+      clearLocalAdminCache();
+
       // Retrieve all Firebase data
       const categories = await getCategories();
       const category_links = await getCategoryLinks();
@@ -216,7 +220,7 @@ export const BackupRecoveryTab = () => {
 
     // 3. Trigger modern background validation safety backup cycle
     triggerSafetyCycle(
-      savedAutoVault !== 'true', // check if disabled
+      savedAutoVault === 'false', // check if disabled (enabled by default)
       savedAutoFile === 'true' // check if enabled
     );
   }, [triggerSafetyCycle, fetchVaultDetails]);
@@ -887,3 +891,107 @@ export const BackupRecoveryTab = () => {
     </div>
   );
 };
+
+export const AutoBackupTrigger = () => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const triggerSafetyBackup = async () => {
+      try {
+        const todayString = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const lastBackupDate = localStorage.getItem('sarkari_sewayojan_last_auto_backup_date');
+
+        // Check if backed up today already
+        if (lastBackupDate === todayString) {
+          console.log('[Auto Backup Trigger] Daily backup already completed today.');
+          return;
+        }
+
+        const savedAutoVault = localStorage.getItem('sarkari_sewayojan_pref_autovault') !== 'false'; // defaults to true
+        const savedAutoFile = localStorage.getItem('sarkari_sewayojan_pref_autofile') === 'true'; // defaults to false
+
+        // If both options are disabled, exit
+        if (!savedAutoVault && !savedAutoFile) {
+          return;
+        }
+
+        console.log('[Auto Backup Trigger] Initiating automated background safety check...');
+
+        // Clear the local admin cache to ensure we fetch 100% fresh, real-time data from Firestore
+        clearLocalAdminCache();
+
+        // Fetch firebase data
+        const categories = await getCategories();
+        const category_links = await getCategoryLinks();
+        const tablet_items = await getTabletItems();
+        const settings_flat = await getSiteSettingsFlat();
+        const basicPosts = await getPosts();
+
+        // Disaster prevention safeguard
+        if (categories.length === 0 && basicPosts.length === 0) {
+          console.warn('[Auto Backup Trigger] Disaster Prevention active: Firebase data empty. Aborting backup.');
+          return;
+        }
+
+        const fullPosts: any[] = [];
+        for (const p of basicPosts) {
+          try {
+            const fp = await getPostBySlug(p.slug || p.id);
+            fullPosts.push(fp || p);
+          } catch {
+            fullPosts.push(p);
+          }
+        }
+
+        const backupObj: BackupData = {
+          categories,
+          category_links,
+          tablet_items,
+          posts: fullPosts,
+          settings_flat,
+          backup_timestamp: new Date().toISOString(),
+          source: 'Sarkari_Sewayojan_Auto_Shield'
+        };
+
+        // A. Save to Browser Local Vault (IndexedDB)
+        if (savedAutoVault) {
+          await saveBackupToVault(backupObj, 'latest_daily');
+        }
+
+        // B. Trigger automatic json file download if configured
+        if (savedAutoFile) {
+          const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Sarkari_Sewayojan_AUTO_BACKUP_${todayString}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+
+        // Update last auto backup date
+        localStorage.setItem('sarkari_sewayojan_last_auto_backup_date', todayString);
+
+        toast({
+          title: 'दैनिक सुरक्षा चक्र सक्रिय!',
+          description: 'आपके डेटा की बैकअप कॉपी सुरक्षित लोड कर दी गई है।',
+        });
+
+      } catch (err) {
+        console.error('[Auto Backup Trigger] Background safety backup cycle error:', err);
+      }
+    };
+
+    // Delay run by 3 seconds so the main administrative panel loads fast first
+    const delayTimer = setTimeout(() => {
+      triggerSafetyBackup();
+    }, 3000);
+
+    return () => clearTimeout(delayTimer);
+  }, [toast]);
+
+  return null;
+};
+

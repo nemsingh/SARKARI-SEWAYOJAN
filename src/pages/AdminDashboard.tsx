@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BackupRecoveryTab } from '@/components/admin/BackupRecoveryTab';
+import { BackupRecoveryTab, AutoBackupTrigger } from '@/components/admin/BackupRecoveryTab';
 
 
 // ============ CONFIRM DIALOG STATE ============
@@ -307,6 +307,11 @@ const AdminDashboard = () => {
       // Turn off publishing loader so user is instantly free
       setPublishing(false);
 
+      // Show small toast popup at the bottom
+      toast({
+        title: 'Publish Successfully',
+      });
+
     } catch (err: any) {
       console.error(err);
       setPublishing(false);
@@ -570,6 +575,7 @@ const AdminDashboard = () => {
           <Button variant="destructive" onClick={handleLogout}>Logout</Button>
         </div>
       </div>
+      <AutoBackupTrigger />
       <div className="max-w-[1200px] mx-auto p-6">
         <Tabs defaultValue="settings" className="w-full">
           <TabsList className="w-full flex flex-wrap mb-6">
@@ -923,6 +929,7 @@ const CategoryLinksTab = ({
 }) => {
   const [filterCat, setFilterCat] = useState('all');
   const [showOnlyWithLastDate, setShowOnlyWithLastDate] = useState(false);
+  const [showOnlyWithNewBadge, setShowOnlyWithNewBadge] = useState(false);
 
   // Pre-compute Map of slug/ID to Post for O(1) matching speed in CategoryCard and LinkRows
   const postsMap = useMemo(() => {
@@ -934,17 +941,24 @@ const CategoryLinksTab = ({
     return map;
   }, [posts]);
 
-  // Compute filtered categories based on dropdown and Last Date Box filter
+  // Compute filtered categories based on dropdown, Last Date Box, and New Badge filters
   const filteredCategories = useMemo(() => {
     let cats = filterCat === 'all' ? categories : categories.filter(c => c.id === filterCat);
-    if (showOnlyWithLastDate) {
+    
+    if (showOnlyWithLastDate || showOnlyWithNewBadge) {
       cats = cats.filter(cat => {
-        const linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
-        return linksForCat.some(l => l.last_date_text && l.last_date_text.trim() !== '');
+        let linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
+        if (showOnlyWithLastDate) {
+          linksForCat = linksForCat.filter(l => l.last_date_text && l.last_date_text.trim() !== '');
+        }
+        if (showOnlyWithNewBadge) {
+          linksForCat = linksForCat.filter(l => l.is_new === true);
+        }
+        return linksForCat.length > 0;
       });
     }
     return cats;
-  }, [categories, filterCat, showOnlyWithLastDate, categoryLinks]);
+  }, [categories, filterCat, showOnlyWithLastDate, showOnlyWithNewBadge, categoryLinks]);
 
   return (
     <div className="space-y-6">
@@ -977,6 +991,18 @@ const CategoryLinksTab = ({
             📅 Only Show Links with Last Date / Extended Box Entered
           </label>
         </div>
+        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-900">
+          <input
+            type="checkbox"
+            id="showOnlyWithNewBadge"
+            checked={showOnlyWithNewBadge}
+            onChange={e => setShowOnlyWithNewBadge(e.target.checked)}
+            className="w-4 h-4 cursor-pointer accent-amber-600 rounded"
+          />
+          <label htmlFor="showOnlyWithNewBadge" className="text-sm font-bold text-amber-700 dark:text-amber-400 cursor-pointer select-none flex items-center gap-1.5">
+            🔥 Only Show Links with 'New' Badge / सिर्फ 'New' सिंबल वाले लिंक्स
+          </label>
+        </div>
       </div>
       {filteredCategories.map((cat, index) => (
         <div key={cat.id} className="pb-8 mb-8 border-b-4 border-dashed border-slate-500 last:border-b-0 last:pb-0 last:mb-0">
@@ -985,8 +1011,14 @@ const CategoryLinksTab = ({
             index={filterCat === 'all' ? index : undefined}
             totalCats={categories.length}
             links={(() => {
-              const linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
-              return showOnlyWithLastDate ? linksForCat.filter(l => l.last_date_text && l.last_date_text.trim() !== '') : linksForCat;
+              let linksForCat = categoryLinks.filter(l => l.category_id === cat.id);
+              if (showOnlyWithLastDate) {
+                linksForCat = linksForCat.filter(l => l.last_date_text && l.last_date_text.trim() !== '');
+              }
+              if (showOnlyWithNewBadge) {
+                linksForCat = linksForCat.filter(l => l.is_new === true);
+              }
+              return linksForCat;
             })()}
             postsMap={postsMap}
             onDelete={() => onDeleteCategory(cat.id)}
@@ -1005,9 +1037,13 @@ const CategoryLinksTab = ({
       {filteredCategories.length === 0 && (
         <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-300">
           <span className="text-muted-foreground font-semibold">
-            {showOnlyWithLastDate 
-              ? "No links match this filter with 'Last Date Box' filled." 
-              : "No categories or links found."}
+            {showOnlyWithLastDate && showOnlyWithNewBadge
+              ? "No links match both 'Last Date Box' filled and 'New' badge active."
+              : showOnlyWithLastDate
+                ? "No links match this filter with 'Last Date Box' filled."
+                : showOnlyWithNewBadge
+                  ? "No links match this filter with 'New' badge active."
+                  : "No categories or links found."}
           </span>
         </div>
       )}
