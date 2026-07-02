@@ -255,24 +255,9 @@ iframe[id=":1.container"] {
 .admin-panel .text-2xl { font-size: 1.875rem !important; line-height: 2.25rem !important; } /* 30px */
 .admin-panel .text-3xl { font-size: 2.25rem !important; line-height: 2.5rem !important; } /* 36px */
 
-@keyframes spin-border-fast {
-  0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.25); }
-  100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
-}
-
-@keyframes spin-border-slow {
-  0% { transform: translate(-50%, -50%) rotate(360deg) scale(1.25); }
-  50% { transform: translate(-50%, -50%) rotate(180deg) scale(0.8); }
-  100% { transform: translate(-50%, -50%) rotate(0deg) scale(1.25); }
-}
-
-.animate-spin-border-fast {
-  animation: spin-border-fast 6.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-.animate-spin-border-slow {
-  animation: spin-border-slow 9.8s ease-in-out infinite;
+@keyframes social-flip {
+  0% { transform: perspective(400px) rotateY(0); }
+  100% { transform: perspective(400px) rotateY(360deg); }
 }
 
 /* Category item divider (Navy Blue) styling - only between items */
@@ -286,9 +271,8 @@ iframe[id=":1.container"] {
   color: #ff0033 !important;
 }
 
-/* Social buttons hover custom transitions */
-.social-glow-button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.theme-bhagwa .social-flip-hover:hover {
+  animation: social-flip 1s linear infinite;
 }
 
 /* -------------------------------------
