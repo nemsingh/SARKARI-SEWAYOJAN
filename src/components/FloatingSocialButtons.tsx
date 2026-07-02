@@ -126,19 +126,19 @@ export default function FloatingSocialButtons() {
 
   const getBackgroundClass = (network: string) => {
     switch (network) {
-      case 'whatsapp': return 'bg-[#25D366] hover:bg-[#20b858]';
-      case 'instagram': return 'bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#285AEB] hover:brightness-110';
-      case 'youtube': return 'bg-[#FF0000] hover:bg-[#cc0000]';
-      case 'telegram': return 'bg-[#0088cc] hover:bg-[#0077b5]';
-      case 'facebook': return 'bg-[#1877F2] hover:bg-[#166fe5]';
-      case 'linkedin': return 'bg-[#0a66c2] hover:bg-[#0957a6]';
+      case 'whatsapp': return 'bg-[#25D366] group-hover:bg-[#20b858]';
+      case 'instagram': return 'bg-gradient-to-tr from-[#fdf497] via-[#fd5949] to-[#285AEB] group-hover:brightness-110';
+      case 'youtube': return 'bg-[#FF0000] group-hover:bg-[#cc0000]';
+      case 'telegram': return 'bg-[#0088cc] group-hover:bg-[#0077b5]';
+      case 'facebook': return 'bg-[#1877F2] group-hover:bg-[#166fe5]';
+      case 'linkedin': return 'bg-[#0a66c2] group-hover:bg-[#0957a6]';
       default: return 'bg-gray-800';
     }
   };
 
   return (
     <div 
-      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out will-change-transform ${
+      className={`fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3 transition-all duration-150 ease-out will-change-transform ${
         isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-90 pointer-events-none'
       }`}
     >
@@ -148,11 +148,30 @@ export default function FloatingSocialButtons() {
           href={data.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`social-flip-hover ${getBackgroundClass(network)} w-12 h-12 rounded-full flex justify-center items-center text-white shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ring-2 ring-white/20`}
+          className="group social-glow-button relative w-12 h-12 rounded-full flex-shrink-0 overflow-hidden shadow-lg shadow-black/30 hover:shadow-xl hover:-translate-y-1 hover:scale-105 pointer-events-auto transition-all duration-300 ring-1 ring-white/10"
           aria-label={network}
           title={network.charAt(0).toUpperCase() + network.slice(1)}
         >
-          {Icons[network as keyof typeof Icons]}
+          {/* Glowing Border Trace Track: Dual morphing layers for dynamic stretching, shrinking, and color phasing */}
+          <div 
+            className="absolute top-1/2 left-1/2 w-[180%] h-[180%] rounded-full animate-spin-border-fast pointer-events-none origin-center mix-blend-screen"
+            style={{
+              background: 'conic-gradient(from 0deg, transparent 40%, #FF0055 55%, #00FFCC 75%, #9900FF 90%, transparent 100%)'
+            }}
+          />
+          <div 
+            className="absolute top-1/2 left-1/2 w-[180%] h-[180%] rounded-full animate-spin-border-slow pointer-events-none origin-center mix-blend-screen opacity-90"
+            style={{
+              background: 'conic-gradient(from 180deg, transparent 45%, #FFCC00 60%, #FF5500 75%, #00FF55 90%, transparent 100%)'
+            }}
+          />
+          
+          {/* Inner Circle displaying the actual brand color and icon - absolute inset prevents any flattening */}
+          <div className={`absolute inset-[2.5px] rounded-full flex justify-center items-center z-10 transition-all duration-300 ${getBackgroundClass(network)}`}>
+            <div className="flex items-center justify-center flex-shrink-0">
+              {Icons[network as keyof typeof Icons]}
+            </div>
+          </div>
         </a>
       ))}
     </div>
