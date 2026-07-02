@@ -214,25 +214,60 @@ const AdminDashboard = () => {
       getSiteSettings(),
     ]);
     
-    // Auto-expire "New" badges for category links
+    // Auto-expire "New" badges for "Latest Jobs" category links
     const nextCl = [...cl];
+    
+    // Find the Latest Jobs category (various spellings)
+    const latestJobsCat = c.find((cat: any) => 
+      (cat.name.toLowerCase().includes('latest') || cat.name.toLowerCase().includes('letest')) && 
+      cat.name.toLowerCase().includes('job')
+    );
 
-    const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 5;
+    const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 7;
     const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
     for (let i = 0; i < nextCl.length; i++) {
       const link = nextCl[i];
       if (!link.is_new) continue;
 
-      // Both Latest Jobs and other categories now expire strictly based on link_timestamp after 5 days
-      if (link.link_timestamp) {
-        const msSinceCreated = Date.now() - link.link_timestamp;
-        if (msSinceCreated > msInExpiryDays) {
-          try {
-            await updateCategoryLink(link.id, { is_new: false });
-            nextCl[i] = { ...link, is_new: false };
-          } catch (e) {
-            console.error(`Failed to auto-expire link ${link.id}:`, e);
+      const isLatestJobs = latestJobsCat && link.category_id === latestJobsCat.id;
+
+      if (isLatestJobs) {
+        if (link.url) {
+          const match = link.url.match(/\/post\/(.+)/);
+          const slug = match ? match[1] : null;
+          if (slug) {
+            const post = p.find((postItem: any) => postItem.slug === slug || postItem.id === slug);
+            if (post) {
+              const lastDateStr = post.last_date_text || post.last_date_text_hi || 
+                                  extractDatesFromHtml(post.tables_html).lastDate || 
+                                  extractDatesFromHtml(post.tables_html_hi).lastDate;
+              if (lastDateStr) {
+                const cleanedStr = extractDateText(lastDateStr) || lastDateStr;
+                const parsedDate = parseCleanDate(cleanedStr);
+                if (parsedDate && parsedDate.getTime() < Date.now()) {
+                  try {
+                    await updateCategoryLink(link.id, { is_new: false });
+                    nextCl[i] = { ...link, is_new: false };
+                  } catch (e) {
+                    console.error(`Failed to auto-expire link ${link.id}:`, e);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // For other categories (Result, Admit Card, Answer Key, etc.)
+        if (link.link_timestamp) {
+          const msSinceCreated = Date.now() - link.link_timestamp;
+          if (msSinceCreated > msInExpiryDays) {
+            try {
+              await updateCategoryLink(link.id, { is_new: false });
+              nextCl[i] = { ...link, is_new: false };
+            } catch (e) {
+              console.error(`Failed to auto-expire general category link ${link.id}:`, e);
+            }
           }
         }
       }

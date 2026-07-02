@@ -110,7 +110,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
       if (!links[i]) break;
       linesCount += 1;
       if (links[i].title && links[i].title.length > 45) linesCount += 1;
-      if (!isLatestJobs && (links[i].last_date_text || links[i].actual_last_date_text)) linesCount += 1;
+      if (links[i].last_date_text || links[i].actual_last_date_text) linesCount += 1;
     }
     
     // Dynamically add 1-3 extra links if the box is visually shorter (fewer lines)
@@ -134,12 +134,18 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
           let isExpired = false;
           let showNewBadge = false;
 
-          if (link.link_timestamp) {
-            const msSinceCreated = Date.now() - link.link_timestamp;
-            const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-            isExpired = msSinceCreated > msInExpiryDays;
+          if (isLatestJobs) {
+            isExpired = isLinkExpired(link.last_date_text || link.actual_last_date_text);
+            // Latest Jobs category box parameters: automatically show 'New' badge if not expired
+            showNewBadge = !isExpired;
+          } else {
+            if (link.link_timestamp) {
+              const msSinceCreated = Date.now() - link.link_timestamp;
+              const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+              isExpired = msSinceCreated > msInExpiryDays;
+            }
+            showNewBadge = link.is_new && !isExpired;
           }
-          showNewBadge = link.is_new && !isExpired;
 
           return (
             <li key={link.id} className="category-link-item mb-2.5">
@@ -156,7 +162,7 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
                   <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
                 )}
               </div>
-              {!isLatestJobs && (link.last_date_text || link.actual_last_date_text) && (
+              {(link.last_date_text || link.actual_last_date_text) && (
                 <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
                   {link.last_date_text || link.actual_last_date_text}
                 </div>
