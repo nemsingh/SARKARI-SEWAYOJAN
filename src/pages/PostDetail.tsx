@@ -425,7 +425,7 @@ const PostDetail = () => {
               </select>
             </div>
 
-            <table className="translate post-summary-table w-full mb-5 border-collapse">
+            <table className="translate post-summary-table w-full mb-2 border-collapse">
               <tbody>
                 <tr>
                   <td className="p-3 align-top font-bold w-[180px] text-[19px] border border-black/10" style={{ color: '#FF0033' }}>{labels.name}</td>

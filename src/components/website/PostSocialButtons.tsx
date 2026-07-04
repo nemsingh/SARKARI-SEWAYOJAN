@@ -75,16 +75,24 @@ interface PostSocialButtonsProps {
 export const PostSocialButtons: FC<PostSocialButtonsProps> = ({ settings }) => {
   const networks = ['whatsapp', 'telegram', 'youtube', 'instagram', 'facebook', 'linkedin'] as const;
   
+  const getSettingValue = (key: string): string => {
+    if (!settings || !settings[key]) return '';
+    if (typeof settings[key] === 'object' && 'value' in settings[key]) {
+      return settings[key].value || '';
+    }
+    return String(settings[key]);
+  };
+
   // Find enabled social channels
   const activeButtons = networks.map(net => {
     // 1. Check if explicitly enabled for posts
     const postEnabledKey = `post_social_${net}_enabled`;
-    const isPostEnabled = settings[postEnabledKey]?.value === 'true';
+    const isPostEnabled = getSettingValue(postEnabledKey) === 'true';
 
     // 2. Get URL (post-specific URL takes priority, then fallback to global social URL)
     const postUrlKey = `post_social_${net}_url`;
     const globalUrlKey = `social_${net}_url`;
-    const url = settings[postUrlKey]?.value || settings[globalUrlKey]?.value || '';
+    const url = getSettingValue(postUrlKey) || getSettingValue(globalUrlKey) || '';
 
     return {
       network: net,
@@ -99,7 +107,7 @@ export const PostSocialButtons: FC<PostSocialButtonsProps> = ({ settings }) => {
   }
 
   return (
-    <div className="notranslate w-full flex flex-wrap items-center justify-center gap-4 py-4 border-b border-black/10">
+    <div className="notranslate w-full flex flex-wrap items-center justify-center gap-3 py-2 border-b border-black/10">
       {activeButtons.map(btn => (
         <a
           key={btn.network}
