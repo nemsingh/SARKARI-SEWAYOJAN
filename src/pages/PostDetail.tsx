@@ -10,6 +10,7 @@ import SiteFooter from '@/components/website/SiteFooter';
 import SEO from '@/components/SEO';
 import NotFound from '@/pages/NotFound';
 import YouTubeOverlay from '@/components/YouTubeOverlay';
+import { PostSocialButtons } from '@/components/website/PostSocialButtons';
 
 // Fields that can be translated, mapped to their Hindi manual counterparts
 const TRANSLATABLE_FIELDS = [
@@ -440,6 +441,8 @@ const PostDetail = () => {
                 </tr>
               </tbody>
             </table>
+
+            <PostSocialButtons settings={settings} />
 
             {displayTablesHtml && (
               <div className={`post-tables-content ${hasManualTableHi ? 'notranslate' : 'translate'}`} dangerouslySetInnerHTML={{ __html: displayTablesHtml }} />

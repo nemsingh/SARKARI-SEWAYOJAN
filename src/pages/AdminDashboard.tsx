@@ -639,6 +639,42 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              <div className="pb-8 mb-8 border-b-4 border-dashed border-slate-500">
+                <h3 className="text-xl font-bold text-primary mb-2">Post Inline Social Buttons (Under Details Box)</h3>
+                <p className="text-sm text-muted-foreground mb-4">Toggle 'Show' to enable the button right below the "Name of Post: ..." details summary table in all job/post details page. These buttons will align centered in a single line, featuring a slowly blinking border in the brand color, a light-blue background, and an inner brand-colored button box. If a URL is not set here, it will automatically fall back to the URL from the Floating Social Buttons above.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {['whatsapp', 'telegram', 'youtube', 'instagram', 'facebook', 'linkedin'].map(network => {
+                    const urlKey = `post_social_${network}_url`;
+                    const enabledKey = `post_social_${network}_enabled`;
+                    const urlValue = settings[urlKey]?.value || '';
+                    const isEnabled = settings[enabledKey]?.value === 'true';
+
+                    return (
+                      <div key={network} className="border-2 border-dashed border-slate-300 p-4 rounded-lg bg-secondary flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-primary capitalize">{network} (Inline Post)</span>
+                          <Button 
+                            variant={isEnabled ? 'default' : 'outline'} 
+                            size="sm" 
+                            onClick={() => handleUpdateSetting(enabledKey, isEnabled ? 'false' : 'true')}
+                            className={isEnabled ? (network === 'whatsapp' ? 'bg-green-600' : network === 'youtube' ? 'bg-red-600' : 'bg-primary') : ''}
+                          >
+                            {isEnabled ? 'Shown' : 'Hidden'}
+                          </Button>
+                        </div>
+                        <Input 
+                          placeholder={`${network} URL (leave blank to fallback to Floating Social URL)`} 
+                          value={urlValue} 
+                          onChange={(e) => handleUpdateSetting(urlKey, e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-xl font-bold text-primary mb-4 border-b-2 border-dashed border-slate-300 pb-2">Footer Sections</h3>
                 <div className="space-y-6 mt-4">

@@ -666,3 +666,22 @@ html body .short-info-cell a.force-blue-click > * {
   color: #0000FF !important;
 }
 
+/* --- Dynamic Blinking Border Animation for Post Inline Social Buttons --- */
+@keyframes borderBlink {
+  0%, 100% {
+    border-color: var(--blink-color, currentColor);
+    box-shadow: 0 0 6px var(--blink-color-glow, currentColor);
+    opacity: 1;
+  }
+  50% {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 0 0px transparent;
+    opacity: 0.9;
+  }
+}
+
+.animate-blink-border {
+  animation: borderBlink 1.8s infinite ease-in-out;
+}
+
+
