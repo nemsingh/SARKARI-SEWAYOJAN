@@ -229,8 +229,8 @@ const Index = () => {
   };
 
   const pageTitle = activeFilter === 'Home' 
-    ? "Sarkari Sewayojan | Sarkari Result | Sewayojan, Rojgar Result, Sarkari Exam 2026"
-    : `${activeFilter} Jobs - Sarkari Result, Sarkari Sewayojan | Sarkari Exam`;
+    ? "Sarkari Sewayojan : SarkariSewayojan.com, Sarkari Sewayojan Official 2026, Sarkari Sewayojan Website"
+    : `${activeFilter} Jobs - Latest Sarkari Result, Sarkari Sewayojan`;
 
   const pageDescription = activeFilter === 'Home'
     ? "Sarkari Sewayojan is India's No.1 Sarkari Result Portal. Find latest Sarkari Exam, Sewayojan, Rojgar Result, Free Job Alert, Railway, Bank, SSC, and Police Updates."
