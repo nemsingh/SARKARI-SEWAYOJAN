@@ -11,6 +11,7 @@ import SEO from '@/components/SEO';
 import NotFound from '@/pages/NotFound';
 import YouTubeOverlay from '@/components/YouTubeOverlay';
 import { PostSocialButtons } from '@/components/website/PostSocialButtons';
+import { Briefcase, CalendarClock, ArrowRight, Calendar } from 'lucide-react';
 
 // Fields that can be translated, mapped to their Hindi manual counterparts
 const TRANSLATABLE_FIELDS = [
@@ -45,6 +46,12 @@ const PostDetail = () => {
              allPosts.find((p: any) => p.slug && p.slug.startsWith(slug)) || null;
     }
     return getCache<any>(`post_${slug}`) || null;
+  });
+  const [allPosts, setAllPosts] = useState<any[]>(() => {
+    if (initialData) {
+      return initialData.posts || [];
+    }
+    return getCache<any[]>('posts') || [];
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,12 +101,21 @@ const PostDetail = () => {
         const cachedCats = getCache<any[]>('categories');
         const cachedLinks = getCache<any[]>('category_links');
         const cachedSettings = getCache<Record<string, string>>('settings_flat');
+        const cachedPosts = getCache<any[]>('posts');
 
-        if (cachedPost && cachedPost.tables_html !== undefined && cachedCats && cachedLinks && cachedSettings) {
+        if (
+          cachedPost && 
+          cachedPost.tables_html !== undefined && 
+          cachedCats && 
+          cachedLinks && 
+          cachedSettings && 
+          cachedPosts
+        ) {
           setPost(cachedPost);
           setCategories(cachedCats);
           setCategoryLinks(cachedLinks);
           setSettings(cachedSettings);
+          setAllPosts(cachedPosts);
           setNotFound(false);
           return;
         }
@@ -142,6 +158,10 @@ const PostDetail = () => {
                 setCategories(data.categories || []);
                 setCategoryLinks(data.category_links || []);
                 setSettings(data.settings_flat || {});
+                if (data.posts) {
+                  setAllPosts(data.posts || []);
+                  setCache('posts', data.posts || []);
+                }
               }
             } catch(e) {
               console.error("Categories fetch failed:", e);
@@ -161,61 +181,69 @@ const PostDetail = () => {
       }
 
       const isStaticMode = (typeof window !== 'undefined' && (window as any).__INITIAL_DATA__) || (typeof global !== 'undefined' && (global as any).__INITIAL_DATA__);
-      let data: any;
+      const initialDataObj = isStaticMode ? ((window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__) : null;
 
-      if (isStaticMode) {
-        data = (window as any).__INITIAL_DATA__ || (global as any).__INITIAL_DATA__;
-      } else {
-        try {
-          data = await fetchHomeData();
-        } catch (e) {
-          console.error('Fetch error:', e);
+      let postData: any = null;
+      
+      // 1. Resolve Post Data
+      if (initialDataObj) {
+        if (initialDataObj.slug === slug || initialDataObj.id === slug) {
+          postData = initialDataObj;
+        } else if (initialDataObj[`post_${slug}`]) {
+          postData = initialDataObj[`post_${slug}`];
+        } else if (initialDataObj.post) {
+          postData = initialDataObj.post;
+        } else if (initialDataObj.posts) {
+          postData = initialDataObj.posts.find((p: any) => p.slug === slug || p.id === slug) ||
+                     initialDataObj.posts.find((p: any) => p.slug && p.slug.startsWith(slug));
         }
       }
 
-      if (data) {
-        const allPosts = data.posts || [];
-        const cats = data.categories || [];
-        const links = data.category_links || [];
-        const sett = data.settings_flat || {};
-
-        let postData = data[`post_${slug}`] || 
-                       allPosts.find((p: any) => p.slug === slug || p.id === slug) ||
-                       allPosts.find((p: any) => p.slug && p.slug.startsWith(slug));
-        
-        if (!postData || postData.tables_html === undefined) {
-          try {
-            postData = await fetchPostData(slug!);
-          } catch (err) {
-            console.error("Error fetching static post JSON:", err);
-          }
+      if (!postData || postData.tables_html === undefined) {
+        try {
+          postData = await fetchPostData(slug!);
+        } catch (err) {
+          console.error("Error fetching static post JSON:", err);
         }
+      }
 
-        if (postData) {
-          setPost(postData);
-          setCache(`post_${slug}`, postData);
-          setNotFound(false);
-        } else {
-             setNotFound(true);
+      if (postData) {
+        setPost(postData);
+        setCache(`post_${slug}`, postData);
+        setNotFound(false);
+      } else {
+        setNotFound(true);
+      }
+
+      // 2. Resolve Global Data (categories, category_links, settings, posts)
+      let globalData: any = null;
+      if (initialDataObj && initialDataObj.posts && initialDataObj.categories) {
+        globalData = initialDataObj;
+      }
+
+      if (!globalData) {
+        try {
+          globalData = await fetchHomeData();
+        } catch (e) {
+          console.error("Error fetching home data for sidebar/related:", e);
         }
+      }
+
+      if (globalData) {
+        const allPostsVal = globalData.posts || [];
+        const cats = globalData.categories || [];
+        const links = globalData.category_links || [];
+        const sett = globalData.settings_flat || {};
+
         setCategories(cats);
         setCategoryLinks(links);
         setSettings(sett);
+        setAllPosts(allPostsVal);
+
         setCache('categories', cats);
         setCache('category_links', links);
         setCache('settings_flat', sett);
-      } else {
-        try {
-          const postData = await fetchPostData(slug!);
-          if (postData) {
-            setPost(postData);
-            setNotFound(false);
-          } else {
-               setNotFound(true);
-          }
-        } catch (err) {
-             setNotFound(true);
-        }
+        setCache('posts', allPostsVal);
       }
     };
     
@@ -557,6 +585,276 @@ const PostDetail = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Related Posts and Last Date TODAY Posts Section */}
+          {allPosts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 mb-10 w-full px-2">
+              {/* Box 1: Related Post's */}
+              <div 
+                className="bg-background rounded-2xl overflow-hidden border-t-4 border-[#0b3d91]" 
+                style={{ boxShadow: 'var(--box-shadow-strong)' }}
+              >
+                {/* Header */}
+                <div className="bg-[#0b3d91]/5 py-3.5 px-4 border-b border-black/5 dark:border-white/5">
+                  <h3 className="font-extrabold text-[18px] md:text-[20px] text-[#0b3d91] dark:text-sky-400 uppercase tracking-wide">
+                    {language === 'hi' ? 'संबंधित पोस्ट्स' : "Related Post's"}
+                  </h3>
+                </div>
+
+                {/* Body Content */}
+                <div className="p-3 flex flex-col gap-0 sidebar-posts-list" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                  {(() => {
+                    // Related posts algorithm
+                    const currentPostUrls = [
+                      `/post/${slug}`,
+                      `/post/${post?.slug}`,
+                      `/post/${post?.id}`,
+                      post?.slug,
+                      post?.id
+                    ].filter(Boolean);
+
+                    const currentPostLinks = categoryLinks.filter(link => {
+                      if (!link.url) return false;
+                      const cleanUrl = link.url.trim();
+                      return currentPostUrls.some(u => cleanUrl === u || cleanUrl.endsWith('/' + u) || u.endsWith('/' + cleanUrl));
+                    });
+
+                    const currentCategoryIds = new Set(currentPostLinks.map(l => l.category_id).filter(Boolean));
+
+                    const stopWords = new Set([
+                      'and', 'or', 'the', 'of', 'to', 'in', 'for', 'online', 'form', 'recruitment', 'vacancy', '2026', '2025', '2024',
+                      'job', 'jobs', 'post', 'posts', 'with', 'by', 'on', 'at', 'from', 'sarkari', 'sewayojan', 'website', 'official',
+                      'और', 'का', 'की', 'के', 'में', 'पर', 'को', 'से', 'भी', 'लिए'
+                    ]);
+
+                    const currentTitleWords = (post?.name_of_post || '')
+                      .toLowerCase()
+                      .replace(/[|:\-–—(),.]/g, ' ')
+                      .split(/\s+/)
+                      .filter(word => word.length > 2 && !stopWords.has(word));
+
+                    const scoredPosts = allPosts
+                      .filter(p => p.id !== post?.id && p.slug !== post?.slug)
+                      .map(p => {
+                        let score = 0;
+                        const pLinks = categoryLinks.filter(link => {
+                          if (!link.url) return false;
+                          return link.url === `/post/${p.slug}` || link.url === `/post/${p.id}` || link.url === p.slug || link.url === p.id;
+                        });
+                        const shareCategory = pLinks.some(l => currentCategoryIds.has(l.category_id));
+                        if (shareCategory) score += 15;
+
+                        const pTitle = (p.name_of_post || '').toLowerCase();
+                        currentTitleWords.forEach(word => {
+                          if (pTitle.includes(word)) score += 5;
+                        });
+
+                        return { post: p, score };
+                      })
+                      .filter(item => item.score > 0)
+                      .sort((a, b) => b.score - a.score)
+                      .map(item => item.post);
+
+                    const finalRelatedPosts = [...scoredPosts];
+                    if (finalRelatedPosts.length < 5) {
+                      const seenIds = new Set(finalRelatedPosts.map(p => p.id));
+                      seenIds.add(post?.id);
+                      seenIds.add(post?.slug);
+
+                      const latestJobs = allPosts
+                        .filter(p => !seenIds.has(p.id) && !seenIds.has(p.slug))
+                        .slice(0, 5 - finalRelatedPosts.length);
+
+                      finalRelatedPosts.push(...latestJobs);
+                    }
+
+                    const displayRelated = finalRelatedPosts.slice(0, 5);
+
+                    if (displayRelated.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          {language === 'hi' ? 'कोई संबंधित पोस्ट नहीं मिला।' : 'No related posts found.'}
+                        </p>
+                      );
+                    }
+
+                    return displayRelated.map((p, idx) => {
+                      const targetUrl = `/post/${p.slug || p.id}`;
+                      const titleText = language === 'hi' && p.name_of_post_hi ? p.name_of_post_hi : p.name_of_post;
+                      
+                      return (
+                        <a 
+                          key={p.id || idx}
+                          href={targetUrl}
+                          className="flex items-center justify-between py-1 px-1 border-b border-black/5 dark:border-white/5 transition-all duration-200 group last:border-0"
+                        >
+                          <div className="max-w-[88%] py-1">
+                            <span className="font-bold text-[16px] leading-snug sidebar-post-title transition-all">
+                              {titleText}
+                            </span>
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 sidebar-post-arrow" />
+                        </a>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Box 2: Last Date TODAY Post's */}
+              <div 
+                className="bg-background rounded-2xl overflow-hidden border-t-4 border-[#FF0033]" 
+                style={{ boxShadow: 'var(--box-shadow-strong)' }}
+              >
+                {/* Header */}
+                <div className="bg-[#FF0033]/5 py-3.5 px-4 border-b border-black/5 dark:border-white/5">
+                  <h3 className="font-extrabold text-[18px] md:text-[20px] text-[#FF0033] uppercase tracking-wide flex items-center gap-2">
+                    {language === 'hi' ? 'आज अंतिम तिथि वाले पोस्ट्स' : "Last Date TODAY Post's"}
+                    {/* Flashing Dot Indicator */}
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF0033]"></span>
+                    </span>
+                  </h3>
+                </div>
+
+                {/* Body Content */}
+                <div className="p-3 flex flex-col gap-0 sidebar-posts-list" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                  {(() => {
+                    const parseLastDate = (lastDateText: string | null | undefined): Date | null => {
+                      if (!lastDateText) return null;
+                      
+                      let s = lastDateText.toLowerCase().trim();
+                      s = s.replace(/\|/g, ' ');
+                      
+                      const hindiToEnglishMonths: Record<string, string> = {
+                        'जनवरी': 'january', 'फ़रवरी': 'february', 'फरवरी': 'february', 'मार्च': 'march',
+                        'अप्रैल': 'april', 'मई': 'may', 'जून': 'june', 'जुलाई': 'july', 'अगस्त': 'august',
+                        'सितंबर': 'september', 'सितम्बर': 'september', 'अक्टूबर': 'october', 'अक्तूबर': 'october',
+                        'नवंबर': 'november', 'नवम्बर': 'november', 'दिसंबर': 'december', 'दिसम्बर': 'december'
+                      };
+
+                      for (const [hindi, english] of Object.entries(hindiToEnglishMonths)) {
+                        if (s.includes(hindi)) {
+                          s = s.replace(new RegExp(hindi, 'g'), english);
+                        }
+                      }
+
+                      const dmyMatch = s.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/);
+                      if (dmyMatch) {
+                        const day = parseInt(dmyMatch[1], 10);
+                        const month = parseInt(dmyMatch[2], 10) - 1;
+                        let year = parseInt(dmyMatch[3], 10);
+                        if (year < 100) year += 2000;
+                        const d = new Date(year, month, day);
+                        if (!isNaN(d.getTime())) return d;
+                      }
+
+                      s = s.replace(/\b(\d{1,2})(?:st|nd|rd|th)\b/g, '$1');
+
+                      // eslint-disable-next-line no-misleading-character-class
+                      let cleanAlpha = s.replace(/^[:\-–—\s\u200b•|ः।●]+/, '').replace(/[:\-–—\s|ः।●]+$/, '').trim();
+                      
+                      const matchAlpha = cleanAlpha.match(/\b\d{1,2}[\s./-]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{2,4}\b/i);
+                      if (matchAlpha) {
+                        cleanAlpha = matchAlpha[0];
+                      } else {
+                        const matchAlphaRev = cleanAlpha.match(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s./-]*\d{1,2}[\s./-]*\d{2,4}\b/i);
+                        if (matchAlphaRev) {
+                          cleanAlpha = matchAlphaRev[0];
+                        }
+                      }
+
+                      const tryStandard = new Date(cleanAlpha);
+                      if (!isNaN(tryStandard.getTime())) return tryStandard;
+
+                      return null;
+                    };
+
+                    const isToday = (date: Date): boolean => {
+                      const today = new Date();
+                      return (
+                        date.getDate() === today.getDate() &&
+                        date.getMonth() === today.getMonth() &&
+                        date.getFullYear() === today.getFullYear()
+                      );
+                    };
+
+                    const isUpcoming = (date: Date): boolean => {
+                      const todayStart = new Date();
+                      todayStart.setHours(0, 0, 0, 0);
+                      return date.getTime() >= todayStart.getTime();
+                    };
+
+                    // Filter posts with active dates
+                    const todayPosts = allPosts.filter(p => {
+                      const d = parseLastDate(p.last_date_text);
+                      return d ? isToday(d) : false;
+                    });
+
+                    let displayTodayOrUpcoming = [...todayPosts];
+                    if (displayTodayOrUpcoming.length < 5) {
+                      const upcomingPosts = allPosts
+                        .map(p => ({ post: p, date: parseLastDate(p.last_date_text) }))
+                        .filter(item => item.date && isUpcoming(item.date) && !isToday(item.date))
+                        .sort((a, b) => a.date!.getTime() - b.date!.getTime())
+                        .map(item => item.post);
+
+                      displayTodayOrUpcoming = [...displayTodayOrUpcoming, ...upcomingPosts].slice(0, 5);
+                    }
+
+                    if (displayTodayOrUpcoming.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          {language === 'hi' ? 'कोई भी अंतिम तिथि आज या जल्द उपलब्ध नहीं है।' : 'No upcoming last date updates found.'}
+                        </p>
+                      );
+                    }
+
+                    return displayTodayOrUpcoming.map((p, idx) => {
+                      const targetUrl = `/post/${p.slug || p.id}`;
+                      const titleText = language === 'hi' && p.name_of_post_hi ? p.name_of_post_hi : p.name_of_post;
+                      const parsedD = parseLastDate(p.last_date_text);
+                      const endsToday = parsedD ? isToday(parsedD) : false;
+
+                      return (
+                        <a 
+                          key={p.id || idx}
+                          href={targetUrl}
+                          className="flex items-center justify-between py-1 px-1 border-b border-black/5 dark:border-white/5 transition-all duration-200 group last:border-0"
+                        >
+                          <div className="max-w-[85%] py-1 text-[16px] leading-snug font-bold">
+                            <span className="sidebar-post-title transition-all mr-1.5">
+                              {titleText}
+                            </span>
+                            {endsToday ? (
+                              <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-[#FF0033] align-middle animate-fast-blink select-none ml-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF0033]"></span>
+                                {language === 'hi' ? 'अंतिम तिथि: आज' : 'LAST DATE: TODAY'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-amber-600 dark:text-amber-400 align-middle select-none ml-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400"></span>
+                                {(() => {
+                                  const text = p.last_date_text || '';
+                                  const lower = text.toLowerCase().trim();
+                                  if (lower.includes('last_date') || lower.includes('last date') || lower.includes('अंतिम तिथि') || lower.includes('अन्तिम तिथि')) {
+                                    return text;
+                                  }
+                                  return language === 'hi' ? `अंतिम तिथि: ${text || 'जल्द'}` : `Last Date: ${text || 'Soon'}`;
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 sidebar-post-arrow" />
+                        </a>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             </div>
           )}
         </div>

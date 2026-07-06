@@ -684,4 +684,71 @@ html body .short-info-cell a.force-blue-click > * {
   animation: borderBlink 1.8s infinite ease-in-out;
 }
 
+/* Sidebar related posts and last date posts links */
+.sidebar-posts-list .sidebar-post-title {
+  color: #0b3d91;
+  transition: color 0.2s ease;
+}
+
+.dark .sidebar-posts-list .sidebar-post-title {
+  color: #38bdf8;
+}
+
+.theme-bhagwa .sidebar-posts-list .sidebar-post-title {
+  color: blue !important;
+}
+
+/* Hover state: turn red when mouse cursor is on any part of the link */
+.sidebar-posts-list a:hover .sidebar-post-title {
+  color: #FF0033 !important;
+}
+
+.dark .sidebar-posts-list a:hover .sidebar-post-title {
+  color: #ef4444 !important;
+}
+
+.theme-bhagwa .sidebar-posts-list a:hover .sidebar-post-title {
+  color: #FF0033 !important;
+}
+
+/* Arrow Right styling matching title color */
+.sidebar-posts-list .sidebar-post-arrow {
+  color: #0b3d91;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.dark .sidebar-posts-list .sidebar-post-arrow {
+  color: #38bdf8;
+}
+
+.theme-bhagwa .sidebar-posts-list .sidebar-post-arrow {
+  color: blue !important;
+}
+
+.sidebar-posts-list a:hover .sidebar-post-arrow {
+  color: #FF0033 !important;
+  opacity: 1 !important;
+  transform: translateX(2px);
+}
+
+.dark .sidebar-posts-list a:hover .sidebar-post-arrow {
+  color: #ef4444 !important;
+}
+
+.theme-bhagwa .sidebar-posts-list a:hover .sidebar-post-arrow {
+  color: #FF0033 !important;
+}
+
+/* Fast text blink animation */
+@keyframes fastTextBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-fast-blink {
+  animation: fastTextBlink 0.6s infinite ease-in-out;
+}
+
+
 
