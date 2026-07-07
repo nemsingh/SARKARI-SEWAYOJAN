@@ -107,6 +107,43 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(errorJson);
 }
 
+// Validate Connection to Firestore on boot with a 2-second timeout
+async function testConnection() {
+  if (!isBrowser) return;
+  
+  // Race the connection check against a 2-second timeout
+  const connectionPromise = getDocFromServer(doc(db, 'test', 'connection'));
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Connection timeout')), 2000)
+  );
+
+  try {
+    await Promise.race([connectionPromise, timeoutPromise]);
+    console.log('[Firebase] Connection to Firestore backend succeeded!');
+    await enableNetwork(db); // Ensure network is enabled
+  } catch (error: any) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    } else {
+      console.warn('[Firebase] Backend unreachable or timeout. Operating in offline local cache mode.');
+    }
+    try {
+      await disableNetwork(db);
+    } catch (e) {
+      // Ignore errors trying to disable network
+    }
+  }
+}
+
+// Start connection check after a tiny delay to allow app boot
+if (isBrowser) {
+  setTimeout(() => {
+    testConnection().catch(err => {
+      console.warn('[Firebase] testConnection failed silently:', err);
+    });
+  }, 100);
+}
+
 export default app;
 
 
