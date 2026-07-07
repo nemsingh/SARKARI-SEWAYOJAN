@@ -226,6 +226,8 @@ const AdminDashboard = () => {
     const CATEGORY_NEW_BADGE_EXPIRY_DAYS = 7;
     const msInExpiryDays = CATEGORY_NEW_BADGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
+    const expiryPromises: Promise<any>[] = [];
+
     for (let i = 0; i < nextCl.length; i++) {
       const link = nextCl[i];
       if (!link.is_new) continue;
@@ -246,12 +248,12 @@ const AdminDashboard = () => {
                 const cleanedStr = extractDateText(lastDateStr) || lastDateStr;
                 const parsedDate = parseCleanDate(cleanedStr);
                 if (parsedDate && parsedDate.getTime() < Date.now()) {
-                  try {
-                    await updateCategoryLink(link.id, { is_new: false });
-                    nextCl[i] = { ...link, is_new: false };
-                  } catch (e) {
-                    console.error(`Failed to auto-expire link ${link.id}:`, e);
-                  }
+                  nextCl[i] = { ...link, is_new: false };
+                  expiryPromises.push(
+                    updateCategoryLink(link.id, { is_new: false }).catch(e =>
+                      console.error(`Failed to auto-expire link ${link.id}:`, e)
+                    )
+                  );
                 }
               }
             }
@@ -262,12 +264,12 @@ const AdminDashboard = () => {
         if (link.link_timestamp) {
           const msSinceCreated = Date.now() - link.link_timestamp;
           if (msSinceCreated > msInExpiryDays) {
-            try {
-              await updateCategoryLink(link.id, { is_new: false });
-              nextCl[i] = { ...link, is_new: false };
-            } catch (e) {
-              console.error(`Failed to auto-expire general category link ${link.id}:`, e);
-            }
+            nextCl[i] = { ...link, is_new: false };
+            expiryPromises.push(
+              updateCategoryLink(link.id, { is_new: false }).catch(e =>
+                console.error(`Failed to auto-expire general category link ${link.id}:`, e)
+              )
+            );
           }
         }
       }
@@ -279,6 +281,12 @@ const AdminDashboard = () => {
     setTabletItems(t);
     setPosts(p);
     setSettings(s);
+
+    if (expiryPromises.length > 0) {
+      Promise.all(expiryPromises).catch(err => {
+        console.error('[Firebase] Error in auto-expiring category links in background:', err);
+      });
+    }
   };
 
   const handleLogout = async () => {
