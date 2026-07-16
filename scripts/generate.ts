@@ -304,10 +304,15 @@ async function generate() {
           ${helmet.link.toString()}
           ${helmet.script.toString()}
         `;
-        // Remove default title, description, and keywords
-        html = html.replace(/<title>.*?<\/title>/, '');
-        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/, '');
-        html = html.replace(/<meta name="keywords" content=".*?"\s*\/?>/, '');
+        // Remove default title, canonical, and meta tags to avoid duplicates that confuse search engines and social crawlers
+        html = html.replace(/<title>.*?<\/title>/gi, '');
+        html = html.replace(/<link [^>]*rel=["']canonical["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*name=["']description["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*name=["']keywords["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*property=["']og:title["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*property=["']og:description["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*property=["']og:image["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*property=["']og:url["'][^>]*>/gi, '');
         // Inject helmet tags before </head>
         html = html.replace('</head>', `${helmetTags}\n</head>`);
       } else {
@@ -415,9 +420,8 @@ async function generate() {
       }
 
       if (cleanShortInfo) {
-        const remainingLength = Math.max(80, 240 - actionPrefix.length);
-        const snippet = cleanShortInfo.length > remainingLength 
-          ? cleanShortInfo.substring(0, remainingLength) + '...' 
+        const snippet = cleanShortInfo.length > 120 
+          ? cleanShortInfo.substring(0, 120) + '...' 
           : cleanShortInfo;
         return `${actionPrefix} ${snippet}`;
       }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '@/lib/firebase';
+import { auth, ensureFirestoreNetwork } from '@/lib/firebase';
 import {
   signInWithEmailAndPassword,
   sendEmailVerification,
@@ -21,8 +21,9 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if already logged in with verified email
+  // Enable network and check if already logged in with verified email
   useEffect(() => {
+    ensureFirestoreNetwork();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && user.emailVerified) {
         navigate('/admin', { replace: true });

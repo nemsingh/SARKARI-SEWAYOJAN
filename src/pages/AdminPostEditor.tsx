@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { auth } from '@/lib/firebase';
+import { auth, ensureFirestoreNetwork } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getPostById, createPost, updatePost, getCategories, addCategoryLink, getCategoryLinks, updateCategoryLink, getPostBySlug, getTabletItems, updateTabletItem, deleteCategoryLink } from '@/lib/firebaseService';
 import { Button } from '@/components/ui/button';
@@ -257,6 +257,7 @@ const AdminPostEditor = () => {
   ]);
 
   useEffect(() => {
+    ensureFirestoreNetwork();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user || !user.emailVerified) {
         navigate('/admin-vikaskumar', { replace: true });

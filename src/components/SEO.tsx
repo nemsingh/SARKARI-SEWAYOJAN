@@ -7,9 +7,10 @@ interface SEOProps {
   schema?: Record<string, any>;
   url?: string;
   image?: string;
+  waitForSelector?: string;
 }
 
-export default function SEO({ title, description, keywords, schema, url, image }: SEOProps) {
+export default function SEO({ title, description, keywords, schema, url, image, waitForSelector }: SEOProps) {
   const siteName = "Sarkari Sewayojan";
   const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
   const defaultKeywords = "sarkari sewayojan, sarkari result, sarkari exam, rojgar result, sarkari csc, find jobs, sewayojan, sewayojan up, government jobs, new vacancy, free job alert, sarkari result 2026, sarkari exam 2026, freejobalert, latest government jobs, upsssc, ssc, bank jobs, railway jobs, police jobs, defence jobs, teaching jobs, admit card, result, syllabus, online form, सरकारी रिजल्ट, सरकारी एग्जाम, रोजगार रिजल्ट, सेवायोजन, यूपी सेवायोजन, सरकारी नौकरी, नई वैकेंसी, लेटेस्ट सरकारी जॉब्स";
@@ -29,7 +30,13 @@ export default function SEO({ title, description, keywords, schema, url, image }
     // Since search engines & social media (WhatsApp, Telegram, Facebook) request this, it's 100% free,
     // has zero performance impact on your normal visitors, and works lifetime automatically.
     const encodedUrl = encodeURIComponent(url);
-    finalImage = `https://api.microlink.io/?url=${encodedUrl}&screenshot=true&embed=screenshot.url&screenshot.viewport.width=1200&screenshot.viewport.height=630&screenshot.viewport.deviceScaleFactor=2`;
+    let screenshotUrl = `https://api.microlink.io/?url=${encodedUrl}&screenshot=true&screenshot.type=jpeg&screenshot.quality=85&prerender=true&embed=screenshot.url&screenshot.viewport.width=1200&screenshot.viewport.height=630&screenshot.viewport.deviceScaleFactor=2`;
+    if (waitForSelector) {
+      screenshotUrl += `&waitFor=${encodeURIComponent(waitForSelector)}&screenshot.delay=2000`;
+    } else {
+      screenshotUrl += `&screenshot.delay=1000`;
+    }
+    finalImage = screenshotUrl;
   }
 
   return (

@@ -50,6 +50,18 @@ if (globalWithFirebase._firebaseDb) {
     } : {})
   });
   globalWithFirebase._firebaseDb = firestoreInstance;
+
+  // Optimize production client performance by operating in offline-only mode by default
+  // This completely eliminates any Firebase network timeouts/warnings for visitors and headless bots (Microlink)
+  if (isBrowser && !import.meta.env.DEV) {
+    const isAdminPage = window.location.pathname.startsWith('/admin');
+    if (!isAdminPage) {
+      console.log("[Firestore] Operating in offline-only mode for client performance.");
+      disableNetwork(firestoreInstance).catch(err => {
+        console.warn("[Firestore] Failed to disable network:", err);
+      });
+    }
+  }
 }
 
 // Silence non-critical Firestore logs/warnings in application console
@@ -57,6 +69,17 @@ setLogLevel('error');
 
 // Initialize Firestore with extreme resilience settings (Long Polling + Offline Local Caching)
 export const db = firestoreInstance;
+
+export async function ensureFirestoreNetwork() {
+  if (isBrowser) {
+    try {
+      await enableNetwork(db);
+      console.log("[Firestore] Network connection enabled successfully for Admin panel.");
+    } catch (err) {
+      console.warn("[Firestore] Failed to enable network:", err);
+    }
+  }
+}
 
 export enum OperationType {
   CREATE = 'create',

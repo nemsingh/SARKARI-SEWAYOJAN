@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '@/lib/firebase';
+import { auth, ensureFirestoreNetwork } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
   getCategories,
@@ -100,6 +100,7 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    ensureFirestoreNetwork();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user || !user.emailVerified) {
         navigate('/admin-vikaskumar', { replace: true });

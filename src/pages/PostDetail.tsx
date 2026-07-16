@@ -424,9 +424,8 @@ const PostDetail = () => {
     }
 
     if (cleanShortInfo) {
-      const remainingLength = Math.max(80, 240 - actionPrefix.length);
-      const snippet = cleanShortInfo.length > remainingLength 
-        ? cleanShortInfo.substring(0, remainingLength) + '...' 
+      const snippet = cleanShortInfo.length > 120 
+        ? cleanShortInfo.substring(0, 120) + '...' 
         : cleanShortInfo;
       return `${actionPrefix} ${snippet}`;
     }
@@ -466,7 +465,7 @@ const PostDetail = () => {
           keywords={`${postTitle}, ${postTitle} online form, ${postTitle} recruitment, sarkari result, sarkari exam, rojgar result, sewayojan`}
           schema={schema}
           url={`https://sarkarisewayojan.com/post/${post.slug || post.id}`}
-          image={mediaUrls.length > 0 ? mediaUrls[0] : undefined}
+          waitForSelector=".post-summary-table"
         />
       )}
       <div className="notranslate">
