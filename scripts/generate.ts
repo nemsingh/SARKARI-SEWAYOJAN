@@ -358,8 +358,76 @@ async function generate() {
       ...homeData,
       [`post_${post.slug || post.id}`]: post,
     };
-    const cleanDesc = (post.short_info || '').replace(/\*\*(.*?)\*\*/gs, '$1').replace(/<[^>]*>?/gm, '').substring(0, 160);
-    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}.html`, `${post.name_of_post} - Sarkari Sewayojan`, cleanDesc || post.name_of_post);
+    const getPostCategoryName = (p: any) => {
+      if (!p || !categoryLinks || !categories) return '';
+      const postSlug = p.slug || p.id;
+      const matchedLink = categoryLinks.find((link: any) => 
+        link.url && (
+          link.url.endsWith(`/post/${postSlug}`) || 
+          link.url.endsWith(`/post/${p.id}`) || 
+          link.url.includes(`/post/${postSlug}`) || 
+          link.url.includes(`/post/${p.id}`)
+        )
+      );
+      if (matchedLink) {
+        const cat = categories.find((c: any) => c.id === matchedLink.category_id);
+        if (cat) return cat.name;
+      }
+      return '';
+    };
+
+    const generateDynamicDescription = (p: any, catName: string) => {
+      const title = p?.name_of_post || '';
+      const catLower = (catName || '').toLowerCase();
+      const cleanShortInfo = p?.short_info ? p.short_info.replace(/\*\*(.*?)\*\*/gs, '$1').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim() : '';
+      let actionPrefix = '';
+
+      if (catLower.includes('admit') || catLower.includes('exam')) {
+        actionPrefix = `Download Admit Card for ${title}. Check Exam Date, Admit Card Download Link, Exam Pattern, Syllabus, Eligibility on Sarkari Sewayojan.`;
+      } else if (catLower.includes('job') || catLower.includes('vacancy') || catLower.includes('recruitment') || catLower.includes('form')) {
+        actionPrefix = `Apply Online for ${title} Recruitment 2026. Check Online Form Date, Age Limit, Educational Eligibility, Vacancy Details, Notification PDF, Sarkari Sewayojan.`;
+      } else if (catLower.includes('result')) {
+        actionPrefix = `Check Sarkari Result for ${title}. Check Written Exam Result, Score Card, Cut Off Marks, Merit List, Selected Candidates List on Sarkari Sewayojan.`;
+      } else if (catLower.includes('answer') || catLower.includes('key')) {
+        actionPrefix = `Download official Answer Key for ${title}. Check Question Paper Solutions, Objection Form, Answer Sheet PDF on Sarkari Sewayojan.`;
+      } else if (catLower.includes('syllabus')) {
+        actionPrefix = `Download Exam Syllabus PDF for ${title}. Check Exam Pattern, Selection Process, Subject-wise Marks, Paper Pattern on Sarkari Sewayojan.`;
+      } else if (catLower.includes('admission')) {
+        actionPrefix = `Apply Online Admission for ${title}. Check Course Intake, Direct Entrance Exam, College Admission List, Eligibility Criteria on Sarkari Sewayojan.`;
+      } else {
+        // Fallback matching using keywords from the title itself
+        const titleLower = title.toLowerCase();
+        if (titleLower.includes('admit') || titleLower.includes('hall ticket')) {
+          actionPrefix = `Download Admit Card for ${title}. Check Exam Date, Admit Card Download Link, Exam Pattern, Syllabus, Eligibility on Sarkari Sewayojan.`;
+        } else if (titleLower.includes('online form') || titleLower.includes('apply online') || titleLower.includes('recruitment') || titleLower.includes('vacancy') || titleLower.includes('bharti')) {
+          actionPrefix = `Apply Online for ${title} Recruitment 2026. Check Online Form Date, Age Limit, Educational Eligibility, Vacancy Details, Notification PDF, Sarkari Sewayojan.`;
+        } else if (titleLower.includes('result') || titleLower.includes('score card') || titleLower.includes('marksheet')) {
+          actionPrefix = `Check Sarkari Result for ${title}. Check Written Exam Result, Score Card, Cut Off Marks, Merit List, Selected Candidates List on Sarkari Sewayojan.`;
+        } else if (titleLower.includes('answer key') || titleLower.includes('key')) {
+          actionPrefix = `Download official Answer Key for ${title}. Check Question Paper Solutions, Objection Form, Answer Sheet PDF on Sarkari Sewayojan.`;
+        } else if (titleLower.includes('syllabus')) {
+          actionPrefix = `Download Exam Syllabus PDF for ${title}. Check Exam Pattern, Selection Process, Subject-wise Marks, Paper Pattern on Sarkari Sewayojan.`;
+        } else if (titleLower.includes('admission')) {
+          actionPrefix = `Apply Online Admission for ${title}. Check Course Intake, Direct Entrance Exam, College Admission List, Eligibility Criteria on Sarkari Sewayojan.`;
+        } else {
+          actionPrefix = `Check full details of ${title}. Check Eligibility Criteria, Download Notification, Direct Apply Link, and Latest Sarkari Updates on Sarkari Sewayojan.`;
+        }
+      }
+
+      if (cleanShortInfo) {
+        const remainingLength = Math.max(80, 240 - actionPrefix.length);
+        const snippet = cleanShortInfo.length > remainingLength 
+          ? cleanShortInfo.substring(0, remainingLength) + '...' 
+          : cleanShortInfo;
+        return `${actionPrefix} ${snippet}`;
+      }
+
+      return actionPrefix;
+    };
+
+    const postCategory = getPostCategoryName(post);
+    const postDescription = generateDynamicDescription(post, postCategory);
+    generatePage(`/post/${post.slug || post.id}`, postData, `post/${post.slug || post.id}.html`, `${post.name_of_post} - Sarkari Sewayojan`, postDescription);
     
     // Generate individual JSON file for client-side navigation
     fs.writeFileSync(path.resolve(dataDir, `post_${post.slug || post.id}.json`), JSON.stringify(post));

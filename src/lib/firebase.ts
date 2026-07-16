@@ -42,8 +42,7 @@ if (globalWithFirebase._firebaseDb) {
   firestoreInstance = globalWithFirebase._firebaseDb;
 } else {
   firestoreInstance = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    useFetchStreams: false,
+    experimentalAutoDetectLongPolling: true,
     ...(isBrowser ? {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()

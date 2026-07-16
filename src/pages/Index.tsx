@@ -207,7 +207,11 @@ const Index = () => {
         "@id": "https://sarkarisewayojan.com/#website",
         "url": "https://sarkarisewayojan.com/",
         "name": "Sarkari Sewayojan",
-        "alternateName": ["Sarkari Sewayojan Portal"],
+        "alternateName": [
+          "SarkariSewayojan",
+          "Sarkari Sewayojan Portal",
+          "SarkariSewayojan Portal"
+        ],
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://sarkarisewayojan.com/?search={search_term_string}",
