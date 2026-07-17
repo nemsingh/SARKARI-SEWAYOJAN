@@ -53,7 +53,7 @@ const SiteHeader = ({ logoUrl }: SiteHeaderProps) => {
             onClick={() => window.open(window.location.origin, '_blank')}
             className="cursor-pointer inline-block"
           >
-            SARKARI SEWAYOJAN
+            Sarkari Sewayojan
           </span>
         </h1>
         <div className="text-3xl text-primary mt-1 font-medium max-sm:text-[16px] sm:max-md:text-xl">

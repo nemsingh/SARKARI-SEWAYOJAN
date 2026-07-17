@@ -209,9 +209,14 @@ const Index = () => {
         "name": "Sarkari Sewayojan",
         "alternateName": [
           "SarkariSewayojan",
+          "Sarkari Sewayojan Official",
           "Sarkari Sewayojan Portal",
-          "SarkariSewayojan Portal"
+          "SarkariSewayojan Portal",
+          "sarkarisewayojan.com"
         ],
+        "publisher": {
+          "@id": "https://sarkarisewayojan.com/#organization"
+        },
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://sarkarisewayojan.com/?search={search_term_string}",
@@ -222,11 +227,19 @@ const Index = () => {
         "@type": "Organization",
         "@id": "https://sarkarisewayojan.com/#organization",
         "name": "Sarkari Sewayojan",
-        "alternateName": ["Sarkari Sewayojan Team"],
+        "alternateName": [
+          "SarkariSewayojan",
+          "Sarkari Sewayojan Team"
+        ],
         "url": "https://sarkarisewayojan.com/",
         "logo": {
           "@type": "ImageObject",
-          "url": settings.logo_url || "https://sarkarisewayojan.com/logo.png"
+          "@id": "https://sarkarisewayojan.com/#logo",
+          "url": settings.logo_url || "https://sarkarisewayojan.com/logo_icon.png",
+          "caption": "Sarkari Sewayojan"
+        },
+        "image": {
+          "@id": "https://sarkarisewayojan.com/#logo"
         }
       }
     ]
