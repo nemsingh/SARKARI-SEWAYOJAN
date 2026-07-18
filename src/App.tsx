@@ -14,6 +14,7 @@ import ContactUs from "./pages/ContactUs";
 import FactCheckingPolicy from "./pages/FactCheckingPolicy";
 import NotFound from "./pages/NotFound";
 import FloatingSocialButtons from "./components/FloatingSocialButtons";
+import NotificationPopup from "./components/NotificationPopup";
 
 const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
@@ -280,6 +281,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingSocialButtons />
+            <NotificationPopup />
           </AppLayout>
         </Suspense>
       </BrowserRouter>

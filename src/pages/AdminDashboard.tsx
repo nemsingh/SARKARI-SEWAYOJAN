@@ -684,6 +684,85 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              <div className="pb-8 mb-8 border-b-4 border-dashed border-slate-500">
+                <h3 className="text-xl font-bold text-primary mb-2">Header Center Notification Popup (All Pages)</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Manage the gorgeous alert/social channel invitation popup shown to users at the top-center of their screen immediately when they visit your website on mobile or desktop.
+                </p>
+
+                {/* Main Settings Card */}
+                <div className="border-2 border-dashed border-slate-300 p-6 rounded-xl bg-secondary space-y-5">
+                  <div className="flex flex-wrap justify-between items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-primary">Popup Status:</span>
+                      <Button
+                        variant={settings['popup_notification_enabled']?.value === 'true' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleUpdateSetting('popup_notification_enabled', settings['popup_notification_enabled']?.value === 'true' ? 'false' : 'true')}
+                        className={settings['popup_notification_enabled']?.value === 'true' ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : ''}
+                      >
+                        {settings['popup_notification_enabled']?.value === 'true' ? 'Active / Enabled' : 'Disabled / Hidden'}
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-primary">Notification Style:</span>
+                      <select
+                        value={settings['popup_notification_type']?.value || 'whatsapp'}
+                        onChange={(e) => handleUpdateSetting('popup_notification_type', e.target.value)}
+                        className="bg-background border border-input rounded-md px-3 py-1.5 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="whatsapp">🟢 WhatsApp Channel Style</option>
+                        <option value="telegram">🔵 Telegram Style</option>
+                        <option value="general">🟡 General Alert / Notification Style</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-primary">Popup Title</label>
+                      <Input
+                        placeholder="e.g. Join Our WhatsApp Channel 🚀"
+                        value={settings['popup_notification_title']?.value || ''}
+                        onChange={(e) => handleUpdateSetting('popup_notification_title', e.target.value)}
+                        className="text-sm bg-background font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-primary">Button Action Text</label>
+                      <Input
+                        placeholder="e.g. Join Channel Now"
+                        value={settings['popup_notification_btn_text']?.value || ''}
+                        onChange={(e) => handleUpdateSetting('popup_notification_btn_text', e.target.value)}
+                        className="text-sm bg-background font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-primary">Button Target URL (Social Link)</label>
+                    <Input
+                      placeholder="e.g. https://whatsapp.com/channel/..."
+                      value={settings['popup_notification_url']?.value || ''}
+                      onChange={(e) => handleUpdateSetting('popup_notification_url', e.target.value)}
+                      className="text-sm bg-background font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-primary">Message / Description Text</label>
+                    <Textarea
+                      placeholder="Enter the main body text of the alert popup..."
+                      value={settings['popup_notification_message']?.value || ''}
+                      onChange={(e) => handleUpdateSetting('popup_notification_message', e.target.value)}
+                      className="text-sm bg-background font-medium h-24 resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-xl font-bold text-primary mb-4 border-b-2 border-dashed border-slate-300 pb-2">Footer Sections</h3>
                 <div className="space-y-6 mt-4">
