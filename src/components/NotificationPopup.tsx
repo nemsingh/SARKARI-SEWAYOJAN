@@ -150,7 +150,7 @@ export default function NotificationPopup() {
           animate={isMobileDesktopMode ? { scale: 1, opacity: 1 } : { y: 0, opacity: 1 }}
           exit={isMobileDesktopMode ? { scale: 0.92, opacity: 0 } : { y: -180, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 140 }}
-          className={`pointer-events-auto w-full ${isMobileDesktopMode ? 'max-w-[340px] rounded-2xl border' : 'max-w-[410px] rounded-b-xl border-x border-b'} overflow-hidden bg-white dark:bg-zinc-900 px-5 pt-4 pb-2 ${themeStyles.border} ${themeStyles.glow}`}
+          className={`pointer-events-auto w-full ${isMobileDesktopMode ? 'w-[94%] max-w-[880px] rounded-2xl border px-6 py-4' : 'max-w-[410px] rounded-b-xl border-x border-b px-5 pt-4 pb-2'} overflow-hidden bg-white dark:bg-zinc-900 ${themeStyles.border} ${themeStyles.glow}`}
         >
           <div className="flex items-start gap-3.5">
             {/* Pulsing Visual Icon */}
