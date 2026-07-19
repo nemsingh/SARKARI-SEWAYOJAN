@@ -37,12 +37,15 @@ const globalWithFirebase = globalThis as typeof globalThis & {
   _firebaseDb?: any;
 };
 
+// Set log level as early as possible to silence non-critical connection warnings
+setLogLevel('error');
+
 let firestoreInstance;
 if (globalWithFirebase._firebaseDb) {
   firestoreInstance = globalWithFirebase._firebaseDb;
 } else {
   firestoreInstance = initializeFirestore(app, {
-    experimentalAutoDetectLongPolling: true,
+    experimentalForceLongPolling: true,
     ...(isBrowser ? {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
@@ -63,9 +66,6 @@ if (globalWithFirebase._firebaseDb) {
     }
   }
 }
-
-// Silence non-critical Firestore logs/warnings in application console
-setLogLevel('error');
 
 // Initialize Firestore with extreme resilience settings (Long Polling + Offline Local Caching)
 export const db = firestoreInstance;
