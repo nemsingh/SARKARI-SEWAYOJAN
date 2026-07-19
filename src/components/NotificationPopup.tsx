@@ -140,42 +140,42 @@ export default function NotificationPopup() {
   if (isMobileDesktop) {
     return (
       <AnimatePresence>
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none bg-black/30 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none bg-black/35 backdrop-blur-[2px]">
           <motion.div
             id="notif-popup-container-mobile-desktop"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 150 }}
-            className={`pointer-events-auto w-[92vw] max-w-[550px] overflow-hidden rounded-[2rem] border bg-white dark:bg-zinc-900 px-8 py-6 flex flex-col items-center justify-center gap-4 ${themeStyles.border} ${themeStyles.glow}`}
+            className={`pointer-events-auto w-[92vw] max-w-[650px] overflow-hidden rounded-[2.25rem] border bg-white dark:bg-zinc-900 px-10 py-7 flex flex-col items-center justify-center gap-5 ${themeStyles.border} ${themeStyles.glow}`}
           >
             {/* Main Content Centered with tight spacing */}
-            <div className="flex flex-col items-center text-center w-full gap-3">
+            <div className="flex flex-col items-center text-center w-full gap-4">
               {/* Pulsing Visual Icon - centered and big with a small bottom margin */}
-              <div className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${themeStyles.iconBg} ${themeStyles.iconRing} ring-6`}>
+              <div className={`relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${themeStyles.iconBg} ${themeStyles.iconRing} ring-8`}>
                 <span className={`absolute inset-0 rounded-2xl animate-ping opacity-20 ring-4 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
-                {isWhatsApp && <MessageSquare className="h-8 w-8" />}
-                {isTelegram && <Megaphone className="h-8 w-8" />}
-                {!isWhatsApp && !isTelegram && <Bell className="h-8 w-8" />}
+                {isWhatsApp && <MessageSquare className="h-10 w-10" />}
+                {isTelegram && <Megaphone className="h-10 w-10" />}
+                {!isWhatsApp && !isTelegram && <Bell className="h-10 w-10" />}
               </div>
 
               {/* Text content - large and clear, but tightly packed */}
-              <div className="max-w-xl px-2">
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug">
+              <div className="max-w-2xl px-2">
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug">
                   {config.title}
                 </h3>
-                <p className="mt-1 text-sm sm:text-base font-bold text-slate-500 dark:text-zinc-400 leading-relaxed">
+                <p className="mt-1.5 text-base sm:text-lg font-bold text-slate-500 dark:text-zinc-400 leading-relaxed">
                   {config.message}
                 </p>
               </div>
             </div>
 
             {/* Buttons & Footer */}
-            <div className="w-full flex flex-col gap-3">
-              <div className="flex items-center justify-center gap-3 border-t border-slate-100 dark:border-zinc-800/80 pt-3">
+            <div className="w-full flex flex-col gap-4">
+              <div className="flex items-center justify-center gap-4 border-t border-slate-100 dark:border-zinc-800/80 pt-4">
                 <button
                   onClick={handleClose}
-                  className="flex-1 text-center py-2.5 text-sm sm:text-base font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-xl cursor-pointer"
+                  className="flex-1 text-center py-3.5 text-base sm:text-lg font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-xl cursor-pointer"
                 >
                   Later
                 </button>
@@ -184,16 +184,16 @@ export default function NotificationPopup() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={handleActionClick}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm sm:text-base font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-base sm:text-lg font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
                 >
                   <span>{config.btnText}</span>
-                  <ArrowRight className="h-4.5 w-4.5" />
+                  <ArrowRight className="h-5 w-5" />
                 </a>
               </div>
 
               {/* Powered by credit line with very tiny gap */}
               <div className="text-center mt-0.5">
-                <span className="text-[11px] sm:text-xs font-extrabold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
+                <span className="text-xs sm:text-sm font-extrabold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
                   Powered by - Sarkari Sewayojan
                 </span>
               </div>
