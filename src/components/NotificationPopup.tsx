@@ -213,35 +213,35 @@ export default function NotificationPopup() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -180, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 140 }}
-          className={`pointer-events-auto w-full max-w-[410px] overflow-hidden rounded-b-xl border-x border-b bg-white dark:bg-zinc-900 px-5 pt-4 pb-2 ${themeStyles.border} ${themeStyles.glow}`}
+          className={`pointer-events-auto w-[93vw] sm:w-full sm:max-w-[410px] overflow-hidden rounded-b-xl border-x border-b bg-white dark:bg-zinc-900 px-6 pt-5 pb-2.5 sm:px-5 sm:pt-4 sm:pb-2 ${themeStyles.border} ${themeStyles.glow}`}
         >
-          <div className="flex items-start gap-3.5">
+          <div className="flex items-start gap-4 sm:gap-3.5">
             {/* Pulsing Visual Icon */}
-            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ring-4 ${themeStyles.iconRing}`}>
+            <div className={`relative flex h-12 w-12 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ring-5 sm:ring-4 ${themeStyles.iconRing}`}>
               {/* Outer pulsing ring */}
               <span className={`absolute inset-0 rounded-xl animate-ping opacity-20 ring-2 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
               
-              {isWhatsApp && <MessageSquare className="h-5 w-5" />}
-              {isTelegram && <Megaphone className="h-5 w-5" />}
-              {!isWhatsApp && !isTelegram && <Bell className="h-5 w-5" />}
+              {isWhatsApp && <MessageSquare className="h-6 w-6 sm:h-5 sm:w-5" />}
+              {isTelegram && <Megaphone className="h-6 w-6 sm:h-5 sm:w-5" />}
+              {!isWhatsApp && !isTelegram && <Bell className="h-6 w-6 sm:h-5 sm:w-5" />}
             </div>
 
             {/* Content Text */}
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug">
+              <h3 className="text-base sm:text-sm font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug">
                 {config.title}
               </h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed">
+              <p className="mt-1.5 sm:mt-1 text-sm sm:text-xs font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed">
                 {config.message}
               </p>
             </div>
           </div>
 
           {/* Call to Action Buttons */}
-          <div className="mt-3 flex items-center justify-center gap-2.5 border-t border-slate-100 dark:border-zinc-800/80 pt-2.5">
+          <div className="mt-3.5 sm:mt-3 flex items-center justify-center gap-3 sm:gap-2.5 border-t border-slate-100 dark:border-zinc-800/80 pt-3 sm:pt-2.5">
             <button
               onClick={handleClose}
-              className="flex-1 text-center py-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer"
+              className="flex-1 text-center py-2.5 text-sm sm:py-2 sm:text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer"
             >
               Later
             </button>
@@ -250,16 +250,16 @@ export default function NotificationPopup() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleActionClick}
-              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm sm:py-2 sm:text-xs font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
             >
               <span>{config.btnText}</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </a>
           </div>
 
           {/* Powered by credit line */}
-          <div className="text-center mt-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
+          <div className="text-center mt-1.5 sm:mt-1">
+            <span className="text-[11px] sm:text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
               Powered by - Sarkari Sewayojan
             </span>
           </div>
