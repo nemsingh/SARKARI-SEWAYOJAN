@@ -143,42 +143,56 @@ export default function NotificationPopup() {
 
   return (
     <AnimatePresence>
-      <div className={isMobileDesktopMode ? "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45 pointer-events-none backdrop-blur-xs" : "fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none"}>
+      <div className={isMobileDesktopMode ? "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/55 pointer-events-none backdrop-blur-xs" : "fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none"}>
         <motion.div
           id="notif-popup-container"
-          initial={isMobileDesktopMode ? { scale: 0.92, opacity: 0 } : { y: -180, opacity: 0 }}
+          initial={isMobileDesktopMode ? { scale: 0.9, opacity: 0 } : { y: -180, opacity: 0 }}
           animate={isMobileDesktopMode ? { scale: 1, opacity: 1 } : { y: 0, opacity: 1 }}
-          exit={isMobileDesktopMode ? { scale: 0.92, opacity: 0 } : { y: -180, opacity: 0 }}
+          exit={isMobileDesktopMode ? { scale: 0.9, opacity: 0 } : { y: -180, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 140 }}
-          className={`pointer-events-auto w-full ${isMobileDesktopMode ? 'w-[94%] max-w-[880px] rounded-2xl border px-6 py-4' : 'max-w-[410px] rounded-b-xl border-x border-b px-5 pt-4 pb-2'} overflow-hidden bg-white dark:bg-zinc-900 ${themeStyles.border} ${themeStyles.glow}`}
+          className={`pointer-events-auto w-full ${
+            isMobileDesktopMode 
+              ? 'w-[92%] max-w-[550px] min-h-[280px] rounded-2xl border p-8' 
+              : 'max-w-[410px] rounded-b-xl border-x border-b px-5 pt-4 pb-2'
+          } overflow-hidden bg-white dark:bg-zinc-900 ${themeStyles.border} ${themeStyles.glow}`}
         >
-          <div className="flex items-start gap-3.5">
+          <div className={`flex items-start ${isMobileDesktopMode ? 'gap-5' : 'gap-3.5'}`}>
             {/* Pulsing Visual Icon */}
-            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ring-4 ${themeStyles.iconRing}`}>
+            <div className={`relative flex shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ring-4 ${themeStyles.iconRing} ${
+              isMobileDesktopMode ? 'h-14 w-14' : 'h-10 w-10'
+            }`}>
               {/* Outer pulsing ring */}
               <span className={`absolute inset-0 rounded-xl animate-ping opacity-20 ring-2 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
               
-              {isWhatsApp && <MessageSquare className="h-5 w-5" />}
-              {isTelegram && <Megaphone className="h-5 w-5" />}
-              {!isWhatsApp && !isTelegram && <Bell className="h-5 w-5" />}
+              {isWhatsApp && <MessageSquare className={isMobileDesktopMode ? "h-7 w-7" : "h-5 w-5"} />}
+              {isTelegram && <Megaphone className={isMobileDesktopMode ? "h-7 w-7" : "h-5 w-5"} />}
+              {!isWhatsApp && !isTelegram && <Bell className={isMobileDesktopMode ? "h-7 w-7" : "h-5 w-5"} />}
             </div>
 
             {/* Content Text */}
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug">
+              <h3 className={`font-black text-slate-900 dark:text-zinc-100 tracking-tight leading-snug ${
+                isMobileDesktopMode ? 'text-lg sm:text-xl' : 'text-sm'
+              }`}>
                 {config.title}
               </h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed">
+              <p className={`font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed ${
+                isMobileDesktopMode ? 'text-sm mt-2' : 'text-xs mt-1'
+              }`}>
                 {config.message}
               </p>
             </div>
           </div>
 
           {/* Call to Action Buttons */}
-          <div className="mt-3 flex items-center justify-center gap-2.5 border-t border-slate-100 dark:border-zinc-800/80 pt-2.5">
+          <div className={`flex items-center justify-center border-t border-slate-100 dark:border-zinc-800/80 ${
+            isMobileDesktopMode ? 'mt-6 gap-4 pt-4' : 'mt-3 gap-2.5 pt-2.5'
+          }`}>
             <button
               onClick={handleClose}
-              className="flex-1 text-center py-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer"
+              className={`flex-1 text-center font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer ${
+                isMobileDesktopMode ? 'py-3.5 text-sm' : 'py-2 text-xs'
+              }`}
             >
               Later
             </button>
@@ -187,16 +201,20 @@ export default function NotificationPopup() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleActionClick}
-              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center ${
+                isMobileDesktopMode ? 'py-3.5 text-sm' : 'py-2 text-xs'
+              }`}
             >
               <span>{config.btnText}</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className={isMobileDesktopMode ? "h-4 w-4" : "h-3.5 w-3.5"} />
             </a>
           </div>
 
           {/* Powered by credit line */}
-          <div className="text-center mt-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
+          <div className={`text-center ${isMobileDesktopMode ? 'mt-4' : 'mt-1'}`}>
+            <span className={`font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none ${
+              isMobileDesktopMode ? 'text-xs' : 'text-[10px]'
+            }`}>
               Powered by - Sarkari Sewayojan
             </span>
           </div>
