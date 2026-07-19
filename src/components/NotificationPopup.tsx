@@ -7,6 +7,7 @@ import { getCache } from '@/lib/cache';
 
 export default function NotificationPopup() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileDesktopMode, setIsMobileDesktopMode] = useState(false);
   const [config, setConfig] = useState<{
     enabled: boolean;
     title: string;
@@ -18,6 +19,28 @@ export default function NotificationPopup() {
 
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/admin-vikaskumar');
+
+  useEffect(() => {
+    const checkMobileDesktop = () => {
+      const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const isTouch = !!hasTouch;
+      const ua = navigator.userAgent.toLowerCase();
+      const isMobileOS = /iphone|ipad|ipod|android|blackberry|iemobile|opera mini/i.test(ua);
+      const isMacTouch = /macintosh/i.test(ua) && isTouch; // iPad / Safari desktop mode spoofing
+
+      if (isTouch) {
+        // If they requested "Desktop Site" on mobile, the viewport width is typically between 768px and 1024px.
+        const isDesktopSiteViewport = window.innerWidth >= 768 && window.innerWidth <= 1024;
+        setIsMobileDesktopMode(isDesktopSiteViewport && (isMobileOS || isMacTouch || isTouch));
+      } else {
+        setIsMobileDesktopMode(false);
+      }
+    };
+
+    checkMobileDesktop();
+    window.addEventListener('resize', checkMobileDesktop);
+    return () => window.removeEventListener('resize', checkMobileDesktop);
+  }, []);
 
   useEffect(() => {
     // If we are in the admin dashboard, do not display the notification popup
@@ -120,14 +143,14 @@ export default function NotificationPopup() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none">
+      <div className={isMobileDesktopMode ? "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45 pointer-events-none backdrop-blur-xs" : "fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none"}>
         <motion.div
           id="notif-popup-container"
-          initial={{ y: -180, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -180, opacity: 0 }}
+          initial={isMobileDesktopMode ? { scale: 0.92, opacity: 0 } : { y: -180, opacity: 0 }}
+          animate={isMobileDesktopMode ? { scale: 1, opacity: 1 } : { y: 0, opacity: 1 }}
+          exit={isMobileDesktopMode ? { scale: 0.92, opacity: 0 } : { y: -180, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 140 }}
-          className={`pointer-events-auto w-full max-w-[410px] overflow-hidden rounded-b-xl border-x border-b bg-white dark:bg-zinc-900 px-5 pt-4 pb-2 ${themeStyles.border} ${themeStyles.glow}`}
+          className={`pointer-events-auto w-full ${isMobileDesktopMode ? 'max-w-[340px] rounded-2xl border' : 'max-w-[410px] rounded-b-xl border-x border-b'} overflow-hidden bg-white dark:bg-zinc-900 px-5 pt-4 pb-2 ${themeStyles.border} ${themeStyles.glow}`}
         >
           <div className="flex items-start gap-3.5">
             {/* Pulsing Visual Icon */}
