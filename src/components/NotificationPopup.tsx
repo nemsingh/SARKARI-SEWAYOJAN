@@ -7,7 +7,6 @@ import { getCache } from '@/lib/cache';
 
 export default function NotificationPopup() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isMobileDesktopMode, setIsMobileDesktopMode] = useState(false);
   const [config, setConfig] = useState<{
     enabled: boolean;
     title: string;
@@ -16,30 +15,23 @@ export default function NotificationPopup() {
     url: string;
     type: 'whatsapp' | 'telegram' | 'general';
   } | null>(null);
+  const [isMobileDesktop, setIsMobileDesktop] = useState(false);
 
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/admin-vikaskumar');
 
   useEffect(() => {
-    const checkMobileDesktop = () => {
-      const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      const isTouch = !!hasTouch;
-      const ua = navigator.userAgent.toLowerCase();
-      const isMobileOS = /iphone|ipad|ipod|android|blackberry|iemobile|opera mini/i.test(ua);
-      const isMac = /macintosh|mac os/i.test(ua);
-
-      if (isTouch) {
-        // If a mobile touch device requests "Desktop Site", the viewport width is spoofed to desktop-like (typically 980px or 1024px)
-        const isSpoofedDesktop = window.innerWidth >= 768 && window.innerWidth <= 1280;
-        setIsMobileDesktopMode(isSpoofedDesktop && (isMobileOS || isMac || isTouch));
-      } else {
-        setIsMobileDesktopMode(false);
-      }
+    const checkDeviceMode = () => {
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                         (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1);
+      const isDesktopModeForced = isTouch && isMobileUA && window.innerWidth >= 900;
+      setIsMobileDesktop(isDesktopModeForced);
     };
 
-    checkMobileDesktop();
-    window.addEventListener('resize', checkMobileDesktop);
-    return () => window.removeEventListener('resize', checkMobileDesktop);
+    checkDeviceMode();
+    window.addEventListener('resize', checkDeviceMode);
+    return () => window.removeEventListener('resize', checkDeviceMode);
   }, []);
 
   useEffect(() => {
@@ -143,120 +135,81 @@ export default function NotificationPopup() {
 
   return (
     <AnimatePresence>
-      <div className={isMobileDesktopMode ? "fixed inset-0 z-[100] flex items-center justify-center p-3 bg-transparent pointer-events-none" : "fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none"}>
+      <div className="fixed inset-x-0 top-0 z-[100] flex justify-center pointer-events-none">
         <motion.div
           id="notif-popup-container"
-          initial={isMobileDesktopMode ? { scale: 0.9, opacity: 0 } : { y: -180, opacity: 0 }}
-          animate={isMobileDesktopMode ? { scale: 1, opacity: 1 } : { y: 0, opacity: 1 }}
-          exit={isMobileDesktopMode ? { scale: 0.9, opacity: 0 } : { y: -180, opacity: 0 }}
+          initial={{ y: -180, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -180, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 140 }}
-          className={`pointer-events-auto overflow-hidden bg-white dark:bg-zinc-900 ${themeStyles.border} ${themeStyles.glow} ${
-            isMobileDesktopMode 
-              ? 'w-[95vw] max-w-[1024px] h-[500px] rounded-2xl border p-8 flex flex-col justify-between' 
-              : 'w-full max-w-[410px] rounded-b-xl border-x border-b px-5 pt-4 pb-2'
+          className={`pointer-events-auto w-full overflow-hidden rounded-b-2xl border-x border-b bg-white dark:bg-zinc-900 ${themeStyles.border} ${themeStyles.glow} ${
+            isMobileDesktop 
+              ? 'max-w-[95vw] px-8 pt-6 pb-2.5' 
+              : 'max-w-[410px] px-5 pt-4 pb-2'
           }`}
         >
-          {isMobileDesktopMode ? (
-            // CUSTOM MOBILE-DESKTOP SITE MODE: Centered, super legible, no zoom required!
-            <>
-              <div className="flex flex-col items-center text-center justify-center flex-1">
-                {/* Big Pulsing Visual Icon */}
-                <div className={`relative flex shrink-0 items-center justify-center rounded-2xl ${themeStyles.iconBg} ring-4 ${themeStyles.iconRing} h-20 w-20 mb-6`}>
-                  <span className={`absolute inset-0 rounded-2xl animate-ping opacity-20 ring-2 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
-                  {isWhatsApp && <MessageSquare className="h-10 w-10" />}
-                  {isTelegram && <Megaphone className="h-10 w-10" />}
-                  {!isWhatsApp && !isTelegram && <Bell className="h-10 w-10" />}
-                </div>
+          <div className={`flex items-start ${isMobileDesktop ? 'gap-6' : 'gap-3.5'}`}>
+            {/* Pulsing Visual Icon */}
+            <div className={`relative flex shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ${themeStyles.iconRing} ${
+              isMobileDesktop ? 'h-20 w-20 ring-8' : 'h-10 w-10 ring-4'
+            }`}>
+              {/* Outer pulsing ring */}
+              <span className={`absolute inset-0 rounded-xl animate-ping opacity-20 ring-2 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
+              
+              {isWhatsApp && <MessageSquare className={isMobileDesktop ? 'h-10 w-10' : 'h-5 w-5'} />}
+              {isTelegram && <Megaphone className={isMobileDesktop ? 'h-10 w-10' : 'h-5 w-5'} />}
+              {!isWhatsApp && !isTelegram && <Bell className={isMobileDesktop ? 'h-10 w-10' : 'h-5 w-5'} />}
+            </div>
 
-                {/* Content Text */}
-                <h3 className="font-black text-slate-900 dark:text-zinc-100 tracking-tight leading-snug text-3xl sm:text-4xl max-w-lg select-none">
-                  {config.title}
-                </h3>
-                <p className="font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed text-lg sm:text-xl mt-4 max-w-xl select-none">
-                  {config.message}
-                </p>
-              </div>
+            {/* Content Text */}
+            <div className="min-w-0 flex-1">
+              <h3 className={`font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight leading-snug ${
+                isMobileDesktop ? 'text-2xl sm:text-3xl' : 'text-sm'
+              }`}>
+                {config.title}
+              </h3>
+              <p className={`font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed ${
+                isMobileDesktop ? 'mt-2 text-base sm:text-lg' : 'mt-1 text-xs'
+              }`}>
+                {config.message}
+              </p>
+            </div>
+          </div>
 
-              {/* Call to Action Buttons */}
-              <div className="flex items-center justify-center gap-4 border-t border-slate-100 dark:border-zinc-800/80 pt-5 mt-auto">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 text-center font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-xl cursor-pointer py-4 text-lg"
-                >
-                  Later
-                </button>
-                <a
-                  href={config.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleActionClick}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center py-4 text-lg`}
-                >
-                  <span>{config.btnText}</span>
-                  <ArrowRight className="h-5 w-5" />
-                </a>
-              </div>
+          {/* Call to Action Buttons */}
+          <div className={`flex items-center justify-center gap-2.5 border-t border-slate-100 dark:border-zinc-800/80 ${
+            isMobileDesktop ? 'mt-4 pt-3.5' : 'mt-3 pt-2.5'
+          }`}>
+            <button
+              onClick={handleClose}
+              className={`flex-1 text-center font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer ${
+                isMobileDesktop ? 'py-3.5 text-base sm:text-lg' : 'py-2 text-xs'
+              }`}
+            >
+              Later
+            </button>
+            <a
+              href={config.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleActionClick}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center ${
+                isMobileDesktop ? 'py-3.5 text-base sm:text-lg' : 'py-2 text-xs'
+              }`}
+            >
+              <span>{config.btnText}</span>
+              <ArrowRight className={isMobileDesktop ? 'h-4.5 w-4.5' : 'h-3.5 w-3.5'} />
+            </a>
+          </div>
 
-              {/* Powered by credit line */}
-              <div className="text-center mt-3">
-                <span className="font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none text-xs">
-                  Powered by - Sarkari Sewayojan
-                </span>
-              </div>
-            </>
-          ) : (
-            // STANDARD DESKTOP/MOBILE MODE: Compact bar layout
-            <>
-              <div className="flex items-start gap-3.5">
-                {/* Pulsing Visual Icon */}
-                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${themeStyles.iconBg} ring-4 ${themeStyles.iconRing}`}>
-                  {/* Outer pulsing ring */}
-                  <span className={`absolute inset-0 rounded-xl animate-ping opacity-20 ring-2 ${isWhatsApp ? 'ring-emerald-500' : isTelegram ? 'ring-sky-500' : 'ring-indigo-500'}`}></span>
-                  
-                  {isWhatsApp && <MessageSquare className="h-5 w-5" />}
-                  {isTelegram && <Megaphone className="h-5 w-5" />}
-                  {!isWhatsApp && !isTelegram && <Bell className="h-5 w-5" />}
-                </div>
-
-                {/* Content Text */}
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-black text-slate-900 dark:text-zinc-100 tracking-tight leading-snug text-sm">
-                    {config.title}
-                  </h3>
-                  <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    {config.message}
-                  </p>
-                </div>
-              </div>
-
-              {/* Call to Action Buttons */}
-              <div className="mt-3 flex items-center justify-center gap-2.5 border-t border-slate-100 dark:border-zinc-800/80 pt-2.5">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 text-center py-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/40 transition-all border border-slate-200 dark:border-zinc-800 rounded-lg cursor-pointer"
-                >
-                  Later
-                </button>
-                <a
-                  href={config.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleActionClick}
-                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-black tracking-wide transition-all hover:scale-[1.01] active:scale-[0.99] ${themeStyles.btnBg} cursor-pointer text-center`}
-                >
-                  <span>{config.btnText}</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </a>
-              </div>
-
-              {/* Powered by credit line */}
-              <div className="text-center mt-1">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none">
-                  Powered by - Sarkari Sewayojan
-                </span>
-              </div>
-            </>
-          )}
+          {/* Powered by credit line */}
+          <div className="text-center mt-1">
+            <span className={`font-bold text-slate-400 dark:text-zinc-500 tracking-wide select-none ${
+              isMobileDesktop ? 'text-xs sm:text-sm' : 'text-[10px]'
+            }`}>
+              Powered by - Sarkari Sewayojan
+            </span>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
