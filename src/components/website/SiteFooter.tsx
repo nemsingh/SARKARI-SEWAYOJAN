@@ -143,11 +143,15 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
           © 2026 Sarkari Sewayojan | www.sarkarisewayojan.com | All Rights Reserved
         </p>
         <div className="flex flex-wrap justify-center gap-4 text-[14px] md:text-[16px]">
+          <a href="/about-us" className="hover:underline">About Us</a>
+          <span>|</span>
           <a href="/privacy-policy" className="hover:underline">Privacy Policy</a>
           <span>|</span>
           <a href="/terms-and-conditions" className="hover:underline">Terms & Conditions</a>
           <span>|</span>
           <a href="/dmca-policy" className="hover:underline">DMCA Policy</a>
+          <span>|</span>
+          <a href="/fact-checking-policy" className="hover:underline">Fact Checking</a>
           <span>|</span>
           <a href="/contact-us" className="hover:underline">Contact Us</a>
         </div>

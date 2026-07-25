@@ -7,6 +7,7 @@ import React, { Suspense, useEffect } from "react";
 import Index from "./pages/Index";
 import PostDetail from "./pages/PostDetail";
 import CategoryMore from "./pages/CategoryMore";
+import AboutUs from "./pages/AboutUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DmcaPolicy from "./pages/DmcaPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
@@ -273,6 +274,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/post/:id" element={<AdminPostEditor />} />
               <Route path="/admin/excel-fullscreen" element={<AdminExcelFullscreen />} />
+              <Route path="/about-us" element={<AboutUs />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/dmca-policy" element={<DmcaPolicy />} />
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
