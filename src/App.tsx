@@ -257,23 +257,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const ScrollToTop = () => {
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop />
         <Suspense fallback={<div className="p-4">Loading...</div>}>
           <AppLayout>
             <Routes>
