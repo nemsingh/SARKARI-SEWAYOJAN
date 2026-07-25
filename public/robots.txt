@@ -1,6 +1,12 @@
 User-agent: Googlebot
 Allow: /
 
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
 User-agent: Bingbot
 Allow: /
 
@@ -12,3 +18,7 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://sarkarisewayojan.com/sitemap.xml
+Sitemap: https://sarkarisewayojan.com/rss.xml
+

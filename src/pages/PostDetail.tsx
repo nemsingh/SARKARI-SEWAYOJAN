@@ -436,24 +436,76 @@ const PostDetail = () => {
   const postCategory = getPostCategoryName();
   const postDescription = generateDynamicDescription(post, postCategory);
   
+  const postUrl = post ? `https://sarkarisewayojan.com/post/${post.slug || post.id}` : '';
+
   const schema = post ? {
     "@context": "https://schema.org",
-    "@type": "JobPosting",
-    "title": post.name_of_post,
-    "description": cleanShortInfo || post.name_of_post,
-    "datePosted": post.post_date || new Date().toISOString(),
-    "hiringOrganization": {
-      "@type": "Organization",
-      "name": "Government of India",
-      "sameAs": "https://sarkarisewayojan.com"
-    },
-    "jobLocation": {
-      "@type": "Place",
-      "address": {
-        "@type": "PostalAddress",
-        "addressCountry": "IN"
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${postUrl}#breadcrumb`,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://sarkarisewayojan.com/"
+          },
+          ...(postCategory ? [{
+            "@type": "ListItem",
+            "position": 2,
+            "name": postCategory,
+            "item": `https://sarkarisewayojan.com/category/${encodeURIComponent(postCategory)}`
+          }] : []),
+          {
+            "@type": "ListItem",
+            "position": postCategory ? 3 : 2,
+            "name": post.name_of_post,
+            "item": postUrl
+          }
+        ]
+      },
+      {
+        "@type": "JobPosting",
+        "@id": `${postUrl}#job`,
+        "title": post.name_of_post,
+        "description": cleanShortInfo || post.name_of_post,
+        "datePosted": post.post_date || new Date().toISOString(),
+        "validThrough": "2026-12-31T23:59:59Z",
+        "employmentType": "FULL_TIME",
+        "hiringOrganization": {
+          "@type": "Organization",
+          "name": "Sarkari Sewayojan",
+          "sameAs": "https://sarkarisewayojan.com",
+          "logo": "https://sarkarisewayojan.com/logo_icon.png"
+        },
+        "jobLocation": {
+          "@type": "Place",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IN"
+          }
+        }
+      },
+      {
+        "@type": "NewsArticle",
+        "@id": `${postUrl}#article`,
+        "headline": post.name_of_post,
+        "description": postDescription,
+        "mainEntityOfPage": postUrl,
+        "datePublished": post.post_date || new Date().toISOString(),
+        "dateModified": new Date().toISOString(),
+        "publisher": {
+          "@type": "Organization",
+          "name": "Sarkari Sewayojan",
+          "url": "https://sarkarisewayojan.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://sarkarisewayojan.com/logo_icon.png"
+          }
+        }
       }
-    }
+    ]
   } : undefined;
 
   return (

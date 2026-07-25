@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel>
+  <title>Sarkari Sewayojan - Sarkari Result, Sarkari Exam, Sewayojan UP &amp; Rojgar Result</title>
+  <link>https://sarkarisewayojan.com/</link>
+  <description>Sarkari Sewayojan is India's No.1 Sarkari Result &amp; Sarkari Exam Portal. Get official updates for Sewayojan UP, Rojgar Result, Free Job Alert, SSC, Railway, Banking &amp; Police jobs.</description>
+  <language>hi-IN</language>
+  <copyright>Copyright 2026 Sarkari Sewayojan</copyright>
+  <atom:link href="https://sarkarisewayojan.com/rss.xml" rel="self" type="application/rss+xml" />
+  <item>
+    <title>Sarkari Result 2026 - Latest Government Job Vacancies, Admit Card &amp; Exam Updates</title>
+    <link>https://sarkarisewayojan.com/category/result</link>
+    <description>Check latest Sarkari Result, Written Exam Score Card, Merit List, Cut Off Marks and Answer Keys on Sarkari Sewayojan.</description>
+    <pubDate>Fri, 24 Jul 2026 00:00:00 GMT</pubDate>
+    <guid>https://sarkarisewayojan.com/category/result</guid>
+  </item>
+  <item>
+    <title>Sarkari Exam Admit Card 2026 - Download Hall Ticket, Exam City &amp; Date</title>
+    <link>https://sarkarisewayojan.com/category/admit-card</link>
+    <description>Download official Admit Cards for SSC, UP Police, Railway, Banking, Teaching &amp; UPSC exams on Sarkari Sewayojan.</description>
+    <pubDate>Fri, 24 Jul 2026 00:00:00 GMT</pubDate>
+    <guid>https://sarkarisewayojan.com/category/admit-card</guid>
+  </item>
+  <item>
+    <title>Latest Jobs 2026 - Online Form, Vacancy Details &amp; Free Job Alert</title>
+    <link>https://sarkarisewayojan.com/category/latest-jobs</link>
+    <description>Apply online for latest Central and State Government jobs, UPSSSC, Railway, Bank PO, Clerk, Constable, Teacher vacancies on Sarkari Sewayojan.</description>
+    <pubDate>Fri, 24 Jul 2026 00:00:00 GMT</pubDate>
+    <guid>https://sarkarisewayojan.com/category/latest-jobs</guid>
+  </item>
+  <item>
+    <title>Sewayojan UP - Uttar Pradesh Employment Portal Updates</title>
+    <link>https://sarkarisewayojan.com/category/latest-jobs</link>
+    <description>Check Sewayojan UP Rojgar Mela, Rozgar Sangam Uttar Pradesh registration and vacancy updates on Sarkari Sewayojan.</description>
+    <pubDate>Fri, 24 Jul 2026 00:00:00 GMT</pubDate>
+    <guid>https://sarkarisewayojan.com/category/latest-jobs#sewayojan-up</guid>
+  </item>
+</channel>
+</rss>

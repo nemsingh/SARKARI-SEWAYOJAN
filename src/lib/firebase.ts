@@ -64,8 +64,8 @@ if (globalWithFirebase._firebaseDb) {
   }
 }
 
-// Silence non-critical Firestore logs/warnings in application console
-setLogLevel('error');
+// Silence non-critical Firestore connection logs/warnings in application console
+setLogLevel('silent');
 
 // Initialize Firestore with extreme resilience settings (Long Polling + Offline Local Caching)
 export const db = firestoreInstance;

@@ -171,6 +171,35 @@ const CategoryMore = () => {
 
   const categoryName = category?.name || decodeURIComponent(name || 'Category');
 
+  const categorySchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://sarkarisewayojan.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": categoryName,
+            "item": `https://sarkarisewayojan.com/category/${encodeURIComponent(categoryName)}`
+          }
+        ]
+      },
+      {
+        "@type": "CollectionPage",
+        "name": `${categoryName} - Sarkari Result | Sarkari Sewayojan`,
+        "url": `https://sarkarisewayojan.com/category/${encodeURIComponent(categoryName)}`,
+        "description": `All latest updates, online forms, and Sarkari Result keys for ${categoryName} on Sarkari Sewayojan.`
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
       <SEO 
@@ -178,6 +207,7 @@ const CategoryMore = () => {
         description={`All latest updates, online forms, and Sarkari Result keys for ${categoryName} on Sarkari Sewayojan.`}
         keywords={`${categoryName}, ${categoryName} online form, ${categoryName} result, ${categoryName} admit card, sarkari result, sarkari exam, rojgar result, sewayojan`}
         url={`https://sarkarisewayojan.com/category/${encodeURIComponent(categoryName)}`}
+        schema={categorySchema}
       />
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} onFilter={handleFilter} />
       <SiteHeader logoUrl={settings.logo_url} />
