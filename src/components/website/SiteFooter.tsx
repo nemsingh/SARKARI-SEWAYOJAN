@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 interface FooterSection {
   title: string;
@@ -143,17 +143,17 @@ const SiteFooter = ({ settings = {}, hideDisclaimer = false }: SiteFooterProps) 
           © 2026 Sarkari Sewayojan | www.sarkarisewayojan.com | All Rights Reserved
         </p>
         <div className="flex flex-wrap justify-center gap-4 text-[14px] md:text-[16px]">
-          <a href="/about-us" className="hover:underline">About Us</a>
+          <Link to="/about-us" className="hover:underline">About Us</Link>
           <span>|</span>
-          <a href="/privacy-policy" className="hover:underline">Privacy Policy</a>
+          <Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link>
           <span>|</span>
-          <a href="/terms-and-conditions" className="hover:underline">Terms & Conditions</a>
+          <Link to="/terms-and-conditions" className="hover:underline">Terms & Conditions</Link>
           <span>|</span>
-          <a href="/dmca-policy" className="hover:underline">DMCA Policy</a>
+          <Link to="/dmca-policy" className="hover:underline">DMCA Policy</Link>
           <span>|</span>
-          <a href="/fact-checking-policy" className="hover:underline">Fact Checking</a>
+          <Link to="/fact-checking-policy" className="hover:underline">Fact Checking</Link>
           <span>|</span>
-          <a href="/contact-us" className="hover:underline">Contact Us</a>
+          <Link to="/contact-us" className="hover:underline">Contact Us</Link>
         </div>
       </div>
     </>
