@@ -310,7 +310,7 @@ const Index = () => {
             {/* Title & Core Platform Statement */}
             <h2 className="text-[17px] md:text-[20px] leading-relaxed text-slate-800 dark:text-slate-100 mb-1 font-normal">
               <strong className="font-extrabold text-[#0b3d91] dark:text-sky-400 theme-box-text">
-                (Sarkari Sewayojan™ website since 2022) Trusted Platform for Government Job Updates
+                (Sarkari Sewayojan website since 2022) Trusted Platform for Government Job Updates
               </strong>{" "}
               – Latest Government Job Updates, Online Forms, Results, Admit Cards, Answer Keys, Syllabus & More.
             </h2>
@@ -323,7 +323,7 @@ const Index = () => {
             {/* Crucial Disclaimer Alert Block */}
             <div className="mb-1.5 max-w-4xl mx-auto">
               <p className="inline-block px-3 py-1 bg-rose-500/10 dark:bg-rose-500/5 text-rose-600 dark:text-rose-400 text-[11px] md:text-[12px] rounded-lg border border-rose-500/25 font-bold leading-normal">
-                Sarkari Sewayojan™ is a private website and not affiliated with any government organization.
+                Sarkari Sewayojan is a private website and not affiliated with any government organization.
               </p>
             </div>
 
