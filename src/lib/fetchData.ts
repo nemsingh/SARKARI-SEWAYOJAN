@@ -62,9 +62,7 @@ export async function fetchStaticOrFirebase(url: string, fallbackFetch: () => Pr
 
   // In production, we strictly rely on static JSON to guarantee 0 Firebase reads for users.
   try {
-    // Add cache-busting timestamp to prevent stale static files from being served by the browser
-    const cacheBuster = `?t=${Date.now()}`;
-    const res = await fetch(`${url}${cacheBuster}`);
+    const res = await fetch(url);
     const contentType = res.headers.get('content-type');
     if (res.ok && contentType && contentType.includes('application/json')) {
       return await res.json();
