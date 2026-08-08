@@ -94,15 +94,18 @@ export default function FloatingSocialButtons() {
         }
       }
 
-      const networks = ['whatsapp', 'instagram', 'youtube', 'telegram', 'facebook', 'linkedin'];
+      const networks = ['whatsapp', 'youtube', 'telegram', 'instagram', 'facebook', 'linkedin'];
       const compiledLinks: Record<string, { url: string; enabled: boolean }> = {};
       
       networks.forEach(network => {
         const url = settingsData[`social_${network}_url`];
         const rawEnabled = settingsData[`social_${network}_enabled`];
-        const enabled = rawEnabled === 'true' || rawEnabled === '1';
-        if (url && enabled) {
-          compiledLinks[network] = { url, enabled: true };
+        const hasSetting = rawEnabled !== undefined && rawEnabled !== null && rawEnabled !== '';
+        const enabled = hasSetting ? (rawEnabled === 'true' || rawEnabled === '1') : (network === 'whatsapp' || network === 'youtube' || network === 'telegram');
+        const finalUrl = url || (network === 'whatsapp' ? 'https://whatsapp.com/channel/0029Vb7mSRl6xCSTsZCzb60Y' : network === 'youtube' ? 'https://www.youtube.com/@sarkarisewayojan' : network === 'telegram' ? 'https://t.me/sarkarisewayojan' : '');
+
+        if (finalUrl && enabled) {
+          compiledLinks[network] = { url: finalUrl, enabled: true };
         }
       });
 
@@ -114,6 +117,16 @@ export default function FloatingSocialButtons() {
 
   // Scroll event listener for hide on scroll down, show on scroll up
   useEffect(() => {
+    const isBotOrScreenshot = typeof navigator !== 'undefined' && (
+      Boolean(navigator.webdriver) ||
+      /bot|googlebot|crawler|spider|robot|crawling|headless|phantom|puppeteer|thum|microlink|facebookexternalhit|twitterbot|whatsapp|telegrambot|screenshot/i.test(navigator.userAgent || '')
+    );
+
+    if (isBotOrScreenshot) {
+      setIsVisible(true);
+      return;
+    }
+
     let lastScrollY = window.scrollY;
     let ticking = false;
 
@@ -132,7 +145,7 @@ export default function FloatingSocialButtons() {
               setIsVisible(true);
             }
           } else {
-            // Alway show at the very top
+            // Always show at the very top
             setIsVisible(true);
           }
           

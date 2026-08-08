@@ -15,6 +15,9 @@ import ContactUs from './pages/ContactUs';
 import FactCheckingPolicy from './pages/FactCheckingPolicy';
 import NotFound from './pages/NotFound';
 
+import FloatingSocialButtons from './components/FloatingSocialButtons';
+import NotificationPopup from './components/NotificationPopup';
+
 export function render(url: string, data: any) {
   const queryClient = new QueryClient();
   const helmetContext: any = {};
@@ -38,6 +41,8 @@ export function render(url: string, data: any) {
               <Route path="/fact-checking-policy" element={<FactCheckingPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <FloatingSocialButtons />
+            <NotificationPopup />
           </StaticRouter>
         </TooltipProvider>
       </QueryClientProvider>

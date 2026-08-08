@@ -46,8 +46,13 @@ export default function NotificationPopup() {
   }, []);
 
   useEffect(() => {
-    // If we are in the admin dashboard, do not display the notification popup
-    if (isAdminRoute) {
+    // If we are in the admin dashboard or if a screenshot engine/bot is rendering the page, do not display the notification popup
+    const isBotOrScreenshot = typeof navigator !== 'undefined' && (
+      Boolean(navigator.webdriver) ||
+      /bot|googlebot|crawler|spider|robot|crawling|headless|phantom|puppeteer|thum|microlink|facebookexternalhit|twitterbot|whatsapp|telegrambot|screenshot/i.test(navigator.userAgent || '')
+    );
+
+    if (isAdminRoute || isBotOrScreenshot) {
       setIsOpen(false);
       return;
     }
