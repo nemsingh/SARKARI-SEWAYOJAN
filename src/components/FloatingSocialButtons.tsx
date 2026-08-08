@@ -36,8 +36,36 @@ const Icons = {
   )
 };
 
+const getInitialSocialLinks = (): Record<string, { url: string; enabled: boolean }> => {
+  const globalObj = typeof window !== 'undefined' ? (window as any) : (typeof global !== 'undefined' ? (global as any) : null);
+  let settingsData: Record<string, string> = {};
+
+  if (globalObj && globalObj.__INITIAL_DATA__ && globalObj.__INITIAL_DATA__.settings_flat) {
+    settingsData = globalObj.__INITIAL_DATA__.settings_flat;
+  }
+
+  const networks = ['whatsapp', 'youtube', 'telegram', 'instagram', 'facebook', 'linkedin'];
+  const compiledLinks: Record<string, { url: string; enabled: boolean }> = {};
+  
+  networks.forEach(network => {
+    const url = settingsData[`social_${network}_url`];
+    const rawEnabled = settingsData[`social_${network}_enabled`];
+    
+    // Default fallback: enable whatsapp & youtube if no explicit setting in SSG
+    const hasSetting = rawEnabled !== undefined && rawEnabled !== null && rawEnabled !== '';
+    const enabled = hasSetting ? (rawEnabled === 'true' || rawEnabled === '1') : (network === 'whatsapp' || network === 'youtube' || network === 'telegram');
+    const finalUrl = url || (network === 'whatsapp' ? 'https://whatsapp.com/channel/0029Vb7mSRl6xCSTsZCzb60Y' : network === 'youtube' ? 'https://www.youtube.com/@sarkarisewayojan' : network === 'telegram' ? 'https://t.me/sarkarisewayojan' : '');
+
+    if (finalUrl && enabled) {
+      compiledLinks[network] = { url: finalUrl, enabled: true };
+    }
+  });
+
+  return compiledLinks;
+};
+
 export default function FloatingSocialButtons() {
-  const [socialLinks, setSocialLinks] = useState<Record<string, { url: string; enabled: boolean }>>({});
+  const [socialLinks, setSocialLinks] = useState<Record<string, { url: string; enabled: boolean }>>(getInitialSocialLinks);
   const [isVisible, setIsVisible] = useState(true);
   const location = useLocation();
 
