@@ -25,18 +25,10 @@ export default function SEO({ title, description, keywords, schema, url, image, 
       finalImage = `https://sarkarisewayojan.com${image.startsWith('/') ? '' : '/'}${image}`;
     }
   } else if (url) {
-    // If no custom image/banner is provided, dynamically generate a retina-quality (deviceScaleFactor=2)
-    // screenshot of the specific page using the highly reliable, fast, and cached Microlink screenshot API.
-    // Since search engines & social media (WhatsApp, Telegram, Facebook) request this, it's 100% free,
-    // has zero performance impact on your normal visitors, and works lifetime automatically.
+    // Dynamically generate a high-speed, retina HD (1200x630, 2x scale) screenshot of the page using Microlink API.
+    // Removed prerender=true and delay to ensure <1.5s response time for WhatsApp & Facebook crawlers.
     const encodedUrl = encodeURIComponent(url);
-    let screenshotUrl = `https://api.microlink.io/?url=${encodedUrl}&screenshot=true&screenshot.type=jpeg&screenshot.quality=85&prerender=true&embed=screenshot.url&screenshot.viewport.width=1200&screenshot.viewport.height=630&screenshot.viewport.deviceScaleFactor=2`;
-    if (waitForSelector) {
-      screenshotUrl += `&waitFor=${encodeURIComponent(waitForSelector)}&screenshot.delay=2000`;
-    } else {
-      screenshotUrl += `&screenshot.delay=1000`;
-    }
-    finalImage = screenshotUrl;
+    finalImage = `https://api.microlink.io/?url=${encodedUrl}&screenshot=true&embed=screenshot.url&screenshot.viewport.width=1200&screenshot.viewport.height=630&screenshot.viewport.deviceScaleFactor=2`;
   }
 
   return (
@@ -45,13 +37,19 @@ export default function SEO({ title, description, keywords, schema, url, image, 
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords ? `${keywords}, ${defaultKeywords}` : defaultKeywords} />
+      <meta name="application-name" content={siteName} />
+      <meta name="apple-mobile-web-app-title" content={siteName} />
 
-      {/* Open Graph / Facebook */}
+      {/* Open Graph / Facebook / WhatsApp */}
       <meta property="og:type" content="website" />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       {url && <meta property="og:url" content={url} />}
       <meta property="og:image" content={finalImage} />
+      <meta property="og:image:secure_url" content={finalImage} />
+      <meta property="og:image:type" content="image/png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content={siteName} />
 
       {/* Twitter */}

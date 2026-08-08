@@ -517,7 +517,7 @@ const PostDetail = () => {
           keywords={`${postTitle}, ${postTitle} online form, ${postTitle} recruitment, sarkari result, sarkari exam, rojgar result, sewayojan`}
           schema={schema}
           url={`https://sarkarisewayojan.com/post/${post.slug || post.id}`}
-          waitForSelector=".post-summary-table"
+          image={post.media_urls?.[0] || post.banner_url || undefined}
         />
       )}
       <div className="notranslate">

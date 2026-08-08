@@ -211,8 +211,7 @@ const Index = () => {
           "SarkariSewayojan",
           "Sarkari Sewayojan Official",
           "Sarkari Sewayojan Portal",
-          "SarkariSewayojan Portal",
-          "sarkarisewayojan.com"
+          "SarkariSewayojan Portal"
         ],
         "publisher": {
           "@id": "https://sarkarisewayojan.com/#organization"
@@ -246,7 +245,7 @@ const Index = () => {
   };
 
   const pageTitle = activeFilter === 'Home' 
-    ? "Sarkari Sewayojan | SarkariSewayojan.com | Sarkari Sewayojan Official 2026 | Sarkari Sewayojan Website"
+    ? "Sarkari Sewayojan - Sarkari Result, Sarkari Exam, Sewayojan UP & Rojgar Result 2026"
     : `${activeFilter} Jobs - Latest Sarkari Result, Sarkari Sewayojan`;
 
   const pageDescription = activeFilter === 'Home'
