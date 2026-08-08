@@ -413,6 +413,16 @@ export const getPostBySlug = async (slug: string): Promise<Record<string, any> |
 
 export const getPostById = async (id: string): Promise<Record<string, any> | null> => {
   try {
+    // 1. Check local cache first for instant response without network delay
+    const cachedPosts = getLocalAdminCache<any[]>('posts');
+    if (cachedPosts && cachedPosts.length > 0) {
+      const found = cachedPosts.find(p => p.id === id || p.slug === id);
+      if (found && !found.is_chunked && found.tables_html !== undefined) {
+        return found;
+      }
+    }
+
+    // 2. Fetch directly from Firestore doc ID
     const docRef = doc(db, 'posts', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -420,6 +430,17 @@ export const getPostById = async (id: string): Promise<Record<string, any> | nul
       await loadChunksForPost(docSnap.id, data);
       return data;
     }
+
+    // 3. Fallback: try searching by slug if id was not a Firestore document ID
+    const q = query(collection(db, 'posts'), where('slug', '==', id));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      const data = { id: d.id, ...d.data() };
+      await loadChunksForPost(d.id, data);
+      return data;
+    }
+
     return null;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `posts/${id}`);
