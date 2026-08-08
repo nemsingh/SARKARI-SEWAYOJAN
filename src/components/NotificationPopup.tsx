@@ -49,7 +49,8 @@ export default function NotificationPopup() {
     // If we are in the admin dashboard or if a screenshot engine/bot is rendering the page, do not display the notification popup
     const isBotOrScreenshot = typeof navigator !== 'undefined' && (
       Boolean(navigator.webdriver) ||
-      /bot|googlebot|crawler|spider|robot|crawling|headless|phantom|puppeteer|thum|microlink|facebookexternalhit|twitterbot|whatsapp|telegrambot|screenshot/i.test(navigator.userAgent || '')
+      /bot|googlebot|crawler|spider|robot|crawling|headless|phantom|puppeteer|thum|microlink|facebookexternalhit|twitterbot|whatsapp|telegrambot|screenshot/i.test(navigator.userAgent || '') ||
+      (typeof window !== 'undefined' && window.location.search.includes('screenshot'))
     );
 
     if (isAdminRoute || isBotOrScreenshot) {
