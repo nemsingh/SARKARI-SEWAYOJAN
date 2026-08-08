@@ -27,9 +27,9 @@ export default function SEO({ title, description, keywords, schema, url, image, 
       primaryImage = `https://sarkarisewayojan.com${image.startsWith('/') ? '' : '/'}${image}`;
     }
   } else if (url) {
-    // Dynamically generate a high-speed, direct PNG screenshot (1200x630) of the exact page using Thum.io CDN engine
+    // Dynamically generate a high-speed, direct PNG screenshot (1200x800) of the exact page using Thum.io CDN engine
     const targetUrl = url.startsWith('http') ? url : `https://sarkarisewayojan.com${url.startsWith('/') ? '' : '/'}${url}`;
-    screenshotImage = `https://image.thum.io/get/width/1200/crop/630/noanimate/${targetUrl}`;
+    screenshotImage = `https://image.thum.io/get/width/1200/crop/800/noanimate/${targetUrl}`;
     primaryImage = screenshotImage;
   }
 
@@ -51,7 +51,7 @@ export default function SEO({ title, description, keywords, schema, url, image, 
       <meta property="og:image:secure_url" content={primaryImage} />
       <meta property="og:image:type" content="image/png" />
       <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
+      <meta property="og:image:height" content="800" />
       
       {/* Fallback image tag for social media crawlers if primary image has delay */}
       {primaryImage !== defaultImage && (
