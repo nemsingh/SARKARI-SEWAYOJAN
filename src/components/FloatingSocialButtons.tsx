@@ -179,7 +179,7 @@ export default function FloatingSocialButtons() {
 
   return (
     <div 
-      className={`fixed top-[480px] sm:top-[500px] right-3 sm:right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out will-change-transform ${
+      className={`fixed bottom-6 right-6 z-50 flex flex-col gap-3 transition-all duration-150 ease-out will-change-transform ${
         isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-90 pointer-events-none'
       }`}
     >
