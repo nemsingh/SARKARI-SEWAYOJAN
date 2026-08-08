@@ -311,8 +311,9 @@ async function generate() {
         html = html.replace(/<meta [^>]*name=["']keywords["'][^>]*>/gi, '');
         html = html.replace(/<meta [^>]*property=["']og:title["'][^>]*>/gi, '');
         html = html.replace(/<meta [^>]*property=["']og:description["'][^>]*>/gi, '');
-        html = html.replace(/<meta [^>]*property=["']og:image["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*property=["']og:image[^"']*["'][^>]*>/gi, '');
         html = html.replace(/<meta [^>]*property=["']og:url["'][^>]*>/gi, '');
+        html = html.replace(/<meta [^>]*name=["']twitter:[^"']*["'][^>]*>/gi, '');
         // Inject helmet tags before </head>
         html = html.replace('</head>', `${helmetTags}\n</head>`);
       } else {

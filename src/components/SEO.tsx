@@ -17,18 +17,20 @@ export default function SEO({ title, description, keywords, schema, url, image, 
   
   // Ensure the image URL is fully qualified with the absolute domain for social media crawlers
   const defaultImage = "https://sarkarisewayojan.com/logo_icon.png";
-  let finalImage = defaultImage;
+  let primaryImage = defaultImage;
+  let screenshotImage = "";
+
   if (image) {
     if (image.startsWith('http')) {
-      finalImage = image;
+      primaryImage = image;
     } else {
-      finalImage = `https://sarkarisewayojan.com${image.startsWith('/') ? '' : '/'}${image}`;
+      primaryImage = `https://sarkarisewayojan.com${image.startsWith('/') ? '' : '/'}${image}`;
     }
   } else if (url) {
-    // Dynamically generate a high-speed, retina HD (1200x630, 2x scale) screenshot of the page using Microlink API.
-    // Removed prerender=true and delay to ensure <1.5s response time for WhatsApp & Facebook crawlers.
-    const encodedUrl = encodeURIComponent(url);
-    finalImage = `https://api.microlink.io/?url=${encodedUrl}&screenshot=true&embed=screenshot.url&screenshot.viewport.width=1200&screenshot.viewport.height=630&screenshot.viewport.deviceScaleFactor=2`;
+    // Dynamically generate a high-speed, direct PNG screenshot (1200x630) of the exact page using Thum.io CDN engine
+    const targetUrl = url.startsWith('http') ? url : `https://sarkarisewayojan.com${url.startsWith('/') ? '' : '/'}${url}`;
+    screenshotImage = `https://image.thum.io/get/width/1200/crop/630/noanimate/${targetUrl}`;
+    primaryImage = screenshotImage;
   }
 
   return (
@@ -45,18 +47,24 @@ export default function SEO({ title, description, keywords, schema, url, image, 
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       {url && <meta property="og:url" content={url} />}
-      <meta property="og:image" content={finalImage} />
-      <meta property="og:image:secure_url" content={finalImage} />
+      <meta property="og:image" content={primaryImage} />
+      <meta property="og:image:secure_url" content={primaryImage} />
       <meta property="og:image:type" content="image/png" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
+      
+      {/* Fallback image tag for social media crawlers if primary image has delay */}
+      {primaryImage !== defaultImage && (
+        <meta property="og:image" content={defaultImage} />
+      )}
+
       <meta property="og:site_name" content={siteName} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={finalImage} />
+      <meta name="twitter:image" content={primaryImage} />
 
       {/* Canonical URL */}
       {url && <link rel="canonical" href={url} />}
