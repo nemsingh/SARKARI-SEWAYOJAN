@@ -355,8 +355,8 @@ async function generate() {
     // Load chunks individually, then discard them to prevent OOM
     await loadChunksForPost(post.id, post);
     
-    // Keep search_corpus concise to ensure lightning-fast page loads & instant screenshot preview rendering
-    const corpus = `${stripHtml(post.tables_html || '')} ${stripHtml(post.tables_html_hi || '')}`.substring(0, 150);
+    // Populate search_corpus for lightweightPosts and homeData now that we have the full chunk
+    const corpus = `${stripHtml(post.tables_html || '')} ${stripHtml(post.tables_html_hi || '')}`.substring(0, 5000);
     homeData.posts[i].search_corpus = corpus;
 
     const postData = {
