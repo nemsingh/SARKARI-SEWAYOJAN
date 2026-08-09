@@ -55,6 +55,21 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       document.body.classList.remove('is-admin-route');
     }
 
+    // Detect mobile phone in Desktop Site mode
+    const checkMobileDesktopSite = () => {
+      if (typeof window === 'undefined') return;
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const isSmallPhysicalScreen = Math.min(window.screen.width, window.screen.height) <= 900;
+      const isDesktopViewport = window.innerWidth >= 640;
+      if (isTouch && isSmallPhysicalScreen && isDesktopViewport) {
+        document.documentElement.classList.add('mobile-desktop-site');
+      } else {
+        document.documentElement.classList.remove('mobile-desktop-site');
+      }
+    };
+    checkMobileDesktopSite();
+    window.addEventListener('resize', checkMobileDesktopSite);
+
     // Global stealth click listener for 'Sarkari Sewayojan'
     const handleGlobalClick = (e: MouseEvent) => {
       if (isAdmin) return;

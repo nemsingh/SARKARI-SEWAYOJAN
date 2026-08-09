@@ -149,18 +149,20 @@ const CategoryBox = ({ name, links, maxVisible = 25 }: CategoryBoxProps) => {
 
           return (
             <li key={link.id} className="category-link-item mb-2.5">
-              <div className="flex items-center text-primary font-medium text-[19px] group">
-                <span className="w-2 h-2 rounded-full bg-primary mr-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
-                {link.url ? (
-                  <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
-                    {link.title}
-                  </a>
-                ) : (
-                  link.title
-                )}
-                {showNewBadge && (
-                  <span className="ml-2 text-[16px] font-bold animate-blink-new">New</span>
-                )}
+              <div className="flex items-start text-primary font-medium text-[19px] group leading-snug">
+                <span className="w-2 h-2 rounded-full bg-primary mr-2.5 mt-2 flex-shrink-0 group-hover:scale-150 transition-transform" />
+                <div className="flex-1">
+                  {link.url ? (
+                    <a href={getValidUrl(link.url)} target="_blank" rel="noopener noreferrer" className="text-primary no-underline hover:underline hover:text-accent transition-colors">
+                      {link.title}
+                    </a>
+                  ) : (
+                    link.title
+                  )}
+                  {showNewBadge && (
+                    <span className="ml-2 text-[16px] font-bold animate-blink-new inline-block">New</span>
+                  )}
+                </div>
               </div>
               {(link.last_date_text || link.actual_last_date_text) && (
                 <div className="ml-4 text-[16px] text-destructive font-semibold mt-0.5" style={{ color: 'red' }}>
