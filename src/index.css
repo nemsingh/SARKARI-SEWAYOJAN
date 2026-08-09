@@ -758,33 +758,35 @@ html body .short-info-cell a.force-blue-click > * {
   /* Category Box Headers */
   .category-box-header {
     font-size: 31px !important;
-    font-weight: 800 !important;
+    font-weight: 900 !important;
   }
 
-  /* Category Box Links - Increased size by 1px more (25px) */
+  /* Category Box Links - Increased size by 2px (27px), font-weight +100 (700/bold) */
   .category-link-item .flex {
-    font-size: 25px !important;
+    font-size: 27px !important;
     line-height: 1.35 !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
   }
 
   .category-link-item a {
-    font-size: 25px !important;
+    font-size: 27px !important;
     line-height: 1.35 !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
   }
 
   .category-link-item .animate-blink-new {
-    font-size: 21px !important;
+    font-size: 23px !important;
+    font-weight: 800 !important;
   }
 
   .category-link-item .text-destructive {
-    font-size: 21px !important;
+    font-size: 23px !important;
+    font-weight: 700 !important;
   }
 
   .category-box-body a[href*="/category/"] {
-    font-size: 24.5px !important;
-    font-weight: 700 !important;
+    font-size: 26.5px !important;
+    font-weight: 800 !important;
   }
 
   /* Header scaling */
@@ -799,8 +801,8 @@ html body .short-info-cell a.force-blue-click > * {
   /* Menubar adjustment for Desktop Site on mobile */
   .site-menu a {
     font-size: 18px !important;
-    padding-left: 1px !important;
-    padding-right: 1px !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
   }
 
   /* Content Boxes & Footers */
