@@ -13,7 +13,7 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
   const menuItems = ['Home', 'Latest Jobs', 'Admit Card', 'Result', 'Answer Key', 'Syllabus', 'Contact Us'];
 
   return (
-    <div className="site-menu hidden md:flex justify-between items-center bg-background sticky top-[173px] z-40 w-full px-2" style={{ boxShadow: 'var(--box-shadow-light)' }}>
+    <div className="site-menu hidden md:flex justify-evenly items-center bg-background sticky top-[173px] z-40 w-full px-1" style={{ boxShadow: 'var(--box-shadow-light)' }}>
       {menuItems.map(item => (
         <a
           key={item}
@@ -21,12 +21,12 @@ const SiteMenu = ({ onFilter, searchQuery, onSearchChange, onSearch }: SiteMenuP
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => onFilter(item)}
-          className="no-underline text-primary py-4 px-2 md:px-2.5 lg:px-3 font-bold transition-all text-center cursor-pointer whitespace-nowrap text-[18px] hover:bg-primary hover:text-primary-foreground select-none flex-shrink-0"
+          className="no-underline text-primary py-4 px-1 font-bold transition-all flex-1 text-center cursor-pointer whitespace-nowrap text-[18px] hover:bg-primary hover:text-primary-foreground select-none"
         >
           {item}
         </a>
       ))}
-      <div className="flex-1 flex justify-end items-center pl-1 pr-1 min-w-[150px] max-w-[280px]">
+      <div className="flex-1 flex justify-center items-center px-1">
         <div className="search-bar-container w-full bg-background rounded-full p-1 border border-border flex items-center" style={{ boxShadow: '2px 2px 6px rgba(0,0,0,0.1)' }}>
           <input
             type="text"
