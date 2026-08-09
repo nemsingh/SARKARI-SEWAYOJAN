@@ -751,39 +751,39 @@ html body .short-info-cell a.force-blue-click > * {
 }
 
 /* ==========================================================================
-   Mobile Phone - Desktop Site Mode Font Scaling (+2 to +3px further increase)
+   Mobile Phone - Desktop Site Mode Font Scaling (+1px further increase)
    Applies ONLY when viewing Desktop Site on Mobile Touch Devices
    ========================================================================== */
 @media (pointer: coarse) and (min-width: 640px), (hover: none) and (min-width: 640px), html.mobile-desktop-site {
   /* Category Box Headers */
   .category-box-header {
-    font-size: 30px !important;
+    font-size: 31px !important;
     font-weight: 800 !important;
   }
 
-  /* Category Box Links - Increased size by an additional 2.5px (total ~24px) */
+  /* Category Box Links - Increased size by 1px more (25px) */
   .category-link-item .flex {
-    font-size: 24px !important;
+    font-size: 25px !important;
     line-height: 1.35 !important;
     font-weight: 600 !important;
   }
 
   .category-link-item a {
-    font-size: 24px !important;
+    font-size: 25px !important;
     line-height: 1.35 !important;
     font-weight: 600 !important;
   }
 
   .category-link-item .animate-blink-new {
-    font-size: 20px !important;
+    font-size: 21px !important;
   }
 
   .category-link-item .text-destructive {
-    font-size: 20px !important;
+    font-size: 21px !important;
   }
 
   .category-box-body a[href*="/category/"] {
-    font-size: 23.5px !important;
+    font-size: 24.5px !important;
     font-weight: 700 !important;
   }
 
@@ -798,18 +798,18 @@ html body .short-info-cell a.force-blue-click > * {
 
   /* Menubar adjustment for Desktop Site on mobile */
   .site-menu a {
-    font-size: 17px !important;
+    font-size: 18px !important;
     padding-left: 1px !important;
     padding-right: 1px !important;
   }
 
   /* Content Boxes & Footers */
   .theme-box-text, .theme-box-text * {
-    font-size: 22.5px !important;
+    font-size: 23.5px !important;
   }
 
   .site-footer-bottom p {
-    font-size: 21.5px !important;
+    font-size: 22.5px !important;
   }
 }
 
@@ -822,58 +822,58 @@ a.tablet-grid-cell * {
 }
 
 /* ==========================================================================
-   Standard Mobile Phone View - Font Scaling (+2 to +3px)
+   Standard Mobile Phone View - Font Scaling (+1px further increase)
    Applies ONLY when viewing on Mobile Phone without Desktop Site (< 640px)
    ========================================================================== */
 @media (max-width: 639px) {
   /* Category Box Headers */
   .category-box-header {
-    font-size: 28.5px !important;
+    font-size: 29.5px !important;
     font-weight: 800 !important;
   }
 
-  /* Category Box Links - Increase font size by 2.5px (from 19px to 21.5px) */
+  /* Category Box Links - Increased font size by 1px more (22.5px) */
   .category-link-item .flex {
-    font-size: 21.5px !important;
+    font-size: 22.5px !important;
     line-height: 1.35 !important;
     font-weight: 600 !important;
   }
 
   .category-link-item a {
-    font-size: 21.5px !important;
+    font-size: 22.5px !important;
     line-height: 1.35 !important;
     font-weight: 600 !important;
   }
 
   .category-link-item .animate-blink-new {
-    font-size: 18px !important;
+    font-size: 19px !important;
   }
 
   .category-link-item .text-destructive {
-    font-size: 18px !important;
+    font-size: 19px !important;
   }
 
   .category-box-body a[href*="/category/"] {
-    font-size: 21.5px !important;
+    font-size: 22.5px !important;
     font-weight: 700 !important;
   }
 
   /* Site Header Scaling on Mobile */
   .site-header h1 {
-    font-size: 27px !important;
+    font-size: 28px !important;
   }
 
   .site-header div {
-    font-size: 18px !important;
+    font-size: 19px !important;
   }
 
   /* Content Boxes & Footers on Mobile */
   .theme-box-text, .theme-box-text * {
-    font-size: 20.5px !important;
+    font-size: 21.5px !important;
   }
 
   .site-footer-bottom p {
-    font-size: 19px !important;
+    font-size: 20px !important;
   }
 }
 
