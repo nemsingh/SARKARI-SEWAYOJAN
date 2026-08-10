@@ -1,7 +1,6 @@
-import * as firebaseAdminModule from 'firebase-admin';
-
-// Safe interop for CJS/ESM in Vercel Serverless Functions
-const admin: any = (firebaseAdminModule as any).default || firebaseAdminModule;
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getMessaging, Message } from 'firebase-admin/messaging';
 
 // Helper function to safely parse Service Account JSON from environment variables
 function parseServiceAccountKey(rawKey: string): any {
@@ -52,8 +51,7 @@ function parseServiceAccountKey(rawKey: string): any {
 // Lazy initialization of Firebase Admin SDK
 function initFirebaseAdmin(): { initialized: boolean; error?: string } {
   try {
-    const existingApps = admin.apps || admin.default?.apps || [];
-    if (Array.isArray(existingApps) && existingApps.length > 0) {
+    if (getApps().length > 0) {
       return { initialized: true };
     }
 
@@ -80,8 +78,8 @@ function initFirebaseAdmin(): { initialized: boolean; error?: string } {
       };
     }
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+    initializeApp({
+      credential: cert(serviceAccount),
     });
 
     return { initialized: true };
@@ -149,7 +147,7 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      const decodedToken = await getAuth().verifyIdToken(token);
       console.log('🔒 Request authenticated successfully for UID:', decodedToken.uid);
     } catch (authErr: any) {
       console.error('❌ Authentication failed:', authErr.message);
@@ -185,7 +183,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // 4. Construct FCM Message targeting "all_users"
-    const message: admin.messaging.Message = {
+    const message: Message = {
       topic: targetTopic,
       notification: {
         title: notificationTitle,
@@ -223,7 +221,7 @@ export default async function handler(req: any, res: any) {
     };
 
     // 5. Send FCM Notification via Firebase Admin SDK
-    const response = await admin.messaging().send(message);
+    const response = await getMessaging().send(message);
     console.log('✅ FCM Notification sent successfully:', {
       messageId: response,
       topic: targetTopic,
