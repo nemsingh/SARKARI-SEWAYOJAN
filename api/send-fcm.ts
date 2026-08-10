@@ -40,17 +40,36 @@ export default async function handler(req: any, res: any) {
   }
 
   const message = {
-    topic: 'data_updates',
+    condition: "'data_updates' in topics || 'all_users' in topics",
     notification: {
       title: jobTitle,
       body: '👉 Click Here',
     },
     data: {
       title: jobTitle,
+      jobTitle: jobTitle,
       category: category || 'Latest Jobs',
       apply_url: applyUrl || '',
+      applyUrl: applyUrl || '',
       type: 'DATA_UPDATED',
+      action: 'REFRESH_DATA',
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
       update_id: Date.now().toString(),
+    },
+    android: {
+      priority: 'high' as const,
+      notification: {
+        sound: 'default',
+        clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          contentAvailable: true,
+          sound: 'default',
+        },
+      },
     },
   };
 
