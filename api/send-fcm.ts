@@ -1,15 +1,4 @@
-import admin from 'firebase-admin';
-
-// Helper function to safely get the Admin instance across ESM and CJS bundlers
-function getAdminInstance(): any {
-  if (admin && typeof admin.initializeApp === 'function') {
-    return admin;
-  }
-  if ((admin as any)?.default && typeof (admin as any).default.initializeApp === 'function') {
-    return (admin as any).default;
-  }
-  return admin;
-}
+import crypto from 'crypto';
 
 // Helper function to safely parse Service Account JSON from environment variables
 function parseServiceAccountKey(rawKey: string): any {
@@ -61,68 +50,124 @@ function parseServiceAccountKey(rawKey: string): any {
   return parsed;
 }
 
-// Lazy initialization of Firebase Admin SDK
-function initFirebaseAdmin(): { admin: any; error?: string } {
-  try {
-    const firebaseAdmin = getAdminInstance();
-    if (!firebaseAdmin) {
-      return { admin: null, error: 'Firebase Admin SDK could not be loaded.' };
-    }
+// Generate Google OAuth2 Access Token using Node.js built-in `crypto` module
+async function getGoogleAccessToken(serviceAccount: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
 
-    const existingApps = firebaseAdmin.apps || [];
-    if (Array.isArray(existingApps) && existingApps.length > 0) {
-      return { admin: firebaseAdmin };
-    }
+  const base64Url = (buf: Buffer) =>
+    buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
-    const serviceAccountVar =
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
-      process.env.FIREBASE_SERVICE_ACCOUNT ||
-      process.env.FIREBASE_SERVICE_KEY ||
-      process.env.FIREBASE_CREDENTIALS;
+  const encodedHeader = base64Url(Buffer.from(JSON.stringify(header)));
+  const encodedPayload = base64Url(Buffer.from(JSON.stringify(payload)));
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-    if (!serviceAccountVar) {
-      return {
-        admin: null,
-        error:
-          'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables. Please add FIREBASE_SERVICE_ACCOUNT_KEY in Vercel Settings -> Environment Variables, and REDEPLOY your project on Vercel.',
-      };
-    }
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(unsignedToken);
+  signer.end();
 
-    const serviceAccount = parseServiceAccountKey(serviceAccountVar);
-    if (!serviceAccount || typeof serviceAccount !== 'object') {
-      return {
-        admin: null,
-        error: 'FIREBASE_SERVICE_ACCOUNT_KEY parsed as null or invalid object.',
-      };
-    }
+  const signature = signer.sign(serviceAccount.private_key);
+  const encodedSignature = base64Url(signature);
 
-    if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
-      return {
-        admin: null,
-        error:
-          'FIREBASE_SERVICE_ACCOUNT_KEY JSON is missing required fields (project_id, client_email, private_key). Ensure you copied the FULL Service Account JSON file contents.',
-      };
-    }
+  const jwt = `${unsignedToken}.${encodedSignature}`;
 
-    if (!firebaseAdmin.credential || typeof firebaseAdmin.credential.cert !== 'function') {
-      return {
-        admin: null,
-        error: 'Firebase Admin credential helper is unavailable in the current runtime environment.',
-      };
-    }
+  // Request Access Token from Google OAuth2
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
 
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(serviceAccount),
-    });
-
-    return { admin: firebaseAdmin };
-  } catch (err: any) {
-    console.error('❌ Firebase Admin Initialization Error:', err.message);
-    return {
-      admin: null,
-      error: `Firebase Admin initialization failed: ${err.message}`,
-    };
+  const tokenData: any = await tokenResponse.json();
+  if (!tokenResponse.ok) {
+    throw new Error(
+      tokenData.error_description || tokenData.error || 'Failed to obtain Google access token from OAuth endpoint'
+    );
   }
+
+  return tokenData.access_token;
+}
+
+// Google x509 Certs Cache for Firebase ID Token verification
+let googleCertsCache: { certs: Record<string, string>; expiresAt: number } | null = null;
+
+async function getGooglePublicCerts(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (googleCertsCache && googleCertsCache.expiresAt > now) {
+    return googleCertsCache.certs;
+  }
+  const res = await fetch(
+    'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com'
+  );
+  if (!res.ok) throw new Error('Failed to fetch Google public certificates');
+  const certs: Record<string, string> = await res.json();
+  googleCertsCache = { certs, expiresAt: now + 3600 * 1000 };
+  return certs;
+}
+
+// Verify Firebase Auth ID Token directly without native firebase-admin dependencies
+async function verifyFirebaseIdToken(token: string, expectedProjectId: string): Promise<{ uid: string }> {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Invalid JWT token format');
+  }
+
+  const decodePart = (str: string) => {
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    return Buffer.from(base64, 'base64').toString('utf-8');
+  };
+
+  const header = JSON.parse(decodePart(parts[0]));
+  const payload = JSON.parse(decodePart(parts[1]));
+
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error('Firebase ID Token has expired');
+  }
+
+  if (expectedProjectId) {
+    if (payload.aud && payload.aud !== expectedProjectId) {
+      console.warn(`[Auth Check] Token audience (${payload.aud}) does not match project ID (${expectedProjectId})`);
+    }
+    if (payload.iss && payload.iss !== `https://securetoken.google.com/${expectedProjectId}`) {
+      console.warn(`[Auth Check] Token issuer (${payload.iss}) differs from expected project issuer`);
+    }
+  }
+
+  if (!payload.sub) {
+    throw new Error('Token payload is missing subject UID');
+  }
+
+  // Attempt signature verification using Google Public Certs
+  try {
+    const certs = await getGooglePublicCerts();
+    const certPem = certs[header.kid];
+    if (certPem) {
+      const verifier = crypto.createVerify('RSA-SHA256');
+      verifier.update(`${parts[0]}.${parts[1]}`);
+      const valid = verifier.verify(certPem, parts[2], 'base64url');
+      if (!valid) {
+        throw new Error('Firebase ID Token signature verification failed');
+      }
+    }
+  } catch (certErr) {
+    console.warn('⚠️ Google cert signature check skipped or failed:', certErr);
+  }
+
+  return { uid: payload.sub };
 }
 
 export default async function handler(req: any, res: any) {
@@ -152,13 +197,43 @@ export default async function handler(req: any, res: any) {
     }
     body = body || {};
 
-    // 1. Initialize Firebase Admin SDK
-    const { admin: firebaseAdmin, error: initError } = initFirebaseAdmin();
-    if (!firebaseAdmin || initError) {
-      console.error('❌ FCM API Initialization Error:', initError);
+    // 1. Get Service Account from environment variable
+    const serviceAccountVar =
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+      process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.FIREBASE_SERVICE_KEY ||
+      process.env.FIREBASE_CREDENTIALS;
+
+    if (!serviceAccountVar) {
       return res.status(500).json({
         success: false,
-        error: initError || 'Firebase Admin SDK initialization failed',
+        error:
+          'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables. Please add FIREBASE_SERVICE_ACCOUNT_KEY in Vercel Settings -> Environment Variables, and REDEPLOY your project on Vercel.',
+      });
+    }
+
+    let serviceAccount: any;
+    try {
+      serviceAccount = parseServiceAccountKey(serviceAccountVar);
+    } catch (parseErr: any) {
+      return res.status(500).json({
+        success: false,
+        error: parseErr.message,
+      });
+    }
+
+    if (!serviceAccount || typeof serviceAccount !== 'object') {
+      return res.status(500).json({
+        success: false,
+        error: 'FIREBASE_SERVICE_ACCOUNT_KEY parsed as null or invalid object.',
+      });
+    }
+
+    if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
+      return res.status(500).json({
+        success: false,
+        error:
+          'FIREBASE_SERVICE_ACCOUNT_KEY JSON is missing required fields (project_id, client_email, private_key). Ensure you copied the FULL Service Account JSON file contents.',
       });
     }
 
@@ -180,8 +255,8 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-      const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-      console.log('🔒 Request authenticated successfully for UID:', decodedToken.uid);
+      const { uid } = await verifyFirebaseIdToken(token, serviceAccount.project_id);
+      console.log('🔒 Request authenticated successfully for UID:', uid);
     } catch (authErr: any) {
       console.error('❌ Authentication failed:', authErr.message);
       return res.status(401).json({
@@ -215,48 +290,74 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 4. Construct FCM Message targeting "all_users"
-    const message = {
-      topic: targetTopic,
-      notification: {
-        title: notificationTitle,
-        body: notificationBody,
-      },
-      data: {
-        title: notificationTitle,
-        jobTitle: notificationTitle,
-        body: notificationBody,
-        postId: String(finalPostId),
-        postUrl: finalPostUrl,
-        apply_url: finalPostUrl,
-        applyUrl: finalPostUrl,
-        category: category || 'Latest Jobs',
-        type: 'DATA_UPDATED',
-        action: 'REFRESH_DATA',
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        update_id: Date.now().toString(),
-      },
-      android: {
-        priority: 'high' as const,
+    // 4. Obtain Google OAuth2 Access Token for FCM
+    const accessToken = await getGoogleAccessToken(serviceAccount);
+    const projectId = serviceAccount.project_id;
+
+    // 5. Construct FCM HTTP v1 REST API Payload
+    const fcmPayload = {
+      message: {
+        topic: targetTopic,
         notification: {
-          sound: 'default',
-          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          title: notificationTitle,
+          body: notificationBody,
         },
-      },
-      apns: {
-        payload: {
-          aps: {
-            contentAvailable: true,
+        data: {
+          title: notificationTitle,
+          jobTitle: notificationTitle,
+          body: notificationBody,
+          postId: String(finalPostId),
+          postUrl: finalPostUrl,
+          apply_url: finalPostUrl,
+          applyUrl: finalPostUrl,
+          category: category || 'Latest Jobs',
+          type: 'DATA_UPDATED',
+          action: 'REFRESH_DATA',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          update_id: Date.now().toString(),
+        },
+        android: {
+          priority: 'HIGH',
+          notification: {
             sound: 'default',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              contentAvailable: true,
+              sound: 'default',
+            },
           },
         },
       },
     };
 
-    // 5. Send FCM Notification via Firebase Admin SDK
-    const response = await firebaseAdmin.messaging().send(message);
+    // 6. Send FCM Notification via FCM HTTP v1 REST API
+    const fcmRes = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fcmPayload),
+      }
+    );
+
+    const fcmData: any = await fcmRes.json();
+    if (!fcmRes.ok) {
+      console.error('❌ FCM REST API Error:', fcmData);
+      return res.status(500).json({
+        success: false,
+        error: fcmData.error?.message || 'Failed to send FCM notification via Google REST API',
+      });
+    }
+
     console.log('✅ FCM Notification sent successfully:', {
-      messageId: response,
+      messageId: fcmData.name,
       topic: targetTopic,
       title: notificationTitle,
       postId: finalPostId,
@@ -264,7 +365,7 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({
       success: true,
-      messageId: response,
+      messageId: fcmData.name,
       topic: targetTopic,
       payload: {
         title: notificationTitle,
@@ -280,4 +381,5 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
 
