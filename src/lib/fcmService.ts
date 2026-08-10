@@ -58,7 +58,16 @@ export async function sendJobNotificationToApp(
       }),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = {
+        success: false,
+        error: responseText.trim() || `Server error (${response.status})`,
+      };
+    }
     console.log('FCM API response:', response.status, data);
 
     if (response.ok && data.success) {
