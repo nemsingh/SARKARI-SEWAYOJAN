@@ -57,12 +57,17 @@ function initFirebaseAdmin(): { initialized: boolean; error?: string } {
       return { initialized: true };
     }
 
-    const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const serviceAccountVar =
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+      process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.FIREBASE_SERVICE_KEY ||
+      process.env.FIREBASE_CREDENTIALS;
+
     if (!serviceAccountVar) {
       return {
         initialized: false,
         error:
-          'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables.',
+          'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables. Please add FIREBASE_SERVICE_ACCOUNT_KEY in Vercel Settings -> Environment Variables, and REDEPLOY your project.',
       };
     }
 
