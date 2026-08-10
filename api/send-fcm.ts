@@ -1,4 +1,7 @@
-import admin from 'firebase-admin';
+import * as firebaseAdminModule from 'firebase-admin';
+
+// Safe interop for CJS/ESM in Vercel Serverless Functions
+const admin: any = (firebaseAdminModule as any).default || firebaseAdminModule;
 
 // Helper function to safely parse Service Account JSON from environment variables
 function parseServiceAccountKey(rawKey: string): any {
@@ -48,20 +51,21 @@ function parseServiceAccountKey(rawKey: string): any {
 
 // Lazy initialization of Firebase Admin SDK
 function initFirebaseAdmin(): { initialized: boolean; error?: string } {
-  if (admin.apps.length > 0) {
-    return { initialized: true };
-  }
-
-  const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountVar) {
-    return {
-      initialized: false,
-      error:
-        'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables.',
-    };
-  }
-
   try {
+    const existingApps = admin.apps || admin.default?.apps || [];
+    if (Array.isArray(existingApps) && existingApps.length > 0) {
+      return { initialized: true };
+    }
+
+    const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!serviceAccountVar) {
+      return {
+        initialized: false,
+        error:
+          'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing in Vercel Environment Variables.',
+      };
+    }
+
     const serviceAccount = parseServiceAccountKey(serviceAccountVar);
     if (!serviceAccount || !serviceAccount.project_id || !serviceAccount.private_key) {
       return {
