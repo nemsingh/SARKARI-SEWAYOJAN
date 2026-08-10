@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { BackupRecoveryTab, AutoBackupTrigger } from '@/components/admin/BackupRecoveryTab';
+import { sendPendingFcmNotifications } from '@/lib/fcmService';
 
 
 // ============ CONFIRM DIALOG STATE ============
@@ -312,6 +313,16 @@ const AdminDashboard = () => {
       console.log('[Publish] Triggering build webhook...');
       // 2. Fetch compile webhook instantly (takes around a second)
       await fetch(webhookUrl, { method: 'POST' });
+
+      // 3. Send all pending FCM Push Notifications queued for new/edited post category links
+      try {
+        const { sentCount } = await sendPendingFcmNotifications();
+        if (sentCount > 0) {
+          console.log(`[Publish] Sent ${sentCount} FCM push notification(s) to mobile app.`);
+        }
+      } catch (fcmErr) {
+        console.error('[Publish] FCM Notification flush error:', fcmErr);
+      }
       
       // Turn off publishing loader so user is instantly free
       setPublishing(false);

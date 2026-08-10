@@ -11,7 +11,7 @@ import ExcelEditor from '@/components/admin/ExcelEditor';
 import DirectPasteEditor from '@/components/admin/DirectPasteEditor';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Sun, Moon } from 'lucide-react';
-import { sendJobNotificationToApp } from '@/lib/fcmService';
+import { sendJobNotificationToApp, queueFcmNotification } from '@/lib/fcmService';
 
 const generateSlug = (text: string) => {
   return text
@@ -693,19 +693,19 @@ const AdminPostEditor = () => {
           toast({ title: 'Post created!', description: 'Click "Publish Website" from the Dashboard to make the changes live.' });
         }
 
-        // Send FCM Notification for all added Category Links in New Post
+        // Queue FCM Notification for all added Category Links in New Post (Sent on Publish Website)
         try {
           const validLinks = categoryLinksData.filter(l => l.title.trim() && l.categoryId);
           const postLinkUrl = `/post/${finalSlug || result.id}`;
           if (validLinks.length > 0) {
             for (const link of validLinks) {
-              sendJobNotificationToApp(link.title.trim(), link.categoryId, postLinkUrl);
+              await queueFcmNotification(link.title.trim(), link.categoryId, postLinkUrl);
             }
           } else {
-            sendJobNotificationToApp(nameOfPost, 'Latest Jobs', postLinkUrl);
+            await queueFcmNotification(nameOfPost, 'Latest Jobs', postLinkUrl);
           }
         } catch (fcmErr) {
-          console.error("FCM Send Error:", fcmErr);
+          console.error("FCM Queue Error:", fcmErr);
         }
 
         // Clear form for new post creation
@@ -805,7 +805,7 @@ const AdminPostEditor = () => {
           }
         }
 
-        // Send FCM Notification ONLY for Category Links that were Newly Created or Modified during this Edit
+        // Queue FCM Notification ONLY for Category Links that were Newly Created or Modified during this Edit (Sent on Publish Website)
         try {
           const postLinkUrl = `/post/${finalSlug}`;
           const validLinks = categoryLinksData.filter(l => l.title.trim() && l.categoryId);
@@ -815,25 +815,25 @@ const AdminPostEditor = () => {
             
             if (!link.id) {
               // Newly added category link in this post edit session
-              sendJobNotificationToApp(link.title.trim(), link.categoryId, postLinkUrl);
+              await queueFcmNotification(link.title.trim(), link.categoryId, postLinkUrl);
             } else {
               // Existing link: Check if title, postDate or categoryId was modified
               const orig = existingLinksForPost.find((ol: any) => ol.id === link.id);
               if (!orig) {
-                sendJobNotificationToApp(link.title.trim(), link.categoryId, postLinkUrl);
+                await queueFcmNotification(link.title.trim(), link.categoryId, postLinkUrl);
               } else {
                 const titleChanged = (orig.title || '').trim() !== link.title.trim();
                 const dateChanged = (orig.post_date || '').trim() !== (linkDate || '').trim();
                 const categoryChanged = (orig.category_id || '').trim() !== (link.categoryId || '').trim();
                 
                 if (titleChanged || dateChanged || categoryChanged) {
-                  sendJobNotificationToApp(link.title.trim(), link.categoryId, postLinkUrl);
+                  await queueFcmNotification(link.title.trim(), link.categoryId, postLinkUrl);
                 }
               }
             }
           }
         } catch (fcmErr) {
-          console.error("FCM Send Error during post edit:", fcmErr);
+          console.error("FCM Queue Error during post edit:", fcmErr);
         }
 
         toast({ title: 'Post updated!', description: 'Click "Publish Website" from the Dashboard to see changes live.' });
