@@ -59,11 +59,23 @@ export async function sendJobNotificationToApp(
     });
 
     const data = await response.json();
+    console.log('FCM API response:', response.status, data);
+
     if (response.ok && data.success) {
-      console.log('✅ FCM App Notification sent successfully:', data.messageId);
+      console.log('✅ FCM Notification sent successfully:', {
+        httpStatus: response.status,
+        success: data.success,
+        messageId: data.messageId,
+        topic: data.topic || 'all_users',
+      });
       return { success: true, messageId: data.messageId };
     } else {
-      console.error('❌ FCM Notification Error:', data.error);
+      console.error('❌ FCM Notification Failed:', {
+        httpStatus: response.status,
+        success: data.success || false,
+        topic: data.topic || 'all_users',
+        error: data.error || 'Failed to send notification',
+      });
       return { success: false, error: data.error || 'Failed to send notification' };
     }
   } catch (error: any) {
