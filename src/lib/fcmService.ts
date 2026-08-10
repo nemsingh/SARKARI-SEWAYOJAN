@@ -4,12 +4,13 @@
  */
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 
 export interface FcmNotificationPayload {
   jobTitle: string;
   category?: string;
   applyUrl?: string;
+  postId?: string;
 }
 
 const LOCAL_STORAGE_KEY = 'pending_fcm_notifications_queue';
@@ -17,18 +18,43 @@ const LOCAL_STORAGE_KEY = 'pending_fcm_notifications_queue';
 export async function sendJobNotificationToApp(
   jobTitle: string,
   category?: string,
-  applyUrl?: string
+  applyUrl?: string,
+  postId?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    // Extract postId from applyUrl if not directly passed (e.g. /post/my-post-id)
+    let computedPostId = postId || '';
+    if (!computedPostId && applyUrl) {
+      const match = applyUrl.match(/\/post\/([^/]+)/);
+      if (match && match[1]) {
+        computedPostId = match[1];
+      }
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Attach Firebase Auth Token if admin user is logged in
+    if (auth.currentUser) {
+      try {
+        const idToken = await auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${idToken}`;
+      } catch (tokenErr) {
+        console.warn('Could not retrieve Auth ID token:', tokenErr);
+      }
+    }
+
     const response = await fetch('/api/send-fcm', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         jobTitle,
         category: category || 'Latest Jobs',
         applyUrl: applyUrl || '',
+        postUrl: applyUrl || '',
+        postId: computedPostId,
+        topic: 'all_users',
       }),
     });
 
@@ -52,12 +78,22 @@ export async function sendJobNotificationToApp(
 export async function queueFcmNotification(
   jobTitle: string,
   category?: string,
-  applyUrl?: string
+  applyUrl?: string,
+  postId?: string
 ) {
+  let computedPostId = postId || '';
+  if (!computedPostId && applyUrl) {
+    const match = applyUrl.match(/\/post\/([^/]+)/);
+    if (match && match[1]) {
+      computedPostId = match[1];
+    }
+  }
+
   const newItem: FcmNotificationPayload = {
     jobTitle,
     category: category || 'Latest Jobs',
     applyUrl: applyUrl || '',
+    postId: computedPostId,
   };
 
   // 1. Update LocalStorage
@@ -136,7 +172,7 @@ export async function sendPendingFcmNotifications(): Promise<{ sentCount: number
 
   let sentCount = 0;
   for (const item of pendingList) {
-    const res = await sendJobNotificationToApp(item.jobTitle, item.category, item.applyUrl);
+    const res = await sendJobNotificationToApp(item.jobTitle, item.category, item.applyUrl, item.postId);
     if (res.success) {
       sentCount++;
     }
