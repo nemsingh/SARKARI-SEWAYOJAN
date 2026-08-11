@@ -15,6 +15,22 @@ export interface FcmNotificationPayload {
 
 const LOCAL_STORAGE_KEY = 'pending_fcm_notifications_queue';
 
+export function ensureFullUrl(url?: string): string {
+  if (!url) return 'https://sarkarisewayojan.com';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  let origin = 'https://sarkarisewayojan.com';
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    if (!window.location.origin.includes('localhost') && window.location.origin !== 'null') {
+      origin = window.location.origin;
+    }
+  }
+  const cleanBase = origin.replace(/\/$/, '');
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
 export async function sendJobNotificationToApp(
   jobTitle: string,
   category?: string,
@@ -22,6 +38,8 @@ export async function sendJobNotificationToApp(
   postId?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    const fullUrl = ensureFullUrl(applyUrl);
+
     // Extract postId from applyUrl if not directly passed (e.g. /post/my-post-id)
     let computedPostId = postId || '';
     if (!computedPostId && applyUrl) {
@@ -51,8 +69,8 @@ export async function sendJobNotificationToApp(
       body: JSON.stringify({
         jobTitle,
         category: category || 'Latest Jobs',
-        applyUrl: applyUrl || '',
-        postUrl: applyUrl || '',
+        applyUrl: fullUrl,
+        postUrl: fullUrl,
         postId: computedPostId,
         topic: 'all_users',
       }),
@@ -102,6 +120,8 @@ export async function queueFcmNotification(
   applyUrl?: string,
   postId?: string
 ) {
+  const fullUrl = ensureFullUrl(applyUrl);
+
   let computedPostId = postId || '';
   if (!computedPostId && applyUrl) {
     const match = applyUrl.match(/\/post\/([^/]+)/);
@@ -113,7 +133,7 @@ export async function queueFcmNotification(
   const newItem: FcmNotificationPayload = {
     jobTitle,
     category: category || 'Latest Jobs',
-    applyUrl: applyUrl || '',
+    applyUrl: fullUrl,
     postId: computedPostId,
   };
 

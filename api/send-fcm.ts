@@ -279,7 +279,11 @@ export default async function handler(req: any, res: any) {
 
     const notificationTitle = title || jobTitle;
     const notificationBody = msgBody || '👉 Click Here to Check Details';
-    const finalPostUrl = postUrl || applyUrl || '';
+    let rawPostUrl = postUrl || applyUrl || '';
+    if (rawPostUrl && !rawPostUrl.startsWith('http://') && !rawPostUrl.startsWith('https://')) {
+      rawPostUrl = `https://sarkarisewayojan.com${rawPostUrl.startsWith('/') ? '' : '/'}${rawPostUrl}`;
+    }
+    const finalPostUrl = rawPostUrl;
     const finalPostId = postId || '';
     const targetTopic = topic || 'all_users';
 
