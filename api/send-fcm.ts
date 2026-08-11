@@ -298,42 +298,26 @@ export default async function handler(req: any, res: any) {
     const accessToken = await getGoogleAccessToken(serviceAccount);
     const projectId = serviceAccount.project_id;
 
-    // 5. Construct FCM HTTP v1 REST API Payload
+    // 5. Construct FCM HTTP v1 REST API Data-Only Payload
     const fcmPayload = {
       message: {
         topic: targetTopic,
-        notification: {
-          title: notificationTitle,
-          body: notificationBody,
-        },
         data: {
           title: notificationTitle,
-          jobTitle: notificationTitle,
           body: notificationBody,
+          jobTitle: notificationTitle,
           postId: String(finalPostId),
           postUrl: finalPostUrl,
-          apply_url: finalPostUrl,
           applyUrl: finalPostUrl,
+          apply_url: finalPostUrl,
           category: category || 'Latest Jobs',
           type: 'DATA_UPDATED',
-          action: 'REFRESH_DATA',
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          action: 'OPEN_JOB_DETAIL',
+          click_action: 'OPEN_JOB_DETAIL',
           update_id: Date.now().toString(),
         },
         android: {
           priority: 'HIGH',
-          notification: {
-            sound: 'default',
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              contentAvailable: true,
-              sound: 'default',
-            },
-          },
         },
       },
     };
