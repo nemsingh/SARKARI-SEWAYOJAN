@@ -174,8 +174,9 @@ export async function queueFcmNotification(
 
 /**
  * Sends all pending FCM notifications when "Publish Website" button is clicked.
+ * Optionally waits for delayMs (e.g. 60,000ms = 1 min) to allow Vercel build to complete first.
  */
-export async function sendPendingFcmNotifications(): Promise<{ sentCount: number }> {
+export async function sendPendingFcmNotifications(delayMs: number = 0): Promise<{ sentCount: number }> {
   let pendingList: FcmNotificationPayload[] = [];
 
   // Read from LocalStorage
@@ -207,6 +208,11 @@ export async function sendPendingFcmNotifications(): Promise<{ sentCount: number
   if (pendingList.length === 0) {
     console.log('No pending FCM notifications in queue.');
     return { sentCount: 0 };
+  }
+
+  if (delayMs > 0) {
+    console.log(`⏳ [FCM] Waiting ${Math.round(delayMs / 1000)}s for Vercel deployment to finish before sending ${pendingList.length} notification(s)...`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
   }
 
   console.log(`🚀 Publishing Website: Sending ${pendingList.length} pending FCM notifications...`);

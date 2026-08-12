@@ -314,22 +314,24 @@ const AdminDashboard = () => {
       // 2. Fetch compile webhook instantly (takes around a second)
       await fetch(webhookUrl, { method: 'POST' });
 
-      // 3. Send all pending FCM Push Notifications queued for new/edited post category links
-      try {
-        const { sentCount } = await sendPendingFcmNotifications();
-        if (sentCount > 0) {
-          console.log(`[Publish] Sent ${sentCount} FCM push notification(s) to mobile app.`);
-        }
-      } catch (fcmErr) {
-        console.error('[Publish] FCM Notification flush error:', fcmErr);
-      }
-      
+      // 3. Send all pending FCM Push Notifications after a 120-second (2 minutes) background delay (allows Vercel build & JSON sync to finish)
+      sendPendingFcmNotifications(120000)
+        .then(({ sentCount }) => {
+          if (sentCount > 0) {
+            console.log(`[Publish] Sent ${sentCount} FCM push notification(s) to mobile app after Vercel build sync.`);
+          }
+        })
+        .catch(fcmErr => {
+          console.error('[Publish] FCM Notification flush error:', fcmErr);
+        });
+
       // Turn off publishing loader so user is instantly free
       setPublishing(false);
 
       // Show small toast popup at the bottom
       toast({
         title: 'Publish Successfully',
+        description: 'Site deployment started! App push notifications will send in 2 minutes once build is live.',
       });
 
     } catch (err: any) {
